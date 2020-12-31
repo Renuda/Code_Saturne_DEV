@@ -24,6 +24,10 @@
 
 """
 This module contains the following classes and function:
+- NameDelegate
+- ChemicalFormulaDelegate
+- ValueDelegate
+- StandardItemModelSpecies
 - GasCombustionView
 """
 
@@ -45,10 +49,14 @@ from code_saturne.Base.QtWidgets import *
 # Application modules import
 #-------------------------------------------------------------------------------
 
-from code_saturne.model.Common import GuiParam
-from code_saturne.Base.QtPage import ComboModel
+from code_saturne.model.Common import LABEL_LENGTH_MAX, GuiParam
+from code_saturne.Base.QtPage import ComboModel, RegExpValidator
+from code_saturne.Base.QtPage import DoubleValidator, from_qvariant
+from code_saturne.Base.QtPage import to_text_string
+from code_saturne.Base.QtPage import IntValidator
 from code_saturne.Pages.GasCombustionForm import Ui_GasCombustionForm
 from code_saturne.model.GasCombustionModel import GasCombustionModel
+from code_saturne.model.GasCombustionModel import ThermochemistryData
 
 #-------------------------------------------------------------------------------
 # log config
@@ -57,6 +65,290 @@ from code_saturne.model.GasCombustionModel import GasCombustionModel
 logging.basicConfig()
 log = logging.getLogger("GasCombustionView")
 log.setLevel(GuiParam.DEBUG)
+
+#-------------------------------------------------------------------------------
+# Line edit delegate for the specie label
+#-------------------------------------------------------------------------------
+
+class NameDelegate(QItemDelegate):
+    """
+    Use of a QLineEdit in the table.
+    """
+    def __init__(self, parent=None):
+        QItemDelegate.__init__(self, parent)
+        self.parent = parent
+        self.old_pname = ""
+
+
+    def createEditor(self, parent, option, index):
+        editor = QLineEdit(parent)
+        self.old_pname = ""
+        rx = "[_a-zA-Z][_A-Za-z0-9]{1," + str(LABEL_LENGTH_MAX-1) + "}"
+        self.regExp = QRegExp(rx)
+        v = RegExpValidator(editor, self.regExp)
+        editor.setValidator(v)
+        return editor
+
+
+    def setEditorData(self, editor, index):
+        editor.setAutoFillBackground(True)
+        value = from_qvariant(index.model().data(index, Qt.DisplayRole), to_text_string)
+        self.old_pname = str(value)
+        editor.setText(value)
+
+
+    def setModelData(self, editor, model, index):
+        if not editor.isModified():
+            return
+
+        if editor.validator().state == QValidator.Acceptable:
+            new_pname = str(editor.text())
+
+            if new_pname in model.mdl.getSpecieNamesList():
+                default = {}
+                default['name']  = self.old_pname
+                default['list']   = model.mdl.getSpecieNamesList()
+                default['regexp'] = self.regExp
+                log.debug("setModelData -> default = %s" % default)
+
+                from code_saturne.Pages.VerifyExistenceLabelDialogView import VerifyExistenceLabelDialogView
+                dialog = VerifyExistenceLabelDialogView(self.parent, default)
+                if dialog.exec_():
+                    result = dialog.get_result()
+                    new_pname = result['name']
+                    log.debug("setModelData -> result = %s" % result)
+                else:
+                    new_pname = self.old_pname
+
+            model.setData(index, new_pname, Qt.DisplayRole)
+
+#-------------------------------------------------------------------------------
+# Line edit delegate for the chemical formula
+#-------------------------------------------------------------------------------
+
+class ChemicalFormulaDelegate(QItemDelegate):
+    """
+    Use of a QLineEdit in the table.
+    """
+    def __init__(self, parent=None):
+        QItemDelegate.__init__(self, parent)
+        self.parent = parent
+        self.old_pname = ""
+
+
+    def createEditor(self, parent, option, index):
+        editor = QLineEdit(parent)
+        self.old_pname = ""
+        rx = "[chonCHON][CHONchon0-9]{1," + str(LABEL_LENGTH_MAX-1) + "}"
+        self.regExp = QRegExp(rx)
+        v = RegExpValidator(editor, self.regExp)
+        editor.setValidator(v)
+        return editor
+
+
+    def setEditorData(self, editor, index):
+        editor.setAutoFillBackground(True)
+        value = from_qvariant(index.model().data(index, Qt.DisplayRole), to_text_string)
+        self.old_pname = str(value)
+        editor.setText(value)
+
+
+    def setModelData(self, editor, model, index):
+        if not editor.isModified():
+            return
+
+        if editor.validator().state == QValidator.Acceptable:
+            new_pname = str(editor.text())
+
+            if new_pname in model.mdl.getSpecieNamesList():
+                default = {}
+                default['name']  = self.old_pname
+                default['list']   = model.mdl.getSpecieNamesList()
+                default['regexp'] = self.regExp
+                log.debug("setModelData -> default = %s" % default)
+
+                from code_saturne.Pages.VerifyExistenceLabelDialogView import VerifyExistenceLabelDialogView
+                dialog = VerifyExistenceLabelDialogView(self.parent, default)
+                if dialog.exec_():
+                    result = dialog.get_result()
+                    new_pname = result['name']
+                    log.debug("setModelData -> result = %s" % result)
+                else:
+                    new_pname = self.old_pname
+
+            model.setData(index, new_pname, Qt.DisplayRole)
+
+#-------------------------------------------------------------------------------
+# Line edit delegate for the value
+#-------------------------------------------------------------------------------
+
+class ValueDelegate(QItemDelegate):
+    def __init__(self, parent=None):
+        super(ValueDelegate, self).__init__(parent)
+        self.parent = parent
+
+
+    def createEditor(self, parent, option, index):
+        editor = QLineEdit(parent)
+        v = DoubleValidator(editor, min=0.)
+        editor.setValidator(v)
+        return editor
+
+
+    def setEditorData(self, editor, index):
+        editor.setAutoFillBackground(True)
+        value = from_qvariant(index.model().data(index, Qt.DisplayRole), to_text_string)
+        editor.setText(value)
+
+
+    def setModelData(self, editor, model, index):
+        if not editor.isModified():
+            return
+        if editor.validator().state == QValidator.Acceptable:
+            value = from_qvariant(editor.text(), float)
+            for idx in self.parent.selectionModel().selectedIndexes():
+                if idx.column() == index.column():
+                    model.setData(idx, value, Qt.DisplayRole)
+
+
+#-------------------------------------------------------------------------------
+# StandarItemModel class
+#-------------------------------------------------------------------------------
+
+class StandardItemModelSpecies(QStandardItemModel):
+    """
+    """
+    def __init__(self, parent, mdl):
+        """
+        """
+        QStandardItemModel.__init__(self)
+
+        self.headers = [self.tr("Specie"),
+                        self.tr("Chemical Formula"),
+                        self.tr("stoich coeff (if Fuel)"), 
+                        self.tr("stoich coeff (if Oxidant)"), 
+                        self.tr("Coeff absorption")]
+
+        self.setColumnCount(len(self.headers))
+
+        self._data = []
+        self.parent = parent
+        self.mdl  = mdl
+
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+
+        row = index.row()
+        col = index.column()
+
+        if role == Qt.DisplayRole:
+            return self._data[row][col]
+
+        return None
+
+
+    def flags(self, index):
+        if not index.isValid():
+            return Qt.ItemIsEnabled
+        if index.column() != 0:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+        else:
+            return Qt.ItemIsSelectable
+
+
+    def headerData(self, section, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self.headers[section]
+        return None
+
+
+    def setData(self, index, value, role):
+        if not index.isValid():
+            return Qt.ItemIsEnabled
+
+        # Update the row in the table
+        row = index.row()
+        col = index.column()
+
+        # Label (nothing to do for the specie label)
+        if col == 0:
+            pass
+            
+        # Chemical formula
+        elif col == 1:
+            ChemicalFormula = str(from_qvariant(value, to_text_string))
+            self._data[row][col] = ChemicalFormula
+            label = self._data[row][0]
+            self.mdl.setSpecieChemicalFormula(label, ChemicalFormula)
+
+        # stoich coeff fuel
+        elif col == 2:
+            StCoeffFuel = str(from_qvariant(value, to_text_string))
+            self._data[row][col] = StCoeffFuel
+            label = self._data[row][0]
+            self.mdl.setStCoeffFuel(label, StCoeffFuel)
+
+        # stoich coeff oxi
+        elif col == 3:
+            StCoeffOxi = str(from_qvariant(value, to_text_string))
+            self._data[row][col] = StCoeffOxi
+            label = self._data[row][0]
+            self.mdl.setStCoeffOxi(label, StCoeffOxi)
+
+        # Coeff absorption
+        elif col == 4:
+            CoeffAbsorp = str(from_qvariant(value, to_text_string))
+            self._data[row][col] = CoeffAbsorp
+            label = self._data[row][0]
+            self.mdl.setCoeffAbsorp(label, CoeffAbsorp)
+
+        self.dataChanged.emit(index, index)
+        return True
+
+
+    def getData(self, index):
+        row = index.row()
+        return self._data[row]
+
+
+    def newItem(self, existing_name=None):
+        """
+        Add an item in the table view
+        """
+        row = self.rowCount()
+
+        label = self.mdl.addSpecie(existing_name)
+
+        ChemicalFormula = self.mdl.getSpecieChemicalFormula(label)
+        StCoeffFuel = self.mdl.getStCoeffFuel(label)
+        StCoeffOxi = self.mdl.getStCoeffOxi(label)
+        CoeffAbsorp = self.mdl.getCoeffAbsorp(label)
+        
+        specie = [label, ChemicalFormula, StCoeffFuel, StCoeffOxi, CoeffAbsorp]
+
+        self.setRowCount(row+1)
+        self._data.append(specie)
+
+
+    def getItem(self, row):
+        """
+        Return the values for an item.
+        """
+        [label, ChemicalFormula, StCoeffFuel, StCoeffOxi, CoeffAbsorp] = self._data[row]
+        return label, ChemicalFormula, StCoeffFuel, StCoeffOxi, CoeffAbsorp
+
+
+    def deleteItem(self, row):
+        """
+        Delete the row in the model.
+        """
+        log.debug("deleteItem row = %i " % row)
+
+        del self._data[row]
+        row = self.rowCount()
+        self.setRowCount(row-1)
 
 
 #-------------------------------------------------------------------------------
@@ -80,6 +372,34 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         self.case = case
         self.case.undoStopGlobal()
         self.mdl = GasCombustionModel(self.case)
+        self.thermodata = ThermochemistryData(self.case)
+
+        # Model for table View
+        self.modelSpecies = StandardItemModelSpecies(self, self.thermodata)
+        self.tableViewSpecies.setModel(self.modelSpecies)
+
+        # Delegates
+        delegateLabel            = NameDelegate(self.tableViewSpecies)
+        delegateChemicalFormula  = ChemicalFormulaDelegate(self.tableViewSpecies)
+        delegateStCoeffFuel  = ValueDelegate(self.tableViewSpecies)
+        delegateStCoeffOxi   = ValueDelegate(self.tableViewSpecies)
+        delegateCoeffAbsorp  = ValueDelegate(self.tableViewSpecies)
+
+        self.tableViewSpecies.setItemDelegateForColumn(0, delegateLabel)
+        self.tableViewSpecies.setItemDelegateForColumn(1, delegateChemicalFormula)
+        self.tableViewSpecies.setItemDelegateForColumn(2, delegateStCoeffFuel)
+        self.tableViewSpecies.setItemDelegateForColumn(3, delegateStCoeffOxi)
+        self.tableViewSpecies.setItemDelegateForColumn(4, delegateCoeffAbsorp)
+
+        # tableView
+        if QT_API == "PYQT4":
+            self.tableViewSpecies.horizontalHeader().setResizeMode(QHeaderView.Stretch)
+            self.tableViewSpecies.horizontalHeader().setResizeMode(0,QHeaderView.ResizeToContents)
+            self.tableViewSpecies.horizontalHeader().setResizeMode(1,QHeaderView.ResizeToContents)
+        elif QT_API == "PYQT5":
+            self.tableViewSpecies.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.tableViewSpecies.horizontalHeader().setSectionResizeMode(0,QHeaderView.ResizeToContents)
+            self.tableViewSpecies.horizontalHeader().setSectionResizeMode(1,QHeaderView.ResizeToContents)
 
         # Set models and number of elements for combo boxes
         self.modelGasCombustionOption = ComboModel(self.comboBoxGasCombustionOption,1,1)
@@ -87,8 +407,37 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         # Connections
         self.comboBoxGasCombustionOption.activated[str].connect(self.slotGasCombustionOption)
         self.pushButtonThermochemistryData.pressed.connect(self.__slotSearchThermochemistryData)
+        self.radioButtonCreateJanafFile.clicked.connect(self.slotCreateJanafFile)
+        self.lineEditNbPointsTabu.textChanged[str].connect(self.slotNbPointsTabu)
+        self.lineEditMaximalTemp.textChanged[str].connect(self.slotMaximalTemp)
+        self.lineEditMinimalTemp.textChanged[str].connect(self.slotMinimalTemp)
+        self.pushButtonAddSpecie.clicked.connect(self.slotAddSpecie)
+        self.pushButtonDeleteSpecie.clicked.connect(self.slotDeleteSpecie)
+        self.modelSpecies.dataChanged.connect(self.dataChanged)
+
+        # Validators
+        validatorNbPointsTabu = IntValidator(self.lineEditNbPointsTabu, min=1)
+        validatorMaximalTemp = DoubleValidator(self.lineEditMaximalTemp, min=273.0)
+        validatorMinimalTemp = DoubleValidator(self.lineEditMinimalTemp, min=273.0)
+
+        self.lineEditNbPointsTabu.setValidator(validatorNbPointsTabu)
+        self.lineEditMaximalTemp.setValidator(validatorMaximalTemp)
+        self.lineEditMinimalTemp.setValidator(validatorMinimalTemp)
+
+        NbPointsTabu = self.thermodata.getNbPointsTabu(self.thermodata.nodes[0])
+        MaximalTemp = self.thermodata.getMaximalTemp(self.thermodata.nodes[1])
+        MinimalTemp = self.thermodata.getMinimalTemp(self.thermodata.nodes[2])
+
+        self.lineEditNbPointsTabu.setText(str(NbPointsTabu))
+        self.lineEditMaximalTemp.setText(str(MaximalTemp))
+        self.lineEditMinimalTemp.setText(str(MinimalTemp))
 
         # Initialize Widgets
+
+        self.tableViewSpecies.reset()
+        self.modelSpecies = StandardItemModelSpecies(self, self.thermodata)
+        self.tableViewSpecies.setModel(self.modelSpecies)
+
         model = self.mdl.getGasCombustionModel()
 
         if model == 'd3p':
@@ -117,6 +466,23 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         else:
             self.pushButtonThermochemistryData.setStyleSheet("background-color: red")
 
+        self.radioButtonCreateJanafFile.hide()
+
+        if self.thermodata.getCreateThermoDataFile() == 'on':
+            self.radioButtonCreateJanafFile.setChecked(True)
+        else:
+            self.radioButtonCreateJanafFile.setChecked(False)
+
+        # for the moment the option to create Janaf file in the GUI is only available with d3p (extended)
+        if option == 'extended':
+            self.radioButtonCreateJanafFile.show()
+            self.groupBoxCreateJanafFile.show()
+
+        self.slotCreateJanafFile()
+
+        for label in self.thermodata.getSpecieNamesList():
+            self.modelSpecies.newItem(label)
+
         self.case.undoStartGlobal()
 
 
@@ -128,7 +494,14 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         """
         option = self.modelGasCombustionOption.dicoV2M[str(text)]
         self.mdl.setGasCombustionOption(option)
-
+        # for the moment the option to create Janaf file in the GUI is only available with d3p (extended)
+        if option == 'extended':
+            self.radioButtonCreateJanafFile.show()
+        else:
+            self.radioButtonCreateJanafFile.setChecked(False)
+            self.thermodata.setCreateThermoDataFile("off")
+            self.radioButtonCreateJanafFile.hide()
+            self.groupBoxCreateJanafFile.hide()
 
     @pyqtSlot()
     def __slotSearchThermochemistryData(self):
@@ -153,6 +526,85 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
             self.labelThermochemistryFile.setText(str(file))
             self.mdl.setThermoChemistryDataFileName(file)
             self.pushButtonThermochemistryData.setStyleSheet("background-color: green")
+
+    @pyqtSlot()
+    def slotCreateJanafFile(self):
+        """
+        Determine if the Thermodynamic file is created with the GUI.
+        """
+        if self.radioButtonCreateJanafFile.isChecked():
+            self.thermodata.setCreateThermoDataFile("on")
+            self.groupBoxCreateJanafFile.show()
+            self.lineEditNbPointsTabu.setText(str(self.thermodata.getNbPointsTabu('NbPointsTabu')))
+            self.lineEditMaximalTemp.setText(str(self.thermodata.getMaximalTemp('MaximalTemp')))
+            self.lineEditMinimalTemp.setText(str(self.thermodata.getMinimalTemp('MinimalTemp')))
+            return
+        else:
+            self.thermodata.setCreateThermoDataFile("off")
+            self.groupBoxCreateJanafFile.hide()
+
+    @pyqtSlot(str)
+    def slotNbPointsTabu(self, text):
+        """
+        Input Number of points for the tabulation (ENTH-TEMP)
+        """
+        if self.lineEditNbPointsTabu.validator().state == QValidator.Acceptable:
+            NbPointsTabu = from_qvariant(text, int)
+            self.thermodata.setNbPointsTabu('NbPointsTabu', NbPointsTabu)
+
+    @pyqtSlot(str)
+    def slotMaximalTemp(self, text):
+        """
+        Input Maximal temperature for the tabulation (ENTH-TEMP)
+        """
+        if self.lineEditMaximalTemp.validator().state == QValidator.Acceptable:
+            MaximalTemp = from_qvariant(text, float)
+            self.thermodata.setMinMaxTemp('MaximalTemp', MaximalTemp)
+
+    @pyqtSlot(str)
+    def slotMinimalTemp(self, text):
+        """
+        Input Minimal temperature for the tabulation (ENTH-TEMP)
+        """
+        if self.lineEditMinimalTemp.validator().state == QValidator.Acceptable:
+            MinimalTemp = from_qvariant(text, float)
+            self.thermodata.setMinMaxTemp('MinimalTemp', MinimalTemp)
+
+    @pyqtSlot()
+    def slotAddSpecie(self):
+        """
+        Add a new item in the table when the 'Create' button is pushed.
+        """
+        self.tableViewSpecies.clearSelection()
+        self.modelSpecies.newItem()
+
+    @pyqtSlot()
+    def slotDeleteSpecie(self):
+        """
+        Just delete the current selected entries from the table and
+        of course from the XML file.
+        """
+        lst = []
+        for index in self.tableViewSpecies.selectionModel().selectedRows():
+            row = index.row()
+            lst.append(row)
+
+        lst.sort()
+        lst.reverse()
+
+        for row in lst:
+            label = self.modelSpecies.getItem(row)[0]
+            self.thermodata.deleteSpecie(label)
+            self.modelSpecies.deleteItem(row)
+
+        self.tableViewSpecies.clearSelection()
+
+    @pyqtSlot("QModelIndex, QModelIndex")
+    def dataChanged(self, topLeft, bottomRight):
+        for row in range(topLeft.row(), bottomRight.row()+1):
+            self.tableViewSpecies.resizeRowToContents(row)
+        for col in range(topLeft.column(), bottomRight.column()+1):
+            self.tableViewSpecies.resizeColumnToContents(col)
 
 
 #-------------------------------------------------------------------------------
