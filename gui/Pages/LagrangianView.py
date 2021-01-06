@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -241,8 +241,6 @@ class LagrangianView(QWidget, Ui_LagrangianForm):
         self.default = {}
         self.default['scheme_order'] = self.model.getSchemeOrder()
         self.default['regular_particles'] = self.model.getRegularParticles()
-        self.default['turbulent_dispersion'] = self.model.getTurbulentDispersion()
-        self.default['fluid_particles_turbulent_diffusion'] = self.model.getTurbulentDiffusion()
         self.result = self.default.copy()
 
         # Combo model
@@ -372,12 +370,8 @@ class LagrangianView(QWidget, Ui_LagrangianForm):
         """
         if self.checkBoxMODCPL.isChecked():
             self.model.setRegularParticles(0)
-            self.model.setTurbulentDispersion("off")
-            self.model.setTurbulentDiffusion("on")
         else:
             self.model.setRegularParticles(1)
-            self.model.setTurbulentDispersion("on")
-            self.model.setTurbulentDiffusion("off")
 
 
     @pyqtSlot()

@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -53,13 +53,11 @@ from code_saturne.model.Common import GuiParam
 import code_saturne.Base.QtPage as QtPage
 
 from code_saturne.Pages.AnalysisFeaturesForm import Ui_AnalysisFeaturesForm
-from code_saturne.model.TurbulenceModel import TurbulenceModel
 from code_saturne.model.GasCombustionModel import GasCombustionModel
 from code_saturne.model.CompressibleModel import CompressibleModel
 from code_saturne.model.CoalCombustionModel import CoalCombustionModel
 from code_saturne.model.ElectricalModel import ElectricalModel
 from code_saturne.model.DefineUserScalarsModel import DefineUserScalarsModel
-from code_saturne.model.ThermalRadiationModel import ThermalRadiationModel
 from code_saturne.model.AtmosphericFlowsModel import AtmosphericFlowsModel
 from code_saturne.model.GroundwaterModel import GroundwaterModel
 from code_saturne.model.MainFieldsModel import MainFieldsModel
@@ -190,6 +188,7 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
         self.comboBoxAtmospheric.activated[str].connect(self.slotAtmospheric)
         self.comboBoxReactiveFlows.activated[str].connect(self.slotReactiveFlows)
         self.comboBoxGasCombustion.activated[str].connect(self.slotGasCombustion)
+        self.checkBoxPther.clicked.connect(self.slotPther)
         self.comboBoxCoalCombustion.activated[str].connect(self.slotCoalCombustion)
         self.comboBoxJouleEffect.activated[str].connect(self.slotJouleEffect)
         self.comboBoxSinglePhase.activated[str].connect(self.slotSinglePhase)
@@ -241,12 +240,16 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
 
         self.init_common()
 
+        if self.gas.getUniformVariableThermodynamicalPressure() == 'on':
+            self.checkBoxPther.setChecked(True)
+        else:
+            self.checkBoxPther.setChecked(False)
+
         # Update the Tree files and folders
 
         self.browser.configureTree(self.case)
 
         self.case.undoStartGlobal()
-
 
     def __uncheckRadioButtons(self):
 
@@ -256,7 +259,6 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
                     'JouleEffect', 'Groundwater', 'ReactiveFlows',
                     'Hgn', 'NeptuneCFD']:
             eval('self.radioButton'+ind+'.setChecked(False)')
-
 
     def __hideComboBox(self):
         """
@@ -272,6 +274,8 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
         self.comboBoxGroundwater.hide()
         self.comboBoxHgn.hide()
         self.comboBoxNeptuneCFD.hide()
+
+        self.checkBoxPther.hide()
 
 
     def __stringModelFromCombo(self, name):
@@ -326,7 +330,6 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
 
         self.__hideComboBox()
 
-        self.turb  = TurbulenceModel(self.case)
         self.gas   = GasCombustionModel(self.case)
         self.pcoal = CoalCombustionModel(self.case)
         self.elect = ElectricalModel(self.case)
@@ -346,19 +349,6 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
         compressible = self.comp.getCompressibleModel()
         homogeneous = self.hgn.getHgnModel()
 
-        # Compatibility between turbulence model and reactive flow models
-        if self.turb.getTurbulenceModel() not in self.turb.RANSmodels():
-            if coal != 'off':
-                self.pcoal.setCoalCombustionModel('off')
-                coal = 'off'
-            elif gas != 'off':
-                self.gas.setGasCombustionModel('off')
-                gas = 'off'
-
-            self.radioButtonReactiveFlows.setEnabled(False)
-        else:
-            self.radioButtonReactiveFlows.setEnabled(True)
-
         # Set combobox values
 
         if atmospheric != 'off':
@@ -368,6 +358,7 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
             self.modelReactiveFlows.setItem(str_model='gas_combustion')
             self.modelGasCombustion.setItem(str_model=gas)
             self.comboBoxGasCombustion.show()
+            self.checkBoxPther.show()
 
         elif coal != 'off':
             self.modelReactiveFlows.setItem(str_model='pulverized_coal')
@@ -443,15 +434,6 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
             self.modelLagrangian.disableItem(str_model='two_way')
         self.modelLagrangian.enableItem(str_model='frozen')
 
-        if self.turb.getTurbulenceModel() not in \
-                ('off', 'k-epsilon', 'k-epsilon-PL',
-                 'Rij-epsilon', 'Rij-SSG', 'Rij-EBRSM', 'v2f-BL-v2/k',
-                 'k-omega-SST', 'Spalart-Allmaras'):
-            self.modelLagrangian.setItem(str_model='off')
-            self.comboBoxLagrangian.setEnabled(False)
-        else:
-            self.comboBoxLagrangian.setEnabled(True)
-
 
     def switch_case_to_neptune(self):
 
@@ -506,6 +488,7 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
 
         self.checkBoxALE.hide()
         self.checkBoxFans.hide()
+        self.checkBoxPther.hide()
 
 
     def init_common(self):
@@ -637,9 +620,11 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
             if self.checkPrev == 'ReactiveFlows':
                 self.gas.setGasCombustionModel('off')
                 self.pcoal.setCoalCombustionModel('off')
+                self.gas.setUniformVariableThermodynamicalPressure("off")
 
                 self.comboBoxGasCombustion.hide()
                 self.comboBoxCoalCombustion.hide()
+                self.checkBoxPther.hide()
 
                 self.modelLagrangian.enableItem(str_model='two_way')
 
@@ -668,6 +653,7 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
         model = self.__stringModelFromCombo('Lagrangian')
 
         self.lagr.setLagrangianModel(model)
+
         self.browser.configureTree(self.case)
 
 
@@ -754,6 +740,8 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
             self.comboBoxGasCombustion.show()
             model = self.__stringModelFromCombo('GasCombustion')
             self.slotGasCombustion(model)
+            self.checkBoxPther.show()
+            self.slotPther()
 
         elif model == "Pulverized Coal":
             self.gas.setGasCombustionModel("off")
@@ -761,6 +749,8 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
             self.comboBoxCoalCombustion.show()
             model = self.__stringModelFromCombo('CoalCombustion')
             self.slotCoalCombustion(model)
+            self.gas.setUniformVariableThermodynamicalPressure("off")
+            self.checkBoxPther.hide()
 
 
     @pyqtSlot(str)
@@ -839,6 +829,18 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
 
         self.browser.configureTree(self.case)
 
+    @pyqtSlot()
+    def slotPther(self):
+        """
+        Set value for parameter IPTHRM (activation of Pther)
+        """
+
+        if self.checkBoxPther.isChecked():
+            self.gas.setUniformVariableThermodynamicalPressure("on")
+        else:
+            self.gas.setUniformVariableThermodynamicalPressure("off")
+
+        self.browser.configureTree(self.case)
 
 #-------------------------------------------------------------------------------
 # End

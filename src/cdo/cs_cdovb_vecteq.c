@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -48,7 +48,6 @@
 #include "cs_cdo_bc.h"
 #include "cs_cdo_diffusion.h"
 #include "cs_cdo_local.h"
-#include "cs_cdo_time.h"
 #include "cs_cdovb_priv.h"
 #include "cs_equation_bc.h"
 #include "cs_equation_common.h"
@@ -1246,7 +1245,6 @@ cs_cdovb_vecteq_solve_steady_state(bool                        cur2prev,
   const cs_cdo_connect_t  *connect = cs_shared_connect;
   const cs_range_set_t  *rs = connect->range_sets[CS_CDO_CONNECT_VTX_VECT];
   const cs_cdo_quantities_t  *quant = cs_shared_quant;
-  const cs_lnum_t  n_vertices = quant->n_vertices;
   const cs_time_step_t  *ts = cs_shared_time_step;
   const cs_real_t  time_eval = ts->t_cur + ts->dt[0];
 
@@ -1269,9 +1267,9 @@ cs_cdovb_vecteq_solve_steady_state(bool                        cur2prev,
   cs_real_t  *rhs = NULL;
   double  rhs_norm = 0.0;
 
-  assert(3*n_vertices == eqc->n_dofs);
+  assert(3*quant->n_vertices == eqc->n_dofs);
   BFT_MALLOC(rhs, eqc->n_dofs, cs_real_t);
-# pragma omp parallel for if  (n_vertices > CS_THR_MIN)
+# pragma omp parallel for if  (quant->n_vertices > CS_THR_MIN)
   for (cs_lnum_t i = 0; i < eqc->n_dofs; i++) rhs[i] = 0.0;
 
   /* Initialize the structure to assemble values */
@@ -1282,7 +1280,7 @@ cs_cdovb_vecteq_solve_steady_state(bool                        cur2prev,
   /* Main OpenMP block on cell */
   /* ------------------------- */
 
-#pragma omp parallel if (quant->n_cells > CS_THR_MIN)
+# pragma omp parallel if (quant->n_cells > CS_THR_MIN)
   {
     /* Set variables and structures inside the OMP section so that each thread
        has its own value */
@@ -1361,7 +1359,7 @@ cs_cdovb_vecteq_solve_steady_state(bool                        cur2prev,
 
       /* Compute a norm of the RHS for the normalization of the residual
          of the linear system to solve */
-      rhs_norm += _vvb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _vvb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                             cm, csys);
 
       /* Apply boundary conditions (those which are weakly enforced) */
@@ -1401,7 +1399,7 @@ cs_cdovb_vecteq_solve_steady_state(bool                        cur2prev,
   cs_matrix_assembler_values_finalize(&mav);
 
   /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      eqc->n_dofs, /* 3*n_vertices */
                                      rhs,
                                      &rhs_norm);
@@ -1416,10 +1414,10 @@ cs_cdovb_vecteq_solve_steady_state(bool                        cur2prev,
 
   /* Solve the linear system (treated as a scalar-valued system
      with 3 times more DoFs) */
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(eqc->n_dofs, /* 3*n_vertices */
-                                  eqp,
+                                  eqp->sles_param,
                                   matrix,
                                   rs,
                                   rhs_norm,

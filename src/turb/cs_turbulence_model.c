@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -357,7 +357,7 @@ _turb_rans_model =
   .idifre     =    1,
   .iclsyr     =    1,
   .iclptr     =    0,
-  .xlomlg      =-1e13
+  .xlomlg     = -1e13
 };
 
 const cs_turb_rans_model_t  *cs_glob_turb_rans_model = &_turb_rans_model;
@@ -842,7 +842,7 @@ double cs_turb_csmago = 0.065;
  *
  * Useful if and only if \ref iturb = 41.
  */
-const double cs_turb_xlesfd = 1.5;
+double cs_turb_xlesfd = 1.5;
 
 /*!
  * Maximum allowed value for the variable \f$C\f$ appearing in the LES dynamic
@@ -852,7 +852,7 @@ const double cs_turb_xlesfd = 1.5;
  *
  * Useful if and only if \ref iturb = 41.
  */
-double cs_turb_smagmx = -1.;
+double cs_turb_csmago_max = -1.;
 
 /*!
  * Minimum allowed value for the variable \f$C\f$ appearing in the LES dynamic
@@ -862,7 +862,7 @@ double cs_turb_smagmx = -1.;
  *
  * Useful if and only if \ref iturb = 41.
  */
-double cs_turb_smagmn = 0.;
+double cs_turb_csmago_min = 0.;
 
 /*!
  * Van Driest constant appearing in the van Driest damping function applied to
@@ -871,7 +871,7 @@ double cs_turb_smagmn = 0.;
  *
  * Useful if and only if \ref iturb = 40 or 41.
  */
-const double cs_turb_cdries = 26.0;
+double cs_turb_cdries = 26.0;
 
 /*!
  * Constant \f$a_1\f$ for the v2f \f$\varphi\f$-model.
@@ -1017,8 +1017,18 @@ cs_f_turb_reference_values(double  **almax,
 void
 cs_f_turb_model_constants_get_pointers(double  **cmu,
                                        double  **cmu025,
-                                       double **crij1,
-                                       double **crij2);
+                                       double  **crij1,
+                                       double  **crij2,
+                                       double  **csmago,
+                                       double  **xlesfd,
+                                       double  **smagmx,
+                                       double  **smagmn,
+                                       double  **cwale,
+                                       double  **xlesfl,
+                                       double  **ales  ,
+                                       double  **bles  ,
+                                       double  **cdries
+                                       );
 
 /*============================================================================
  * Private function definitions
@@ -1160,18 +1170,46 @@ cs_f_turb_reference_values(double  **almax,
  *   cmu025 --> pointer to cs_turb_cmu025
  *   crij1  --> pointer to cs_turb_crij1
  *   crij2  --> pointer to cs_turb_crij2
+ *   csmago --> pointer to cs_turb_csmago
+ *   xlesfd --> pointer to cs_turb_xlesfd
+ *   smagmx --> pointer to cs_turb_smago_max
+ *   smagmn --> pointer to cs_turb_smago_min
+ *   cwale  --> pointer to cs_turb_cwale
+ *   xlesfl --> pointer to cs_turb_xlesfl
+ *   ales   --> pointer to cs_turb_ales
+ *   bles   --> pointer to cs_turb_bles
+ *   cdries --> pointer to cs_turb_cdries
  *----------------------------------------------------------------------------*/
 
 void
 cs_f_turb_model_constants_get_pointers(double  **cmu,
                                        double  **cmu025,
-                                       double **crij1,
-                                       double **crij2)
+                                       double  **crij1,
+                                       double  **crij2,
+                                       double  **csmago,
+                                       double  **xlesfd,
+                                       double  **smagmx,
+                                       double  **smagmn,
+                                       double  **cwale,
+                                       double  **xlesfl,
+                                       double  **ales  ,
+                                       double  **bles  ,
+                                       double  **cdries)
 {
   *cmu    = &cs_turb_cmu;
   *cmu025 = &cs_turb_cmu025;
   *crij1 = &cs_turb_crij1;
   *crij2 = &cs_turb_crij2;
+  *csmago= &cs_turb_csmago;
+  *xlesfd= &cs_turb_xlesfd;
+  *csmago= &cs_turb_csmago;
+  *smagmx= &cs_turb_csmago_max;
+  *smagmn= &cs_turb_csmago_min;
+  *cwale = &cs_turb_cwale;
+  *xlesfl= &cs_turb_xlesfl;
+  *ales  = &cs_turb_ales;
+  *bles  = &cs_turb_bles;
+  *cdries= &cs_turb_cdries;
 }
 
 /*============================================================================
@@ -1451,7 +1489,8 @@ cs_turb_compute_constants(void)
       cs_turb_cddes = 0.65;
     else if (cs_glob_turb_model->hybrid_turb == 1)
       cs_turb_cddes = 0.61;
-  } else if (cs_glob_turb_model->iturb == CS_TURB_V2F_BL_V2K){
+  }
+  else if (cs_glob_turb_model->iturb == CS_TURB_V2F_BL_V2K) {
     cs_turb_cddes = 0.60;
   }
 
@@ -1462,8 +1501,8 @@ cs_turb_compute_constants(void)
                    - xkappa2/(cs_turb_ckwsw2*sqrt(cs_turb_cmu));
   cs_turb_csaw1 =   cs_turb_csab1/xkappa2
                   + 1./cs_turb_csasig*(1. + cs_turb_csab2);
-  cs_turb_smagmx = cs_turb_csmago*cs_turb_csmago;
-  cs_turb_smagmn = 0.;
+  cs_turb_csmago_max = cs_turb_csmago*cs_turb_csmago;
+  cs_turb_csmago_min = 0.;
 
   /* LRR constants */
   cs_turb_crij1 = 1.80;
@@ -1708,7 +1747,7 @@ cs_turb_model_log_setup(void)
          "                                (dynamic model case)\n"),
          cs_turb_csmago, cs_turb_cwale, cs_turb_xlesfl,
          cs_turb_ales, cs_turb_bles, cs_glob_turb_les_model->idries,
-         cs_turb_cdries, cs_turb_xlesfd, cs_turb_smagmx);
+         cs_turb_cdries, cs_turb_xlesfd, cs_turb_csmago_max);
 
   }
   else if (   turb_model->iturb == CS_TURB_V2F_PHI
@@ -2014,7 +2053,9 @@ cs_turb_constants_log_setup(void)
  *
  *----------------------------------------------------------------------------*/
 
-void cs_clip_turbulent_fluxes(int flux_id, int variance_id)
+void
+cs_clip_turbulent_fluxes(int  flux_id,
+                         int  variance_id)
 {
   cs_lnum_t n_cells = cs_glob_mesh->n_cells;
 
@@ -2024,7 +2065,6 @@ void cs_clip_turbulent_fluxes(int flux_id, int variance_id)
   cs_real_3_t *cvar_clip_rit = NULL;
 
   cs_field_t *field_rit = cs_field_by_id(flux_id);
-  cs_field_t *field_tt = cs_field_by_id(variance_id);
 
   /* Local variables */
   const cs_real_t tol_jacobi = 1.0e-12;
@@ -2038,7 +2078,7 @@ void cs_clip_turbulent_fluxes(int flux_id, int variance_id)
   cs_real_3_t rit;
 
   /* Get clippings field for DFM */
-  cs_lnum_t kclipp, kclipp2, clip_rit_id;
+  cs_lnum_t kclipp, clip_rit_id;
   kclipp = cs_field_key_id("clipping_id");
   clip_rit_id = cs_field_get_key_int(field_rit, kclipp);
   if (clip_rit_id >= 0) {

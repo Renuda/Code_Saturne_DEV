@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -115,8 +115,10 @@ BEGIN_C_DECLS
         (gas combustion, pulverised coal, electricity or compressible), the user
         must not modify \ref iscalt (the choice is made automatically). In the
         case of the compressible module, \ref iscalt does not correspond to
-        the temperature nor enthalpy but to the total energy}.\n Useful if
-        and only if \ref dimens::nscal "nscal" \f$\geqslant\f$ 1.
+        the temperature nor enthalpy but to the total energy}.
+
+        This should only be used to set Fortran mappings. In C, use of
+        \ref cs_thermal_model_field is recommended instead.
 
 */
 

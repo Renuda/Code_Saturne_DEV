@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -47,6 +47,7 @@ class master_script:
                          'smgrgui':self.studymanager_gui,
                          'trackcvg':self.trackcvg,
                          'info':self.info,
+                         'parametric':self.parametric,
                          'run':self.run,
                          'salome':self.salome,
                          'submit':self.submit,
@@ -112,6 +113,7 @@ Topics:
   cplgui
   create
   gui
+  parametric
   studymanagergui
   smgrgui
   trackcvg
@@ -167,6 +169,10 @@ Options:
     def info(self, options = None):
         from code_saturne import cs_info
         return cs_info.main(options, self.package)
+
+    def parametric(self, options = None):
+        from code_saturne import cs_parametric_study
+        return cs_parametric_study.main(options, self.package)
 
     def run(self, options = None):
         from code_saturne import cs_run

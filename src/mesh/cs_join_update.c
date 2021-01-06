@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -4701,7 +4701,7 @@ cs_join_update_mesh_clean(cs_join_param_t   param,
   }
 
   if (n_g_clean_faces[0] + n_g_clean_faces[1] > 0)
-    mesh->modified = 1;
+    mesh->modified |= CS_MESH_MODIFIED;
 
   /* Free memory */
 

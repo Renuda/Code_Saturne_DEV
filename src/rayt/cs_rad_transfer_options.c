@@ -4,7 +4,7 @@
 
 /* This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -363,7 +363,7 @@ cs_rad_transfer_log_setup(void)
           "                   "
           "   compulsory with transparent media)"),
        N_("1 (conservative radiative S.T. calculation)"),
-       N_("2 (semi-analytic radiative S.T. calculation,"
+       N_("2 (semi-analytic radiative S.T. calculation,\n"
           "                   "
           "   corrected for global conservation)")};
 

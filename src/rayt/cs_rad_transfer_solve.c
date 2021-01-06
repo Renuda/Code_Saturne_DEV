@@ -4,7 +4,7 @@
 
 /* This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -885,7 +885,7 @@ _cs_rad_transfer_sol(int                        gg_id,
  * The density of net radiation flux must be calculated
  * consistently with the boundary conditions of the intensity.
  * The density of net flux is the balance between the radiative
- * emiting part of a boudary face (and not the reflecting one)
+ * emiting part of a boundary face (and not the reflecting one)
  * and the radiative absorbing part.
  *
  * \param[in]   bc_type   boundary face types
@@ -1007,6 +1007,10 @@ cs_rad_transfer_solve(int               bc_type[],
   /* Number of passes */
   ipadom++;
 
+  if (   ipadom > 1
+      && cs_glob_time_step->nt_cur%rt_params->nfreqr != 0)
+    return;
+
   /* Allocate temporary arrays for the radiative equations resolution */
   cs_real_t *viscf, *viscb, *rhs, *rovsdt;
   BFT_MALLOC(viscf,  n_i_faces, cs_real_t);
@@ -1108,10 +1112,6 @@ cs_rad_transfer_solve(int               bc_type[],
 
   /* Initializations
      --------------- */
-
-  if (   ipadom > 1
-      && cs_glob_time_step->nt_cur%rt_params->nfreqr != 0)
-    return;
 
   if (rt_params->verbosity > 0)
     cs_log_printf(CS_LOG_DEFAULT,

@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -128,11 +128,13 @@ cs_user_parallel_io(void)
 
   cs_file_set_default_access(CS_FILE_MODE_READ, method, hints);
 
-  cs_file_set_default_comm(block_rank_step, block_min_size, cs_glob_mpi_comm);
+  cs_file_set_default_comm(block_rank_step, cs_glob_mpi_comm);
 
   cs_file_set_mpi_io_positioning(CS_FILE_MPI_INDIVIDUAL_POINTERS);
 
   MPI_Info_free(&hints);
+
+  cs_parall_set_min_coll_buf_size(block_min_size);
 
 #endif /* defined(HAVE_MPI_IO) && MPI_VERSION > 1 */
 

@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -124,13 +124,11 @@ cs_ale_project_displacement(const int           ale_bc_type[],
  * \brief  Update mesh in the ALE framework.
  *
  * \param[in]       itrale        number of the current ALE iteration
- * \param[in]       xyzno0        nodes coordinates of the initial mesh
  */
 /*----------------------------------------------------------------------------*/
 
 void
-cs_ale_update_mesh(const int           itrale,
-                   const cs_real_3_t  *xyzno0);
+cs_ale_update_mesh(const int           itrale);
 
 /*----------------------------------------------------------------------------*/
 /*!

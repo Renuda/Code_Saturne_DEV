@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -81,8 +81,8 @@ module entsor
   integer, save :: indjon
 
   !> Input files for the atmospheric specific physics
-  !> (name of the meteo profile file)
-  character(len=32), save :: ficmet
+  !> ficmet is moved to C.
+  !> Get it in Fortran with atmo_get_meteo_file_name
   !> logical unit of the meteo profile file
   integer, save :: impmet
 

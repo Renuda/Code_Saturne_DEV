@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -59,8 +59,6 @@ module albase
   !> from the boundary conditions defined in cs user boundary conditions,
   !> or even from their coordinates.
   integer, allocatable, dimension(:) :: ialtyb
-  !> initial mesh coordinates
-  double precision, allocatable, dimension(:,:) :: xyzno0
   !> Pointer to field over vertices: mesh displacement
   integer, save :: fdiale
   !> \}
@@ -79,7 +77,6 @@ contains
     integer, intent(in) :: nfabor, nnod
 
     if (iale.ge.1) then
-      allocate(xyzno0(3,nnod))
       allocate(impale(nnod))
       allocate(ialtyb(nfabor))
     endif
@@ -93,7 +90,6 @@ contains
     use cplsat
 
     if (iale.ge.1) then
-      deallocate(xyzno0)
       deallocate(impale)
       deallocate(ialtyb)
     endif

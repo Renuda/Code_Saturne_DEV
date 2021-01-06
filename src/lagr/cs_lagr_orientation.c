@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -291,12 +291,12 @@ _bm_stretching_phase_spheroid(const cs_lnum_t ip,
 /*----------------------------------------------------------------------------*/
 
 static void
-_bm_rotation_phase_spheroid_by_quaternion (const cs_lnum_t ip,
-                                           const cs_real_t dtp,
-                                           const cs_real_t d_minus,
-                                                 cs_real_t orient_loc[3],
-                                                 cs_real_t quater_loc[3],
-                                           const cs_real_t brown[])
+_bm_rotation_phase_spheroid_by_quaternion(const cs_lnum_t  ip,
+                                          const cs_real_t  dtp,
+                                          const cs_real_t  d_minus,
+                                          cs_real_t        orient_loc[3],
+                                          cs_real_t        quater_loc[4],
+                                          const cs_real_t  brown[])
 {
   /* Define the nine Brownian increments W11 W12 W13 W21 W22 W23 W31 W32 W33 */
   cs_real_t  dw12 = sqrt(dtp) * brown[ip*9+1];
@@ -329,7 +329,7 @@ _bm_rotation_phase_spheroid_by_quaternion (const cs_lnum_t ip,
                                                  + dw[1]*quater_fix[1]
                                                  + dw[2]*quater_fix[0]))};
 
-  cs_real_3_t quater_pow2;
+  cs_real_t quater_pow2[4];
   quater_pow2[0] = cs_math_pow2(quater_new[0]);
   quater_pow2[1] = cs_math_pow2(quater_new[1]);
   quater_pow2[2] = cs_math_pow2(quater_new[2]);

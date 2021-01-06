@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -180,7 +180,7 @@ if (iatmst.eq.0) then
   endif
 endif
 
-if (mod(ntcabs,ntlist).eq.0.or.vcopt_pr%iwarni.ge.0) write(nfecra,1000)
+if (mod(ntcabs,ntlist).eq.0.or.vcopt_pr%iwarni.ge.1) write(nfecra,1000)
 
  1000 format(                                                           &
 '  Hydrostatic pressure computation: ',/,                   &

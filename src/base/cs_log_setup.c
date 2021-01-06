@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -64,6 +64,7 @@
 #include "cs_turbulence_model.h"
 #include "cs_lagr_log.h"
 #include "cs_volume_zone.h"
+#include "cs_combustion_model.h"
 
 /*----------------------------------------------------------------------------
  * Header for the current file
@@ -145,6 +146,9 @@ _log_global_model_options(void)
 
   /* Atmospheric aerosols */
   cs_atmo_aerosol_log_setup();
+
+  /* Combustion */
+  cs_combustion_log_setup();
 
   /* TODO : Partie iroext etc... */
 

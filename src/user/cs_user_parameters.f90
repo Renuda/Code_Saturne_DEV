@@ -4,7 +4,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -212,6 +212,11 @@ use field
 use cavitation
 use post
 use rotation
+use atincl
+use atsoil
+use atchem
+use atimbr
+use sshaerosol
 use cs_c_bindings
 
 !===============================================================================
@@ -287,52 +292,6 @@ integer nmodpp
 
 return
 end subroutine usipes
-
-
-!===============================================================================
-
-
-!> \brief Initialize non-standard calculation options for the atmospheric version.
-
-!-------------------------------------------------------------------------------
-! Arguments
-!______________________________________________________________________________.
-!  mode           name          role                                           !
-!______________________________________________________________________________!
-
-subroutine usati1
-
-!===============================================================================
-! Module files
-!===============================================================================
-
-use paramx
-use dimens
-use numvar
-use optcal
-use cstphy
-use entsor
-use cstnum
-use ppppar
-use atincl
-use atsoil
-use atchem
-use atimbr
-use sshaerosol
-
-!===============================================================================
-
-implicit none
-
-!===============================================================================
-
-!----
-! End
-!----
-
-return
-end subroutine usati1
-
 
 !===============================================================================
 ! Purpose:

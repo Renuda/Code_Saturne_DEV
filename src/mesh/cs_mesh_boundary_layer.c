@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -631,7 +631,7 @@ cs_mesh_boundary_layer_insert(cs_mesh_t                  *m,
 
   cs_mesh_quantities_free_all(mq);
 
-  m->modified = 1;
+  m->modified |= CS_MESH_MODIFIED;
 }
 
 /*---------------------------------------------------------------------------*/

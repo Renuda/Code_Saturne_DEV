@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -256,7 +256,8 @@ _set_scheme_flags(cs_domain_t    *domain)
     case CS_SPACE_SCHEME_CDOFB:
       quant_flag |= CS_CDO_QUANTITIES_FB_SCHEME;
       cc->fb_scheme_flag |= CS_FLAG_SCHEME_NAVSTO;
-      if (nsp->sles_param.strategy == CS_NAVSTO_SLES_BY_BLOCKS)
+      if (nsp->sles_param->strategy == CS_NAVSTO_SLES_BY_BLOCKS)
+          //          nsp->sles_param->strategy == CS_NAVSTO_SLES_UZAWA_CG)
         cc->fb_scheme_flag |= CS_FLAG_SCHEME_SCALAR;
       break;
 
@@ -812,7 +813,8 @@ cs_domain_initialize_systems(cs_domain_t   *domain)
                       domain->time_step,
                       false); /* operate current to previous ? */
 
-  /* Set the initial state for the Navier-Stokes system */
+  /* Additional initializations (Navier-Stokes system has already been
+     initialized) */
   if (cs_solidification_is_activated())
     cs_solidification_initialize(domain->mesh,
                                  domain->connect,

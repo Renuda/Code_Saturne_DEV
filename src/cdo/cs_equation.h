@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -83,6 +83,20 @@ cs_equation_by_name(const char    *eqname);
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief  Return the pointer to a cs_equation_t structure thanks to the field
+ *         name of the variable field associated to a cs_equation_t structure
+ *
+ * \param[in]  field_name       name of the field
+ *
+ * \return a pointer to a cs_equation_t structure or NULL if not found
+ */
+/*----------------------------------------------------------------------------*/
+
+cs_equation_t *
+cs_equation_by_field_name(const char    *field_name);
+
+/*----------------------------------------------------------------------------*/
+/*!
  * \brief  Check if the asociated field to a \ref cs_equation_t structure
  *         has name equal to fld_name
  *
@@ -111,6 +125,21 @@ cs_equation_has_field_name(const cs_equation_t  *eq,
 
 cs_equation_param_t *
 cs_equation_param_by_name(const char    *eqname);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Return the cs_equation_param_t structure related to a
+ *         cs_equation_t structure thanks to the field name of the variable
+ *         field associated to a cs_equation_t structure
+ *
+ * \param[in]  field_name       name of the field
+ *
+ * \return a cs_equation_param_t structure or NULL if not found
+ */
+/*----------------------------------------------------------------------------*/
+
+cs_equation_param_t *
+cs_equation_param_by_field_name(const char    *field_name);
 
 /*----------------------------------------------------------------------------*/
 /*!

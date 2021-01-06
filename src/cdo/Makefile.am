@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -72,7 +72,6 @@ cs_cdo_field_interpolation.h \
 cs_cdo_local.h \
 cs_cdo_main.h \
 cs_cdo_quantities.h \
-cs_cdo_time.h \
 cs_cdo_turbulence.h \
 cs_cdofb_ac.h \
 cs_cdoeb_vecteq.h \
@@ -116,6 +115,7 @@ cs_navsto_param.h \
 cs_navsto_sles.h \
 cs_navsto_system.h \
 cs_param_cdo.h \
+cs_param_sles.h \
 cs_property.h \
 cs_quadrature.h \
 cs_reco.h \
@@ -145,7 +145,6 @@ cs_cdo_field_interpolation.c \
 cs_cdo_local.c \
 cs_cdo_main.c \
 cs_cdo_quantities.c \
-cs_cdo_time.c \
 cs_cdo_turbulence.c \
 cs_cdoeb_vecteq.c \
 cs_cdofb_monolithic.c \
@@ -164,6 +163,7 @@ cs_equation.c \
 cs_equation_assemble.c \
 cs_equation_bc.c \
 cs_equation_common.c \
+cs_equation_param.c \
 cs_evaluate.c \
 cs_flag.c \
 cs_gwf.c \
@@ -203,7 +203,7 @@ libcscdo_extension_la_SOURCES = \
 cs_cdofb_ac.c \
 cs_cdofb_monolithic_sles.c \
 cs_cdofb_predco.c \
-cs_equation_param.c \
+cs_param_sles.c \
 cs_navsto_param.c \
 cs_navsto_sles.c
 

@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -166,6 +166,7 @@ class AtmosphericFlowsModel(Model):
         node = self.__node_atmos
 
         # Update only if getMeteoDataStatus is not off
+
         if model != AtmosphericFlowsModel.off:
 
             if model == AtmosphericFlowsModel.dry:
@@ -188,12 +189,14 @@ class AtmosphericFlowsModel(Model):
                 self.__removeScalar(node, 'ym_water')
                 self.__removeScalar(node, 'number_of_droplets')
                 self.__removeProperty(node, 'liquid_water')
+                self.__removeProperty(node, "real_temperature")
                 FluidCharacteristicsModel(self.case).setPropertyMode('density', 'constant')
 
         else:
             self.__removeScalar(node, 'ym_water')
             self.__removeScalar(node, 'number_of_droplets')
             self.__removeProperty(node, 'liquid_water')
+            self.__removeProperty(node, "real_temperature")
 
 
     def atmosphericFlowsNode(self):

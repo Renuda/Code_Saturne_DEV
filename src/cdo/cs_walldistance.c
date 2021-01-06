@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -121,22 +121,22 @@ _compute_poisson_cdovcb(const cs_cdo_connect_t     *connect,
   cs_post_write_vertex_var(CS_POST_MESH_VOLUME,
                            CS_POST_WRITER_ALL_ASSOCIATED,
                            "Poisson_Sol",
-                           1,               // dim
-                           true,            // interlace
-                           true,            // true = original mesh
+                           1,               /* dim */
+                           true,            /* interlace */
+                           true,            /* true = original mesh */
                            CS_POST_TYPE_cs_real_t,
-                           field->val,      // values on vertices
-                           NULL);           // time step management structure
+                           field->val,      /* values on vertices */
+                           NULL);           /* time step management structure */
 
   cs_post_write_vertex_var(CS_POST_MESH_VOLUME,
                            CS_POST_WRITER_ALL_ASSOCIATED,
                            "GrdVtx",
-                           3,               // dim
-                           true,           // interlace
-                           true,            // true = original mesh
+                           3,               /* dim */
+                           true,            /* interlace */
+                           true,            /* true = original mesh */
                            CS_POST_TYPE_cs_real_t,
-                           vtx_gradient,             // values on vertices
-                           NULL);           // time step management structure
+                           vtx_gradient,    /* values on vertices */
+                           NULL);           /* time step management structure */
 #endif
 
   /* Compute now wall distance at each vertex */
@@ -168,12 +168,12 @@ _compute_poisson_cdovcb(const cs_cdo_connect_t     *connect,
   cs_post_write_vertex_var(CS_POST_MESH_VOLUME,
                            CS_POST_WRITER_ALL_ASSOCIATED,
                            field->name,
-                           1,               // dim
-                           false,           // interlace
-                           true,            // true = original mesh
+                           1,               /* dim */
+                           false,           /* interlace */
+                           true,            /* true = original mesh */
                            CS_POST_TYPE_cs_real_t,
-                           dist,            // values on vertices
-                           NULL);           // time step management structure
+                           dist,            /* values on vertices */
+                           NULL);           /* time step management structure */
 
   /* Free memory */
   BFT_FREE(vtx_gradient);
@@ -231,19 +231,19 @@ _compute_poisson_cdovb(const cs_cdo_connect_t     *connect,
 
   } /* Loop on cells */
 
-  if (cs_glob_n_ranks > 1) {
+  if (connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL) {
 
     cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                          connect->n_vertices,
                          1,
-                         true, // interlace
+                         true, /* interlace */
                          CS_REAL_TYPE,
                          dualcell_vol);
 
     cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                          connect->n_vertices,
                          3,
-                         true, // interlace
+                         true, /* interlace */
                          CS_REAL_TYPE,
                          vtx_gradient);
 
@@ -261,22 +261,22 @@ _compute_poisson_cdovb(const cs_cdo_connect_t     *connect,
   cs_post_write_vertex_var(CS_POST_MESH_VOLUME,
                            CS_POST_WRITER_ALL_ASSOCIATED,
                            "Poisson_Sol",
-                           1,               // dim
-                           true,            // interlace
-                           true,            // true = original mesh
+                           1,               /* dim */
+                           true,            /* interlace */
+                           true,            /* true = original mesh */
                            CS_POST_TYPE_cs_real_t,
-                           var,             // values on vertices
-                           NULL);           // time step management structure
+                           var,             /* values on vertices */
+                           NULL);           /* time step management structure */
 
   cs_post_write_vertex_var(CS_POST_MESH_VOLUME,
                            CS_POST_WRITER_ALL_ASSOCIATED,
                            "GrdVtx",
-                           3,               // dim
-                           true,            // interlace
-                           true,            // true = original mesh
+                           3,               /* dim */
+                           true,            /* interlace */
+                           true,            /* true = original mesh */
                            CS_POST_TYPE_cs_real_t,
-                           vtx_gradient,    // values on vertices
-                           NULL);           // time step management structure
+                           vtx_gradient,    /* values on vertices */
+                           NULL);           /* time step management structure */
 #endif
 
   /* Compute now the wall distance at each vertex */
@@ -305,12 +305,12 @@ _compute_poisson_cdovb(const cs_cdo_connect_t     *connect,
   cs_post_write_vertex_var(CS_POST_MESH_VOLUME,
                            CS_POST_WRITER_ALL_ASSOCIATED,
                            field->name,
-                           1,               // dim
-                           false,           // interlace
-                           true,            // true = original mesh
+                           1,               /* dim */
+                           false,           /* interlace */
+                           true,            /* true = original mesh */
                            CS_POST_TYPE_cs_real_t,
-                           dist,            // values on vertices
-                           NULL);           // time step management structure
+                           dist,            /* values on vertices */
+                           NULL);           /* time step management structure */
 
   /* Free memory */
   BFT_FREE(dualcell_vol);
@@ -374,14 +374,14 @@ _compute_poisson_cdofb(const cs_cdo_connect_t     *connect,
   cs_post_write_var(CS_POST_MESH_VOLUME,
                     CS_POST_WRITER_ALL_ASSOCIATED,
                     field->name,
-                    1,               // dim
-                    false,           // interlace
-                    true,            // true = original mesh
+                    1,               /* dim */
+                    false,           /* interlace */
+                    true,            /* true = original mesh */
                     CS_POST_TYPE_cs_real_t,
-                    dist,            // values on cells
-                    NULL,            // values at internal faces
-                    NULL,            // values at border faces
-                    NULL);           // time step management structure
+                    dist,            /* values on cells */
+                    NULL,            /* values at internal faces */
+                    NULL,            /* values at border faces */
+                    NULL);           /* time step management structure */
 
 }
 

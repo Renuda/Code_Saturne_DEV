@@ -1,7 +1,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -442,7 +442,7 @@ cs_atmo_aerosol_ssh_initialize(void)
 
   /* Get the number of aerosol layers */
   cs_glob_atmo_chemistry->n_layer = _recv_int(_aerosol_so,
-                                              "api_sshaerosol_get_nlayer_");
+                                              "api_sshaerosol_get_n_aerosol_layers_");
 
   /* Get the number of aerosols */
   cs_glob_atmo_chemistry->n_size = _recv_int(_aerosol_so,

@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1993,7 +1993,7 @@ cs_join_all(bool  preprocess)
     /* Set mesh modification flag */
 
     if (join_type != CS_JOIN_TYPE_NULL)
-      mesh->modified = 1;
+      mesh->modified |= CS_MESH_MODIFIED;
 
   } /* End of loop on joinings */
 

@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -281,7 +281,7 @@ elif test "x$cs_gcc" = "xicc" ; then
 # Otherwise, are we using ICC NextGen ?
 #--------------------------------------
 
-elif test "x$cs_gcc" = "xicc" -o "x$cs_gcc" = "xicx" ; then
+elif test "x$cs_gcc" = "xicx" ; then
 
   cs_cc_version=`echo $cs_ac_cc_version | grep ICX |sed 's/[a-zA-Z()]//g'`
   echo "compiler '$CC' is Intel ICC NextGen"
@@ -299,8 +299,7 @@ elif test "x$cs_gcc" = "xicc" -o "x$cs_gcc" = "xicx" ; then
   test -n "$cs_cc_vers_patch" || cs_cc_vers_patch=0
 
   # Default compiler flags
-  # (temporarily disable "operands evaluated in unspecified order" remark -- 981)
-  cflags_default="-funsigned-char -Wall -Wcheck -Wshadow -Wpointer-arith -Wmissing-prototypes -Wuninitialized -Wunused -wd981"
+  cflags_default="-funsigned-char -Wall -Wshadow -Wpointer-arith -Wmissing-prototypes -Wuninitialized -Wunused"
   cflags_default_dbg="-g -O0 -ftrapuv"
   cflags_default_opt="-O2"
   cflags_default_hot="-O3"
@@ -608,7 +607,7 @@ elif test "x$cs_gxx" = "xicpc"; then
 # Otherwise, are we using ICC NextGen ?
 #--------------------------------------
 
-elif test "x$cs_gxx" = "xicpc" -o "x$cs_gxx" = "xicpx"; then
+elif test "x$cs_gxx" = "xicpx"; then
 
   cs_cxx_version=`echo $cs_ac_cxx_version | grep ICX |sed 's/[a-zA-Z()]//g'`
   echo "compiler '$CXX' is Intel ICC NextGen"
@@ -625,7 +624,7 @@ elif test "x$cs_gxx" = "xicpc" -o "x$cs_gxx" = "xicpx"; then
   test -n "$cs_cxx_vers_patch" || cs_cxx_vers_patch=0
 
   # Default compiler flags
-  cxxflags_default="-Wall -Wcheck -Wshadow -Wpointer-arith -Wmissing-prototypes -Wuninitialized -Wunused"
+  cxxflags_default="-Wall -Wshadow -Wpointer-arith -Wmissing-prototypes -Wuninitialized -Wunused"
   cxxflags_default_dbg="-g -O0 -ftrapuv"
   cxxflags_default_opt="-O2"
   cxxflags_default_hot="-O3"

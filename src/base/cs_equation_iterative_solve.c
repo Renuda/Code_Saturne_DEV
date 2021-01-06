@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -758,7 +758,7 @@ cs_equation_iterative_solve_scalar(int                   idtvar,
 
     /* --- Update the solution with the increment */
 
-    if (iswdyp == 0) {
+    if (iswdyp <= 0) {
 #     pragma omp parallel for
       for (cs_lnum_t iel = 0; iel < n_cells; iel++)
         pvar[iel] += dpvar[iel];
@@ -786,7 +786,7 @@ cs_equation_iterative_solve_scalar(int                   idtvar,
 
     iccocg = 0;
 
-    if (iswdyp == 0) {
+    if (iswdyp <= 0) {
 #     pragma omp parallel for
       for (cs_lnum_t iel = 0; iel < n_cells; iel++) {
         /* smbini already contains unsteady terms and mass source terms
@@ -1246,8 +1246,10 @@ cs_equation_iterative_solve_vector(int                   idtvar,
   if (idftnp & CS_ANISOTROPIC_LEFT_DIFFUSION)
     iesize = 3;
 
-  if (cs_glob_porous_model == 3)//FIXME iphydr + other option?
-    iesize = 3;
+  if (cs_glob_porous_model == 3) { //FIXME iphydr + other option?
+    if (iconvp > 0)
+      iesize = 3;
+  }
 
   db_size[0] = ibsize;
   db_size[1] = ibsize;
@@ -1288,7 +1290,7 @@ cs_equation_iterative_solve_vector(int                   idtvar,
 
   bool symmetric = (isym == 1) ? true : false;
 
-  /*  be carefull here, xam is interleaved*/
+  /*  be careful here, xam is interleaved*/
   if (iesize == 1)
     BFT_MALLOC(xam, isym*n_faces, cs_real_t);
   if (iesize == 3)
@@ -1680,7 +1682,7 @@ cs_equation_iterative_solve_vector(int                   idtvar,
 
     /* --- Update the solution with the increment */
 
-    if (iswdyp == 0) {
+    if (iswdyp <= 0) {
 #     pragma omp parallel for  if(n_cells > CS_THR_MIN)
       for (cs_lnum_t iel = 0; iel < n_cells; iel++) {
         for (cs_lnum_t isou = 0; isou < 3; isou++)
@@ -1709,7 +1711,7 @@ cs_equation_iterative_solve_vector(int                   idtvar,
 
     /* --- Update the right hand and compute the new residual */
 
-    if (iswdyp == 0) {
+    if (iswdyp <= 0) {
 #     pragma omp parallel for  if(n_cells > CS_THR_MIN)
       for (cs_lnum_t iel = 0; iel < n_cells; iel++) {
         /* smbini already contains unsteady terms and mass source terms
@@ -2486,7 +2488,7 @@ cs_equation_iterative_solve_tensor(int                   idtvar,
 
     /* --- Update the solution with the increment */
 
-    if (iswdyp == 0) {
+    if (iswdyp <= 0) {
 #     pragma omp parallel for
       for (cs_lnum_t iel = 0; iel < n_cells; iel++)
         for (cs_lnum_t isou = 0; isou < 6; isou++)
@@ -2512,7 +2514,7 @@ cs_equation_iterative_solve_tensor(int                   idtvar,
 
     /* --- Update the right hand and compute the new residual */
 
-    if (iswdyp == 0) {
+    if (iswdyp <= 0) {
 #     pragma omp parallel for
       for (cs_lnum_t iel = 0; iel < n_cells; iel++) {
         /* smbini already contains unsteady terms and mass source terms

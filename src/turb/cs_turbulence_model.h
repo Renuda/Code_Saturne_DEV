@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -75,10 +75,12 @@ typedef enum {
  *----------------------------------------------------------------------------*/
 
 enum {
+
   CS_TURB_TYPE_NONE = 0,
   CS_TURB_RANS = 1,
   CS_TURB_LES = 2,
   CS_TURB_HYBRID = 3
+
 };
 
 /*----------------------------------------------------------------------------
@@ -86,9 +88,11 @@ enum {
  *----------------------------------------------------------------------------*/
 
 enum {
+
   CS_TURB_ALGEBRAIC = 0,
   CS_TURB_FIRST_ORDER = 1,
   CS_TURB_SECOND_ORDER = 2
+
 };
 
 /*----------------------------------------------------------------------------
@@ -96,10 +100,12 @@ enum {
  *----------------------------------------------------------------------------*/
 
 enum {
+
   CS_HYBRID_NONE = 0,
   CS_HYBRID_DES  = 1,
   CS_HYBRID_DDES = 2,
   CS_HYBRID_SAS  = 3
+
 };
 
 /* turbulence model general options descriptor */
@@ -154,9 +160,11 @@ typedef struct {
 /*------------------------------------------------------------------*/
 
 typedef struct {
+
   double        almax;        /* characteristic macroscopic length of the
                                  domain */
   double        uref;         /* characteristic flow velocity */
+
 } cs_turb_ref_values_t;
 
 /* RANS turbulence model descriptor */
@@ -346,10 +354,10 @@ extern const double cs_turb_xlesfl;
 extern const double cs_turb_ales;
 extern const double cs_turb_bles;
 extern double cs_turb_csmago;
-extern const double cs_turb_xlesfd;
-extern double cs_turb_smagmx;
-extern double cs_turb_smagmn;
-extern const double cs_turb_cdries;
+extern double cs_turb_xlesfd;
+extern double cs_turb_csmago_max;
+extern double cs_turb_csmago_min;
+extern double cs_turb_cdries;
 extern const double cs_turb_cv2fa1;
 extern const double cs_turb_cv2fe2;
 extern const double cs_turb_cv2fmu;
@@ -454,7 +462,8 @@ cs_turb_constants_log_setup(void);
  *----------------------------------------------------------------------------*/
 
 void
-cs_clip_turbulent_fluxes(int flux_id, int ivartt);
+cs_clip_turbulent_fluxes(int  flux_id,
+                         int  ivartt);
 
 /*----------------------------------------------------------------------------*/
 

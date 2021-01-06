@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1693,12 +1693,13 @@ _define_probe_export_mesh(cs_post_mesh_t  *post_mesh)
 
   cs_probe_set_t     *pset = (cs_probe_set_t *)post_mesh->sel_input[4];
   fvm_nodal_t        *exp_mesh = NULL;
+  cs_post_mesh_t     *post_mesh_loc = NULL;
   const fvm_nodal_t  *location_mesh = NULL;
 
   /* First step: locate probes and update their coordinates */
 
   if (post_mesh->locate_ref > -1) {
-    cs_post_mesh_t *post_mesh_loc = _cs_post_meshes + post_mesh->locate_ref;
+    post_mesh_loc = _cs_post_meshes + post_mesh->locate_ref;
     if (post_mesh_loc->exp_mesh == NULL)
       _define_regular_mesh(post_mesh_loc);
     location_mesh = post_mesh_loc->exp_mesh;
@@ -1735,6 +1736,8 @@ _define_probe_export_mesh(cs_post_mesh_t  *post_mesh)
 
   if (time_varying == false)
     post_mesh->locate_ref = -1;
+  else if (post_mesh_loc->mod_flag_max < FVM_WRITER_TRANSIENT_COORDS)
+    post_mesh_loc->mod_flag_max = FVM_WRITER_TRANSIENT_COORDS;
 }
 
 /*----------------------------------------------------------------------------
@@ -2364,11 +2367,31 @@ _update_meshes(const cs_time_step_t  *ts)
         active = true;
     }
 
+    if (active == false)
+      continue;
+
     /* Modifiable user mesh, active at this time step */
 
-    if (   active == true
-        && post_mesh->mod_flag_min == FVM_WRITER_TRANSIENT_CONNECT)
+    if (post_mesh->mod_flag_min == FVM_WRITER_TRANSIENT_CONNECT)
       _redefine_mesh(post_mesh, ts);
+
+    else if (post_mesh->ent_flag[4] != 0) {
+      bool time_varying;
+      cs_probe_set_t  *pset = (cs_probe_set_t *)post_mesh->sel_input[4];
+      cs_probe_set_get_post_info(pset,
+                                 &time_varying,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 NULL);
+      if (time_varying) {
+        cs_post_mesh_t *post_mesh_loc = _cs_post_meshes + post_mesh->locate_ref;
+        cs_probe_set_locate(pset, post_mesh_loc->exp_mesh);
+      }
+    }
 
   }
 
@@ -2941,7 +2964,7 @@ _cs_post_output_profile_coords(cs_post_mesh_t        *post_mesh,
                              NULL);
 
   if (auto_curve_coo) {
-    const cs_real_t *s = cs_probe_set_get_curvilinear_abscissa(pset);
+    cs_real_t *s = cs_probe_set_get_loc_curvilinear_abscissa(pset);
     cs_post_write_probe_values(post_mesh->id,
                                CS_POST_WRITER_ALL_ASSOCIATED,
                                "s",
@@ -2952,6 +2975,7 @@ _cs_post_output_profile_coords(cs_post_mesh_t        *post_mesh,
                                NULL,
                                s,
                                ts);
+    BFT_FREE(s);
   }
 
   if (auto_cart_coo) {
@@ -3529,7 +3553,7 @@ _cs_post_define_probe_mesh(int                    mesh_id,
     cs_post_mesh_t *post_mesh_cmp = _cs_post_meshes + i;
     if (post_mesh_cmp->criteria[ent_flag_id] != NULL) {
       if (strcmp(sel_criteria, post_mesh_cmp->criteria[ent_flag_id]) == 0) {
-        if (time_varying == false)
+        if (   time_varying == false || post_mesh_cmp->time_varying == true)
           post_mesh->locate_ref = i;
         break;
       }
@@ -3576,11 +3600,13 @@ _cs_post_define_probe_mesh(int                    mesh_id,
                                  0,
                                  NULL);
 
-    /* In case the mesh array has been realocated, reset pointer */
+    /* In case the mesh array has been reallocated, reset pointer */
     int _mesh_id = _cs_post_mesh_id_try(mesh_id);
     post_mesh = _cs_post_meshes + _mesh_id;
 
     post_mesh->locate_ref = _cs_post_mesh_id(new_id);
+
+    (_cs_post_meshes + post_mesh->locate_ref)->time_varying = true;
   }
 }
 

@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -61,7 +61,6 @@
 #include "cs_file.h"
 #include "cs_log.h"
 #include "cs_gui_util.h"
-#include "cs_gui_variables.h"
 #include "cs_gui_boundary_conditions.h"
 #include "cs_gui_specific_physics.h"
 #include "cs_gui_mobile_mesh.h"
@@ -75,6 +74,7 @@
 #include "cs_parall.h"
 #include "cs_porous_model.h"
 #include "cs_parameters.h"
+#include "cs_param_sles.h"
 #include "cs_partition.h"
 #include "cs_physical_model.h"
 #include "cs_prototypes.h"
@@ -132,10 +132,6 @@ BEGIN_C_DECLS
 /*============================================================================
  * Static global variables
  *============================================================================*/
-
-/* Pointer on the main variable structure */
-
-cs_var_t    *cs_glob_var = NULL;
 
 /*============================================================================
  * Static local variables
@@ -1476,23 +1472,6 @@ void CS_PROCF (csvvva, CSVVVA) (int *iviscv)
 }
 
 /*----------------------------------------------------------------------------
- * User thermal scalar.
- *
- * Fortran Interface:
- *
- * SUBROUTINE UITHSC
- * *****************
- *----------------------------------------------------------------------------*/
-
-void CS_PROCF (uithsc, UITHSC) (void)
-{
-  cs_var_t  *vars = cs_glob_var;
-
-  BFT_REALLOC(vars->model, strlen("thermal_scalar")+1, char);
-  strcpy(vars->model, "thermal_scalar");
-}
-
-/*----------------------------------------------------------------------------
  * Constant or variable indicator for the user scalar molecular diffusivity
  *
  * Fortran Interface:
@@ -1506,25 +1485,24 @@ void CS_PROCF (csivis, CSIVIS) (void)
   int choice1, choice2;
   int test1, test2;
 
-  cs_var_t  *vars = cs_glob_var;
-
   const int keysca = cs_field_key_id("scalar_id");
   const int kivisl = cs_field_key_id("diffusivity_id");
   const int kscavr = cs_field_key_id("first_moment_id");
   const int n_fields = cs_field_n_fields();
-  const int itherm = cs_glob_thermal_model->itherm;
-  const int iscalt = cs_glob_thermal_model->iscalt;
 
-  if (vars->model != NULL && itherm != CS_THERMAL_MODEL_NONE) {
+  cs_field_t *tf = cs_thermal_model_field();
+
+  if (   cs_glob_physical_model_flag[CS_PHYSICAL_MODEL_FLAG] <= 0
+      && tf != NULL) {
     test1 = _properties_choice_id("thermal_conductivity", &choice1);
     test2 = _properties_choice_id("specific_heat", &choice2);
 
-    if (strcmp(vars->model, "thermal_scalar") == 0 && test1 && test2) {
+    if (test1 && test2) {
 
       for (int f_id = 0; f_id < n_fields; f_id++) {
         cs_field_t  *f = cs_field_by_id(f_id);
         if (f->type & CS_FIELD_VARIABLE) {
-          if (cs_field_get_key_int(f, keysca) == iscalt) {
+          if (f == tf) {
             if (choice1 || choice2)
               cs_field_set_key_int(f, kivisl, 0);
             else
@@ -1539,23 +1517,22 @@ void CS_PROCF (csivis, CSIVIS) (void)
     cs_field_t  *f = cs_field_by_id(f_id);
 
     if (   (f->type & CS_FIELD_VARIABLE)
-        && (f->type & CS_FIELD_USER)) {
+        && (f->type & CS_FIELD_USER)
+        && (f != tf)) {
       int iscal = cs_field_get_key_int(f, keysca);
       if (iscal > 0) {
         if (cs_field_get_key_int(f, kscavr) < 0) {
           if (_scalar_properties_choice(f->name, &choice1))
-            if (iscalt != iscal)
-              cs_field_set_key_int(f, kivisl, choice1 - 1);
+            cs_field_set_key_int(f, kivisl, choice1 - 1);
           // for groundwater we impose variable property
-          if (cs_gui_strcmp(vars->model, "groundwater_model"))
-            if (iscalt != iscal)
-              cs_field_set_key_int(f, kivisl, 0);
+          if (cs_glob_physical_model_flag[CS_GROUNDWATER] > -1)
+            cs_field_set_key_int(f, kivisl, 0);
         }
       }
     }
   }
 
-  if (cs_gui_strcmp(vars->model, "compressible_model")) {
+  if (cs_glob_physical_model_flag[CS_COMPRESSIBLE] > -1) {
     int d_f_id = -1;
     const char *prop_choice = _properties_choice("thermal_conductivity");
     if (cs_gui_strcmp(prop_choice, "user_law") ||
@@ -1650,12 +1627,10 @@ void CS_PROCF (cscfgp, CSCFGP) (int *icfgrp)
  * *****************
  *
  * INTEGER          NTSUIT  -->   checkpoint frequency
- * INTEGER          ILEAUX  -->   restart with auxiliary
  * INTEGER          ICCFVG  -->   restart with frozen field
  *----------------------------------------------------------------------------*/
 
 void CS_PROCF (csisui, CSISUI) (int *ntsuit,
-                                int *ileaux,
                                 int *iccvfg)
 {
   cs_tree_node_t *tn = cs_tree_get_node(cs_glob_tree,
@@ -1663,13 +1638,16 @@ void CS_PROCF (csisui, CSISUI) (int *ntsuit,
 
   cs_gui_node_get_child_int(tn, "restart_rescue", ntsuit);
 
-  cs_gui_node_get_child_status_int(tn, "restart_with_auxiliary", ileaux);
+  cs_gui_node_get_child_status_int
+    (tn, "restart_with_auxiliary",
+     &(cs_glob_restart_auxiliary->read_auxiliary));
+
   cs_gui_node_get_child_status_int(tn, "frozen_field",           iccvfg);
 
 #if _XML_DEBUG_
   bft_printf("==> %s\n", __func__);
   bft_printf("--ntsuit = %i\n", *ntsuit);
-  bft_printf("--ileaux = %i\n", *ileaux);
+  bft_printf("--ileaux = %i\n", cs_glob_restart_auxiliary->read_auxiliary);
   bft_printf("--iccvfg = %i\n", *iccvfg);
 #endif
 }
@@ -1790,7 +1768,7 @@ void CS_PROCF (uinum1, UINUM1) (double  *cdtvar)
       /* For CDO equation, if non-automatic value ie != -1 */
       cs_equation_param_t *eqp = cs_equation_param_by_name(f->name);
       if (eqp != NULL && cs_gui_is_equal_real(var_cal_opt.epsilo, -1) == 0)
-        eqp->sles_param.eps = var_cal_opt.epsilo;
+        eqp->sles_param->eps = var_cal_opt.epsilo;
 
       /* convection scheme options */
       if (var_cal_opt.iconv > 0) {
@@ -1892,6 +1870,24 @@ void CS_PROCF (csnum2, CSNUM2)(double  *relaxp,
   if (_imrgra > -1)
     *imrgra = _imrgra;
 
+  int _idilat = -1;
+
+  choice = cs_tree_node_get_tag(cs_tree_get_node(tn_n, "algo_density_variation"),
+                                "choice");
+  if (cs_gui_strcmp(choice, "boussi"))
+    _idilat = 0;
+  else if (cs_gui_strcmp(choice, "dilat_std"))
+    _idilat = 1;
+  else if (cs_gui_strcmp(choice, "dilat_unstd"))
+    _idilat = 2;
+  else if (cs_gui_strcmp(choice, "low_mach"))
+    _idilat = 3;
+  else if (cs_gui_strcmp(choice, "algo_fire"))
+    _idilat = 4;
+
+  if (_idilat > -1)
+    stokes->idilat = _idilat;
+
   _numerical_int_parameters("gradient_transposed", &(stokes->ivisse));
   _numerical_int_parameters("velocity_pressure_coupling", &(stokes->ipucou));
   _numerical_int_parameters("piso_sweep_number", &(piso->nterup));
@@ -1917,8 +1913,6 @@ cs_gui_physical_properties(void)
 {
   int choice;
   const char *material = NULL;
-
-  cs_var_t  *vars = cs_glob_var;
 
   const int itherm = cs_glob_thermal_model->itherm;
 
@@ -1953,14 +1947,14 @@ cs_gui_physical_properties(void)
 
   if (_properties_choice_id("molecular_viscosity", &choice))
     phys_pp->ivivar = choice;
-  if (cs_gui_strcmp(vars->model, "compressible_model"))
+  if (cs_glob_physical_model_flag[CS_COMPRESSIBLE] > -1)
     if (_properties_choice_id("molecular_viscosity", &choice))
       phys_pp->ivivar = choice;
 
   /* Read T0 in each case for user */
   cs_gui_fluid_properties_value("reference_temperature", &(phys_pp->t0));
 
-  if (cs_gui_strcmp(vars->model, "compressible_model"))
+  if (cs_glob_physical_model_flag[CS_COMPRESSIBLE] > -1)
     cs_gui_fluid_properties_value("reference_molar_mass", &(phys_pp->xmasmr));
 
   material = _thermal_table_choice("material");
@@ -1985,7 +1979,6 @@ cs_gui_physical_properties(void)
 
   cs_vof_parameters_t *vof_param = cs_get_glob_vof_parameters();
 
-  /* ro0, viscl0, cp0, isls0[iscalt-1] si tables */
   if (_thermal_table_needed("density") == 0) {
     cs_gui_properties_value("density", &phys_pp->ro0);
     if (vof_param->vof_model & CS_VOF_ENABLED) {
@@ -2032,7 +2025,7 @@ cs_gui_physical_properties(void)
                          &phys_pp->t0,
                          &phys_pp->cp0);
 
-  if (cs_gui_strcmp(vars->model, "compressible_model")) {
+  if (cs_glob_physical_model_flag[CS_COMPRESSIBLE] > -1) {
     cs_gui_properties_value("volume_viscosity", &phys_pp->viscv0);
     double visls_0 = -1;
     cs_gui_properties_value("thermal_conductivity", &visls_0);
@@ -2056,7 +2049,7 @@ cs_gui_physical_properties(void)
   bft_printf("--Cp = %g \n", cs_glob_fluid_properties->cp0);
   bft_printf("--T0 = %f \n", cs_glob_fluid_properties->t0);
   bft_printf("--P0 = %f \n", cs_glob_fluid_properties->p0);
-  if (cs_gui_strcmp(vars->model, "compressible_model")) {
+  if (cs_glob_physical_model_flag[CS_COMPRESSIBLE] > -1) {
     bft_printf("--viscv0 = %g \n", *viscv0);
     bft_printf("--xmasmr = %f \n", cs_glob_fluid_properties->xmasmr);
   }
@@ -2093,32 +2086,29 @@ void CS_PROCF (cssca2, CSSCA2) (int *iturt)
     if (f->type & CS_FIELD_VARIABLE) { /* variable ? */
       int i = cs_field_get_key_int(f, keysca) - 1;
       if (i > -1) { /* additional user or model variable ? */
-        if (cs_field_get_key_int(f, kscavr) < 0) { /* not a variance ? */
 
-          double scal_min = cs_field_get_key_double(f, kscmin);
-          double scal_max = cs_field_get_key_double(f, kscmax);
+        double scal_min = cs_field_get_key_double(f, kscmin);
+        double scal_max = cs_field_get_key_double(f, kscmax);
 
-          cs_tree_node_t *tn_v = _find_node_variable(f->name);
-          if (tn_v != NULL) { /* variable is in xml ? */
-            cs_gui_node_get_child_real(tn_v, "min_value", &scal_min);
-            cs_gui_node_get_child_real(tn_v, "max_value", &scal_max);
-            cs_field_set_key_double(f, kscmin, scal_min);
-            cs_field_set_key_double(f, kscmax, scal_max);
+        cs_tree_node_t *tn_v = _find_node_variable(f->name);
+        if (tn_v != NULL) { /* variable is in xml ? */
+          cs_gui_node_get_child_real(tn_v, "min_value", &scal_min);
+          cs_gui_node_get_child_real(tn_v, "max_value", &scal_max);
+          cs_field_set_key_double(f, kscmin, scal_min);
+          cs_field_set_key_double(f, kscmax, scal_max);
 
 #if _XML_DEBUG_
-            bft_printf("--min_scalar_clipping[%i] = %f\n", i, scal_min);
-            bft_printf("--max_scalar_clipping[%i] = %f\n", i, scal_max);
+          bft_printf("--min_scalar_clipping[%i] = %f\n", i, scal_min);
+          bft_printf("--max_scalar_clipping[%i] = %f\n", i, scal_max);
 #endif
 
-            if (turb_model->order == CS_TURB_SECOND_ORDER) {
-              int turb_mdl;
-              _variable_turbulent_flux_model(tn_v, &turb_mdl);
-              iturt[i] = turb_mdl;
+          if (turb_model->order == CS_TURB_SECOND_ORDER) {
+            int turb_mdl;
+            _variable_turbulent_flux_model(tn_v, &turb_mdl);
+            iturt[i] = turb_mdl;
 #if _XML_DEBUG_
-              bft_printf("--iturt[%i] = %d\n", i, iturt[i]);
+            bft_printf("--iturt[%i] = %d\n", i, iturt[i]);
 #endif
-            }
-
           }
 
         }
@@ -2135,8 +2125,6 @@ void CS_PROCF (cssca3, CSSCA3) (void)
 {
   double result, density;
 
-  cs_var_t  *vars = cs_glob_var;
-
   const int keysca = cs_field_key_id("scalar_id");
   const int kscavr = cs_field_key_id("first_moment_id");
   const int kvisls0 = cs_field_key_id("diffusivity_ref");
@@ -2145,31 +2133,28 @@ void CS_PROCF (cssca3, CSSCA3) (void)
 
   cs_fluid_properties_t *fprops = cs_get_glob_fluid_properties();
 
-  if (vars->model != NULL) {
+  if (itherm != CS_THERMAL_MODEL_NONE) {
 
-    if (itherm != CS_THERMAL_MODEL_NONE) {
+    if (_thermal_table_needed("thermal_conductivity") == 0)
+      cs_gui_properties_value("thermal_conductivity", &(fprops->lambda0));
+    else
+      cs_phys_prop_compute(CS_PHYS_PROP_THERMAL_CONDUCTIVITY,
+                           1,
+                           0,
+                           0,
+                           &(cs_glob_fluid_properties->p0),
+                           &(cs_glob_fluid_properties->t0),
+                           &(fprops->lambda0));
 
-      if (_thermal_table_needed("thermal_conductivity") == 0)
-        cs_gui_properties_value("thermal_conductivity", &(fprops->lambda0));
-      else
-        cs_phys_prop_compute(CS_PHYS_PROP_THERMAL_CONDUCTIVITY,
-                             1,
-                             0,
-                             0,
-                             &(cs_glob_fluid_properties->p0),
-                             &(cs_glob_fluid_properties->t0),
-                             &(fprops->lambda0));
+    double visls_0 = fprops->lambda0;
 
-      double visls_0 = fprops->lambda0;
+    /* for the Temperature, the diffusivity factor is not divided by Cp */
+    if (itherm != CS_THERMAL_MODEL_TEMPERATURE)
+      visls_0 /= cs_glob_fluid_properties->cp0;
 
-      /* for the Temperature, the diffusivity factor is not divided by Cp */
-      if (itherm != CS_THERMAL_MODEL_TEMPERATURE)
-        visls_0 /= cs_glob_fluid_properties->cp0;
+    cs_field_t *tf = cs_thermal_model_field();
+    cs_field_set_key_double(tf, kvisls0, visls_0);
 
-      cs_field_t *tf = cs_thermal_model_field();
-      cs_field_set_key_double(tf, kvisls0, visls_0);
-
-    }
   }
 
   /* User scalar
@@ -2177,7 +2162,7 @@ void CS_PROCF (cssca3, CSSCA3) (void)
      the solver, one sets the diffusivity, thus one need to multiply
      this coefficient by the density to remain coherent */
 
-  if (!cs_gui_strcmp(vars->model, "groundwater_model")) {
+  if (cs_glob_physical_model_flag[CS_GROUNDWATER] < 0) {
     int n_fields = cs_field_n_fields();
     for (int f_id = 0; f_id < n_fields; f_id++) {
       cs_field_t  *f = cs_field_by_id(f_id);
@@ -2186,7 +2171,8 @@ void CS_PROCF (cssca3, CSSCA3) (void)
         int i = cs_field_get_key_int(f, keysca) - 1;
         if (cs_field_get_key_int(f, kscavr) < 0) {
 
-          if (cs_gui_strcmp(vars->model, "solid_fuels")) {
+          if (   cs_glob_physical_model_flag[CS_COMBUSTION_PCLC] > -1
+              || cs_glob_physical_model_flag[CS_COMBUSTION_COAL] > -1) {
             /* Air molar mass */
             result = 0.028966;
             cs_gui_fluid_properties_value("reference_molar_mass", &result);
@@ -2569,8 +2555,6 @@ void CS_PROCF(uiiniv, UIINIV)(const int          *isuite,
 
   int ccfth = 0;
 
-  cs_var_t  *vars = cs_glob_var;
-
 #if _XML_DEBUG_
   bft_printf("==> %s\n", __func__);
 #endif
@@ -2857,7 +2841,7 @@ void CS_PROCF(uiiniv, UIINIV)(const int          *isuite,
         }
 
         /* Meteo Scalars initialization */
-        if (cs_gui_strcmp(vars->model, "atmospheric_flows")) {
+        if (cs_glob_physical_model_flag[CS_ATMOSPHERIC] > -1) {
 
           cs_tree_node_t *tn_m0
             = cs_tree_get_node(cs_glob_tree,
@@ -2909,9 +2893,57 @@ void CS_PROCF(uiiniv, UIINIV)(const int          *isuite,
               }
             }
           }
+
         }
 
-        if (cs_gui_strcmp(vars->model, "compressible_model")) {
+        /* Combustion Scalars initialization */
+        if (cs_glob_physical_model_flag[CS_COMBUSTION_3PT] > -1) {
+
+          cs_tree_node_t *tn_gas
+            = cs_tree_get_node(cs_glob_tree,
+                               "thermophysical_models/gas_combustion");
+
+          const char *name       = NULL;
+          const char *formula_comb  = NULL;
+
+          int size = cs_tree_get_sub_node_count_simple(tn_gas, "variable");
+
+          for (int j = 0; j < size; j++) {
+            cs_tree_node_t *tn_combustion = cs_tree_get_node(tn_gas, "variable");
+            for (int i = 1;
+                 tn_combustion != NULL && i < j + 1;
+                 i++) {
+             tn_combustion = cs_tree_node_get_next_of_name(tn_combustion);
+            }
+
+            cs_tree_node_t *tn_combustion2 = tn_combustion;
+            tn_combustion = cs_tree_get_node(tn_combustion, "name");
+            name = cs_tree_node_get_value_str(tn_combustion);
+
+            tn_combustion2 = cs_tree_get_node(tn_combustion2, "formula");
+            tn_combustion2 = _add_zone_id_test_attribute(tn_combustion2, z->id);
+            const char *zone_id
+              = cs_tree_node_get_child_value_str(tn_combustion2, "zone_id");
+
+            cs_field_t *c_comb = cs_field_by_name_try(name);
+
+            formula_comb = cs_tree_node_get_value_str(tn_combustion2);
+
+            if (formula_comb != NULL) {
+              cs_real_t *ini_vals = cs_meg_initialization(z, c_comb->name);
+              if (ini_vals != NULL) {
+                for (cs_lnum_t e_id = 0; e_id < n_cells; e_id++) {
+                  cs_lnum_t c_id = cell_ids[e_id];
+                  c_comb->val[c_id] = ini_vals[e_id];
+                }
+                BFT_FREE(ini_vals);
+              }
+            }
+          }
+
+        }
+
+        if (cs_glob_physical_model_flag[CS_COMPRESSIBLE] > -1) {
           const char *formula        = NULL;
           const char *buff           = NULL;
           const char *name[] = {"pressure", "temperature", "total_energy",
@@ -2999,9 +3031,6 @@ void CS_PROCF(uiphyv, UIPHYV)(const int       *iviscv)
 
   cs_lnum_t i;
 
-  cs_var_t  *vars = cs_glob_var;
-  const int iscalt = cs_glob_thermal_model->iscalt;
-
   const cs_zone_t *z_all = cs_volume_zone_by_name_try("all_cells");
 
   if (z_all == NULL)
@@ -3026,7 +3055,7 @@ void CS_PROCF(uiphyv, UIPHYV)(const int       *iviscv)
   }
 
   /* law for thermal conductivity */
-  if (iscalt > 0) {
+  if (cs_glob_thermal_model->itherm != CS_THERMAL_MODEL_NONE) {
 
     cs_field_t  *cond_dif = NULL;
 
@@ -3047,7 +3076,7 @@ void CS_PROCF(uiphyv, UIPHYV)(const int       *iviscv)
     }
 
   /* law for volumic viscosity (compressible model) */
-  if (cs_gui_strcmp(vars->model, "compressible_model")) {
+  if (cs_glob_physical_model_flag[CS_COMPRESSIBLE] > -1) {
     if (*iviscv > 0) {
       cs_field_t *c = cs_field_by_name_try("volume_viscosity");
       _physical_property(c, z_all);
@@ -3587,17 +3616,6 @@ void CS_PROCF (uieres, UIERES) (int *iescal,
  * Initialize GUI reader structures.
  *----------------------------------------------------------------------------*/
 
-void
-cs_gui_init(void)
-{
-  assert(cs_glob_var == NULL);
-
-  BFT_MALLOC(cs_glob_var, 1, cs_var_t);
-
-  cs_glob_var->model       = NULL;
-  cs_glob_var->model_value = NULL;
-}
-
 /*-----------------------------------------------------------------------------
  * Free memory: clean global private variables.
  *----------------------------------------------------------------------------*/
@@ -3606,14 +3624,6 @@ void
 cs_gui_finalize(void)
 {
   cs_gui_boundary_conditions_free_memory();
-
-  /* clean memory for global private structure vars */
-
-  if (cs_glob_var != NULL) {
-    BFT_FREE(cs_glob_var->model);
-    BFT_FREE(cs_glob_var->model_value);
-    BFT_FREE(cs_glob_var);
-  }
 }
 
 /*----------------------------------------------------------------------------*/
@@ -3894,13 +3904,15 @@ cs_gui_parallel_io(void)
   cs_gui_node_get_child_int(tn_bio, "min_block_size", &block_size);
 
   if (rank_step > 0 || block_size > -1) {
-    int def_rank_step, def_block_size;
-    cs_file_get_default_comm(&def_rank_step, &def_block_size, NULL, NULL);
+    int def_rank_step;
+    cs_file_get_default_comm(&def_rank_step, NULL, NULL);
+    size_t def_block_size = cs_parall_get_min_coll_buf_size();
     if (rank_step < 1)
       rank_step = def_rank_step;
     if (block_size < 0)
       block_size = def_block_size;
-    cs_file_set_default_comm(rank_step, block_size, cs_glob_mpi_comm);
+    cs_file_set_default_comm(rank_step, cs_glob_mpi_comm);
+    cs_parall_set_min_coll_buf_size(block_size);
   }
 
 #endif /* defined(HAVE_MPI) */

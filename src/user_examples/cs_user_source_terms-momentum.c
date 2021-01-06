@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -153,10 +153,12 @@ cs_user_source_terms(cs_domain_t  *domain,
 
     const cs_real_t *cvar_temperature = CS_F_(t)->val;
 
+    /* source term (in z direction here) */
+
     cs_real_3_t  *_st_exp = (cs_real_3_t *)st_exp;
 
     for (cs_lnum_t i = 0; i < n_cells; i++) {
-      _st_exp[c_id] = cell_f_vol[c_id] * rh0 * beta * (cvar_temperature[i]-t0);
+      _st_exp[i][2] = cell_f_vol[i] * ro0 * beta * (cvar_temperature[i]-t0);
     }
 
   }

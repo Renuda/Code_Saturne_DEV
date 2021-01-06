@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -917,8 +917,14 @@ class OutputControlModel(Model):
         self.isInList(mesh_id, self.getMeshIdList())
         associated_writer = []
         node = self.node_out.xmlGetNode('mesh', id = mesh_id)
+        writer_ids = self.getWriterIdList()
         for n in node.xmlGetNodeList('writer'):
-            associated_writer.append(n["id"])
+            writer_id = n['id']
+            if writer_id in writer_ids:
+                associated_writer.append(writer_id)
+            else:
+                # Fix for some incorrectly updated XML files
+                n.xmlRemoveNode()
         return associated_writer
 
 

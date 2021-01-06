@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -172,10 +172,7 @@ cs_multigrid_copy(const void  *context);
  * parameters:
  *   mg                     <-> pointer to multigrid info and context
  *   aggregation_limit      <-- maximum allowed fine rows per coarse cell
- *   coarsening_type        <-- coarsening type:
- *                              0: algebraic, natural face traversal;
- *                              1: algebraic, face traveral by criteria;
- *                              2: algebraic, Hilbert face traversal;
+ *   coarsening_type        <-- coarsening type; see cs_grid_coarsening_t
  *   n_max_levels           <-- maximum number of grid levels
  *   min_g_rows             <-- global number of rows on coarse grids
  *                              under which no coarsening occurs

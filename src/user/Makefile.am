@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -100,7 +100,7 @@ cs_user_lagr_model.c \
 cs_user_lagr_particle.c \
 cs_user_lagr_boundary_conditions.c \
 cs_user_lagr_volume_conditions.c \
-cs_user_les_inflow.f90 \
+cs_user_les_inflow.c \
 cs_user_mass_source_terms.f90 \
 cs_user_mesh.c \
 cs_user_metal_structures_source_terms.f90 \
@@ -228,13 +228,13 @@ install-data-hook:
 	c_user_files=`ls ${top_srcdir}/src/user/*.c 2>/dev/null`; \
 	for f in $${c_user_files}; do \
           file=`basename "$${f}"` && \
-	  $(PYTHON) "${top_srcdir}/build-aux/cs_user_src_filter.py" "$(VERSION)" < "${top_srcdir}/src/user/$${file}" > "$(DESTDIR)$(userdir)/$${file}"; \
+	  $(PYTHON) "${top_srcdir}/build-aux/cs_user_src_filter.py" "$(cs_version_short)" < "${top_srcdir}/src/user/$${file}" > "$(DESTDIR)$(userdir)/$${file}"; \
 	done ; \
 	cd $(DESTDIR)$(userdir) && \
 	f90_user_files=`ls *.f90 2>/dev/null`; \
 	stubvers="^\!VERS\n"; \
-	version1="\!                      Code_Saturne version $(VERSION)\n"; \
-	version2="\!                      --------------------------"; \
+	version1="\!                      code_saturne version $(cs_version_short)\n"; \
+	version2="\!                      ------------------------"; \
 	comment1="^\! TEST_TO_REMOVE_FOR_USE_OF_SUBROUTINE_START"; \
 	comment2="^\! TEST_TO_REMOVE_FOR_USE_OF_SUBROUTINE_END"; \
 	for file in $${f90_user_files}; do \

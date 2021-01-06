@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -814,6 +814,11 @@ cs_cdo_main(cs_domain_t   *domain)
 {
   if (cs_domain_get_cdo_mode(domain) == CS_DOMAIN_CDO_MODE_OFF)
     return;
+  if (cs_equation_get_n_equations() < 1) {
+    cs_log_printf(CS_LOG_DEFAULT,
+                  "\n  No equation to solve. Immediate exit\n");
+    return;
+  }
 
   cs_timer_t t0 = cs_timer_time();
 

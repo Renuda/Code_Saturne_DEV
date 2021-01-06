@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -601,6 +601,22 @@ cs_probe_set_get_n_local(const cs_probe_set_t   *pset);
 
 const cs_real_t *
 cs_probe_set_get_curvilinear_abscissa(const cs_probe_set_t   *pset);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Return the list of curvilinear abscissa of probes located
+ *         on the local ranks for the given probe set
+ *
+ * The caller is responsible for freeing the returned array.
+ *
+ * \param[in]  pset              pointer to a cs_probe_set_t structure
+ *
+ * \return NULL or the pointer to the array of abscissa
+ */
+/*----------------------------------------------------------------------------*/
+
+cs_real_t *
+cs_probe_set_get_loc_curvilinear_abscissa(const cs_probe_set_t   *pset);
 
 /*----------------------------------------------------------------------------*/
 /*!

@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -1328,6 +1328,9 @@ class OutputControlView(QWidget, Ui_OutputControlForm):
             # lagrangian model
             self.lag_mdl = LagrangianModel(self.case)
 
+        # Tabs to remove (at the end, to avoid shfting indexes)
+        tabs_to_remove = []
+
         # Combo models
 
         self.modelOutput         = ComboModel(self.comboBoxOutput,3,1)
@@ -1585,10 +1588,12 @@ class OutputControlView(QWidget, Ui_OutputControlForm):
                 self.groupBoxListingParticles.hide()
                 # lagrangian mesh
                 self.tabWidget.setTabEnabled(3, False)
+                tabs_to_remove.append(3)
         else:
             self.groupBoxListingParticles.hide()
             # lagrangian mesh
             self.tabWidget.setTabEnabled(3, False)
+            tabs_to_remove.append(3)
 
         # Initialisation of the monitoring points files
 
@@ -1667,6 +1672,9 @@ class OutputControlView(QWidget, Ui_OutputControlForm):
 
         # tabWidget active
         self.tabWidget.setCurrentIndex(self.case['current_tab'])
+
+        for i in tabs_to_remove:
+            self.tabWidget.removeTab(i)
 
         self.case.undoStartGlobal()
 

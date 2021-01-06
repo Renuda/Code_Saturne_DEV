@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -59,6 +59,7 @@ use ppppar
 use ppthch
 use ppincl
 use atincl
+use ctincl, only: cp_a, cp_v
 use atsoil
 use mesh
 use field
@@ -67,7 +68,6 @@ use cs_c_bindings
 implicit none
 
 !==============================================================================
-
 
 ! Arguments
 
@@ -99,6 +99,7 @@ double precision ray1,chas1,chal1,rapp1,premem
 double precision ray2,chas2,chal2,rapp2,secmem
 double precision w1min,w1max,w2min,w2max
 double precision r1,r2,tseuil,dum
+double precision cpvcpa
 
 double precision, dimension(:,:), pointer :: vel
 double precision, dimension(:), pointer :: cpro_met_p
@@ -112,10 +113,11 @@ if (imeteo.eq.2) then
   call field_get_val_s_by_name('meteo_pressure', cpro_met_p)
 endif
 
-
 !     ==========================
 !     1) initialisations locales
 !     ==========================
+
+cpvcpa = cp_v / cp_a
 
 b = 5.d0
 c = 5.d0

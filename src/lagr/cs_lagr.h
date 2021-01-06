@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -266,28 +266,30 @@ typedef struct {
   int  physical_model;
   int  n_temperature_layers;
 
-  /*! \ref modcpl=1 sets the assumption that we have regular particles.
-    In this case \ref idistu=1 and \ref idiffl=0 automatically.
-    Since the turbulent dispersion model uses volume statistics, \ref idstnt 
-    must also be 1.
-    When \ref modcpl=0 then the particles are assumed to be fluid particles
-    and the turbulence dispersion model is disabled. Also \ref idistu=0
-    and \ref idiffl=1 automatically. */
+  /*! Activates (1) or not (0) the assumption that we have regular particles.
+    When set to, 0 then the particles are assumed to be fluid particles
+    (and the turbulence dispersion model is disabled by default).
+    Since this model uses volume statistics, is use forces their
+    activation even if not otherwise requested
+    (see \ref cs_lagr_stat_options_t::idstnt "idstnt"). */
   int modcpl;
 
-  /*! activation (=1) or not (=0) of the particle turbulent dispersion model.
-    The turbulent dispersion model is compatible only with the RANS turbulent models
-    (\f$k-\varepsilon\f$, \f$R_{ij}-\varepsilon\f$, v2f or \f$k-\omega\f$).
-    (\ref iturb=20, 21, 30, 31, 50 or 60). */
+  /*! Activation of the turbulent dispersion (on: 1; off).
+     Default is on if \ref modcpl = 1, off if \ref modcpl = 0);
+     This is compatible only with the RANS turbulent models
+     (\f$k-\varepsilon\f$, \f$R_{ij}-\varepsilon\f$, v2f or \f$k-\omega\f$). */
   int idistu;
 
-  /*! \ref idiffl=1 suppresses the crossing trajectory effect, making
+  /*! Suppress the crossing trajectory effect (if set to 1), making
     turbulent dispersion for the particles identical to the turbulent
     diffusion of fluid particles.
-    Useful if \ref idistu=1 */
+    Default is off if \ref modcpl = 1, on if \ref modcpl = 0). */
   int idiffl;
 
+  /*!- 0: no deposition model
+     - 1: depositionion model */
   int  deposition;
+
   int  dlvo;
 
   /*! - 0: no DLVO conditions with roughness surface

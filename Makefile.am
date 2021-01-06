@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -272,6 +272,7 @@ bin/cs_control.py \
 bin/cs_create.py \
 bin/cs_debug_wrapper.py \
 bin/cs_exec_environment.py \
+bin/cs_parametric_study.py \
 bin/cs_studymanager_gui.py \
 bin/cs_trackcvg.py \
 bin/cs_gui.py \
@@ -295,7 +296,8 @@ bin/studymanager/cs_studymanager_parser.py \
 bin/studymanager/cs_studymanager_study.py \
 bin/studymanager/cs_studymanager_texmaker.py \
 bin/studymanager/cs_studymanager_pathes_model.py \
-bin/studymanager/cs_studymanager_xml_init.py
+bin/studymanager/cs_studymanager_xml_init.py \
+bin/studymanager/cs_studymanager_graph.py
 
 modeldir = $(pkgpythondir)/model
 model_PYTHON = \

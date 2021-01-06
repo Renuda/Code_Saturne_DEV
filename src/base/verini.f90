@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -557,7 +557,7 @@ enddo
 
 if (ineedy.eq.1) then
 
-  if (abs(icdpar).ne.1) then
+  if (abs(icdpar).ne.1 .and. abs(icdpar).ne.2) then
     write(nfecra,2700) icdpar
     iok = iok + 1
   endif
@@ -567,44 +567,6 @@ endif
 !===============================================================================
 ! 3. TABLEAUX DE cstphy : formats 4000
 !===============================================================================
-
-!     LES
-if (itytur.eq.4) then
-  if (xlesfl.lt.0.d0) then
-    write(nfecra,2511) 'XLESFL', xlesfl
-    iok = iok + 1
-  endif
-  if (ales  .lt.0.d0) then
-    write(nfecra,2511) 'ALES  ', ales
-    iok = iok + 1
-  endif
-  if (bles  .lt.0.d0) then
-    write(nfecra,2511) 'BLES  ', bles
-    iok = iok + 1
-  endif
-  if (csmago.lt.0.d0) then
-    write(nfecra,2511) 'CSMAGO', csmago
-    iok = iok + 1
-  endif
-  if (cwale.lt.0.d0) then
-    write(nfecra,2511) 'CWALE', cwale
-    iok = iok + 1
-  endif
-  if (idries.eq.1.and.cdries.lt.0) then
-    write(nfecra,2511) 'CDRIES', cdries
-    iok = iok + 1
-  endif
-  if (iturb.eq.41) then
-    if (xlesfd.lt.0.d0) then
-      write(nfecra,2511) 'XLESFD', xlesfd
-      iok = iok + 1
-    endif
-    if (smagmx.lt.0.d0) then
-      write(nfecra,2511) 'SMAGMX', smagmx
-      iok = iok + 1
-    endif
-  endif
-endif
 
 ! --- Scalaires
 
@@ -1497,7 +1459,7 @@ endif
 '@ @@  WARNING:   STOP WHILE READING INPUT DATA',               /,&
 '@    =========',                                               /,&
 '@    SCALAR ', a16,                                            /,&
-'@    ICLVFL(',i10,   ') MUST BE AN INTEGER  EGAL A 0, 1 or 2', /,&
+'@    ICLVFL(',i10, ') MUST BE AN INTEGER EQUAL TO 0, 1 or 2',  /,&
 '@   IT HAS VALUE', i10,                                        /,&
 '@',                                                            /,&
 '@   The calculation could NOT run.',                           /,&
@@ -1558,8 +1520,8 @@ endif
 '@ @@  WARNING:   STOP WHILE READING INPUT DATA',               /,&
 '@    =========',                                               /,&
 '@    SCALAR ', a16,                                            /,&
-'@    SCAMIN(',i10,   ') IS EQUAL', e14.5,                      /,&
-'@      AVEC ICLVFL(',i10,   ') = ', i10,                       /,&
+'@    SCAMIN(',i10,   ') IS EQUAL TO', e14.5,                   /,&
+'@      WITH ICLVFL(',i10,   ') = ', i10,                       /,&
 '@',                                                            /,&
 '@  Computation CAN NOT run',                                   /,&
 '@',                                                            /,&
@@ -1584,8 +1546,8 @@ endif
 '@ @@  WARNING:   STOP WHILE READING INPUT DATA',               /,&
 '@    =========',                                               /,&
 '@    SCALAR ', a16,                                            /,&
-'@    SCAMAX(',i10,   ') IS EQUAL', e14.5,                      /,&
-'@      AVEC ICLVFL(',i10,   ') = ', i10,                       /,&
+'@    SCAMAX(',i10,   ') IS EQUAL TO', e14.5,                   /,&
+'@      WITH ICLVFL(',i10,   ') = ', i10,                       /,&
 '@',                                                            /,&
 '@  Computation CAN NOT run',                                   /,&
 '@',                                                            /,&

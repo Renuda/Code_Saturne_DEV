@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -63,10 +63,10 @@ typedef struct {
                                  - 0: false */
   double        arak;         /* Arakawa multiplicator for the Rhie and Chow
                                  filter (1 by default) */
-  int           mass_preconditioner;
-                              /* Indicates if the correction step is done with:
-                                 - 0: (u^{n+1} - u*)/dt (default)
-                                 - 1: A_u * (u^{n+1} - u*) */
+  int           rcfact;       /* Indicates the factor of the Rhie and Chow
+                                 filter
+                                 - 1: dt (default)
+                                 - 0: 1/A_u */
   int           ipucou;       /* pseudo coupled pressure-velocity solver
                                  - 1: true (default)
                                  - 0: false */

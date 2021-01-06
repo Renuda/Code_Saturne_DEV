@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -849,6 +849,13 @@ class cs_math_parser:
                     if tk in ['x', 'y', 'z'] and 'xyz' not in known_symbols:
                         known_symbols.append('xyz')
                         usr_defs.append(glob_tokens['xyz']+'\n')
+
+                    # For momentum source terms, check for velocity
+                    if func_type == "src" and tk in ['u','v','w']:
+                        if 'velocity' not in known_symbols:
+                            if 'velocity' in glob_tokens:
+                                known_symbols.append('velocity')
+                                usr_defs.append(glob_tokens['velocity']+'\n')
 
         #-------------------------
 

@@ -1,7 +1,7 @@
 <!--
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -956,18 +956,14 @@ command for this build contains:
 ```
 $ cmake \
 -DCMAKE_INSTALL_PREFIX=${INSTALL_PATH}_osmesa \
--DPARAVIEW_BUILD_QT_GUI=OFF \
+-DPARAVIEW_USE_QT=OFF \
 -DPARAVIEW_USE_MPI=ON \
 -DPARAVIEW_USE_PYTHON=ON \
 -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON \
--DVTK_USE_X=OFF \
--DOPENGL_INCLUDE_DIR=IGNORE \
--DOPENGL_xmesa_INCLUDE_DIR=IGNORE \
--DOPENGL_gl_LIBRARY=IGNORE \
 -DOSMESA_INCLUDE_DIR=${MESA_INSTALL_PREFIX}/include \
--DOSMESA_LIBRARY}=${MESA_INSTALL_PREFIX}/lib/libOSMesa.so \
+-DOSMESA_LIBRARY=${MESA_INSTALL_PREFIX}/lib/libOSMesa.so \
 -DVTK_OPENGL_HAS_OSMESA=ON \
--DVTK_USE_OFFSCREEN=OFF \
+-DVTK_USE_X=OFF \
 ${PARAVIEW_SRC_PATH}
 ```
 

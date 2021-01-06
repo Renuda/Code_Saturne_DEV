@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -97,14 +97,9 @@ call field_get_key_id("min_scalar_clipping", kscmin)
 call field_get_key_id("max_scalar_clipping", kscmax)
 
 !===============================================================================
-! 1. GUI and model information
+! 1. Model information
 !===============================================================================
 
-call uiati1 (ficmet, len(ficmet))
-
-! Set base default model parameters and call usati1
-
-call atini0
 
 !===============================================================================
 ! 1. Add variables

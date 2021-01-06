@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -4399,7 +4399,8 @@ cs_lagr_stat_initialize(void)
 
   cs_lagr_model_t *lagr_model = cs_glob_lagr_model;
 
-  if (lagr_model->physical_model != CS_LAGR_PHYS_COAL || lagr_model->fouling < 1) {
+  if (   lagr_model->physical_model != CS_LAGR_PHYS_COAL
+      || lagr_model->fouling < 1) {
     cs_lagr_stat_deactivate(CS_LAGR_STAT_FOULING_CUMULATIVE_WEIGHT);
     cs_lagr_stat_deactivate(CS_LAGR_STAT_FOULING_MASS_FLUX);
     cs_lagr_stat_deactivate(CS_LAGR_STAT_FOULING_DIAMETER);

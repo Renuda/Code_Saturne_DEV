@@ -9,7 +9,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -370,12 +370,10 @@ cs_equation_sync_rhs_normalization(cs_param_resnorm_type_t    type,
  * \param[in]      rhs_redux  do or not a parallel sum reduction on the RHS
  * \param[in, out] x          array of unknowns (in: initial guess)
  * \param[in, out] b          right-hand side
- *
- * \returns the number of non-zeros in the matrix
  */
 /*----------------------------------------------------------------------------*/
 
-cs_gnum_t
+void
 cs_equation_prepare_system(int                     stride,
                            cs_lnum_t               x_size,
                            const cs_matrix_t      *matrix,
@@ -386,16 +384,41 @@ cs_equation_prepare_system(int                     stride,
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief  Solve a linear system arising with scalar-valued cell-based DoFs
+ *
+ * \param[in]  n_dofs         local number of DoFs
+ * \param[in]  slesp          pointer to a cs_param_sles_t structure
+ * \param[in]  matrix         pointer to a cs_matrix_t structure
+ * \param[in]  normalization  value used for the residual normalization
+ * \param[in, out] sles       pointer to a cs_sles_t structure
+ * \param[in, out] x          solution of the linear system (in: initial guess)
+ * \param[in, out] b          right-hand side (scatter/gather if needed)
+ *
+ * \return the number of iterations of the linear solver
+ */
+/*----------------------------------------------------------------------------*/
+
+int
+cs_equation_solve_scalar_cell_system(cs_lnum_t                n_dofs,
+                                     const cs_param_sles_t   *slesp,
+                                     const cs_matrix_t       *matrix,
+                                     cs_real_t                normalization,
+                                     cs_sles_t               *sles,
+                                     cs_real_t               *x,
+                                     cs_real_t               *b);
+
+/*----------------------------------------------------------------------------*/
+/*!
  * \brief  Solve a linear system arising from CDO schemes with scalar-valued
  *         degrees of freedom
  *
  * \param[in]  n_scatter_dofs local number of DoFs (may be != n_gather_elts)
- * \param[in]  eqp            pointer to a cs_equation_param_t structure
+ * \param[in]  slesp          pointer to a cs_param_sles_t structure
  * \param[in]  matrix         pointer to a cs_matrix_t structure
  * \param[in]  rs             pointer to a cs_range_set_t structure
  * \param[in]  normalization  value used for the residual normalization
- * \param[in]  sles           pointer to a cs_sles_t structure
  * \param[in]  rhs_redux      do or not a parallel sum reduction on the RHS
+ * \param[in, out] sles       pointer to a cs_sles_t structure
  * \param[in, out] x          solution of the linear system (in: initial guess)
  * \param[in, out] b          right-hand side (scatter/gather if needed)
  *
@@ -405,7 +428,7 @@ cs_equation_prepare_system(int                     stride,
 
 int
 cs_equation_solve_scalar_system(cs_lnum_t                     n_scatter_dofs,
-                                const cs_equation_param_t    *eqp,
+                                const cs_param_sles_t        *slesp,
                                 const cs_matrix_t            *matrix,
                                 const cs_range_set_t         *rset,
                                 cs_real_t                     normalization,

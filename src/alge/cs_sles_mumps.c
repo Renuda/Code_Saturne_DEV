@@ -1,11 +1,11 @@
 /*============================================================================
- * Sparse Linear Equation Solvers using MUMPS
+ * Sparse Linear Equation Solvers using MUMPS (a sparse direct solver library)
  *============================================================================*/
 
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -134,7 +134,6 @@ typedef struct _cs_sles_mumps_setup_t {
   DMUMPS_STRUC_C      *mumps;           /* Linear solver context: including
                                          * matrix, rhs and settings */
 
-  double               r_norm;          /* residue normalization */
   void                *cctx;            /* convergence context */
 
 } cs_sles_mumps_setup_t;
@@ -224,8 +223,8 @@ cs_user_sles_mumps_hook(void               *context,
  * This is a utility function: if finer control is needed, see
  * \ref cs_sles_define and \ref cs_sles_mumps_create.
  *
- * Note that this function returns a pointer directly to the iterative solver
- * management structure. This may be used to set further options.
+ * Note that this function returns a pointer directly to the sparse direct
+ * solver management structure. This may be used to set further options.
  * If needed, \ref cs_sles_find may be used to obtain a pointer to the matching
  * \ref cs_sles_t container.
  *
@@ -237,7 +236,7 @@ cs_user_sles_mumps_hook(void               *context,
  * \param[in,out]  context       pointer to optional (untyped) value or
  *                               structure for setup_hook, or NULL
  *
- * \return  pointer to newly created iterative solver info object.
+ * \return  pointer to newly created sparse direct solver info object.
  */
 /*----------------------------------------------------------------------------*/
 
@@ -350,7 +349,7 @@ cs_sles_mumps_copy(const void   *context)
  * buffers and preconditioning but does not free the whole context,
  * as info used for logging (especially performance data) is maintained.
  *
- * \param[in, out]  context  pointer to iterative solver info and context
+ * \param[in, out]  context  pointer to sparse direct solver info and context
  *                           (actual type: cs_sles_mumps_t  *)
  */
 /*----------------------------------------------------------------------------*/
@@ -392,7 +391,7 @@ cs_sles_mumps_free(void  *context)
 /*!
  * \brief Destroy MUMPS linear system solver info and context.
  *
- * \param[in, out]  context  pointer to iterative solver info and context
+ * \param[in, out]  context  pointer to sparse direct solver info and context
  *                           (actual type: cs_sles_mumps_t  **)
  */
 /*----------------------------------------------------------------------------*/
@@ -417,7 +416,7 @@ cs_sles_mumps_destroy(void   **context)
 /*!
  * \brief Setup MUMPS linear equation solver.
  *
- * \param[in, out]  context    pointer to iterative solver info and context
+ * \param[in, out]  context    pointer to sparse direct solver info and context
  *                             (actual type: cs_sles_mumps_t  *)
  * \param[in]       name       pointer to system name
  * \param[in]       a          associated matrix
@@ -613,7 +612,8 @@ cs_sles_mumps_setup(void               *context,
   }
   else {
 
-    bft_error(__FILE__, __LINE__, 0, " Not implemented yet.\n");
+    bft_error(__FILE__, __LINE__, 0,
+              " %s: Not implemented yet.\n", __func__);
 
   }
 
@@ -628,11 +628,24 @@ cs_sles_mumps_setup(void               *context,
   sd->mumps->job = MUMPS_JOB_ANALYSE_FACTO;
   dmumps_c(sd->mumps);
 
-  if (cs_glob_rank_id < 1)
-    if (sd->mumps->INFOG(1) < 0)
+  if (cs_glob_rank_id < 1) {
+
+    if (sd->mumps->INFOG(1) < 0) {
+      cs_log_printf(CS_LOG_DEFAULT,
+                    "\n MUMPS feedback error code: INFOG(1)=%d, INFOG(2)=%d\n",
+                    sd->mumps->INFOG(1), sd->mumps->INFOG(2));
       bft_error(__FILE__, __LINE__, 0,
                 " %s: Error detected during the anaylis/factorization step",
                 __func__);
+    }
+    else {
+      if (verbosity > 1)
+        cs_log_printf(CS_LOG_DEFAULT,
+                      "\n MUMPS feedback code: INFOG(1)=%d, INFOG(2)=%d\n",
+                      sd->mumps->INFOG(1), sd->mumps->INFOG(2));
+    }
+
+  } /* rank_id = 0 */
 
   cs_timer_t t1 = cs_timer_time();
   cs_timer_counter_add_diff(&(c->t_setup), &t0, &t1);
@@ -643,8 +656,8 @@ cs_sles_mumps_setup(void               *context,
 /*!
  * \brief Call MUMPS linear equation solver.
  *
- * \param[in, out]  context        pointer to iterative solver info and context
- *                                 (actual type: cs_sles_mumps_t  *)
+ * \param[in, out]  context        pointer to sparse direct solver info and
+ *                                 context (actual type: cs_sles_mumps_t  *)
  * \param[in]       name           pointer to system name
  * \param[in]       a              matrix
  * \param[in]       verbosity      associated verbosity
@@ -770,7 +783,7 @@ cs_sles_mumps_solve(void                *context,
 /*!
  * \brief Log sparse linear equation solver info.
  *
- * \param[in]  context   pointer to iterative solver info and context
+ * \param[in]  context   pointer to sparse direct solver info and context
  *                       (actual type: cs_sles_mumps_t  *)
  * \param[in]  log_type  log type
  */

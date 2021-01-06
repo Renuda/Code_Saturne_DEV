@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -115,7 +115,7 @@ cs_user_rad_transfer_absorption(const int  bc_type[],
  * The density of net radiation flux must be calculated
  * consistently with the boundary conditions of the intensity.
  * The density of net flux is the balance between the radiative
- * emiting part of a boudary face (and not the reflecting one)
+ * emiting part of a boundary face (and not the reflecting one)
  * and the radiative absorbing part.
  *
  * \param[in]   bc_type   boundary face types

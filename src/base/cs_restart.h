@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -46,6 +46,12 @@ BEGIN_C_DECLS
 /*============================================================================
  * Macro definitions
  *============================================================================*/
+
+/* Predefined checkpoint interval */
+
+#define CS_RESTART_INTERVAL_NONE         -2
+#define CS_RESTART_INTERVAL_ONLY_AT_END  -1
+#define CS_RESTART_INTERVAL_DEFAULT       0
 
 /* Error codes */
 

@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -150,7 +150,7 @@ else
     call csexit (1)
   endif
 
-  ! --> if the date and time are not completed in usati1.f90 nor and if no meteo
+  ! --> if the date and time are not completed in usppmo/cs_user_model if no meteo
   ! --> file is given,
   ! --> the date and time of the first concentration profile are taken as the
   !     starting time of the simulation

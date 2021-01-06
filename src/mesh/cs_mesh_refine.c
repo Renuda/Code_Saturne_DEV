@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -4608,7 +4608,7 @@ cs_mesh_refine_simple(cs_mesh_t  *m,
   BFT_FREE(c_r_flag);
   BFT_FREE(f_r_flag);
 
-  m->modified = CS_MAX(m->modified, 1);
+  m->modified |= (CS_MESH_MODIFIED | CS_MESH_MODIFIED_BALANCE);
 
   /* Rebuild ghosts */
 

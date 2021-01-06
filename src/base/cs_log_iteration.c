@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -62,7 +62,6 @@
 #include "cs_time_step.h"
 #include "cs_lagr_stat.h"
 #include "cs_lagr_log.h"
-
 
 /*----------------------------------------------------------------------------
  * Header for the current file
@@ -169,7 +168,9 @@ static cs_time_plot_t  *_l2_residual_plot = NULL;
  *   -1 if x < y, 0 if x = y, or 1 if x > y
  *----------------------------------------------------------------------------*/
 
-static int _compare_sstats(const void *x, const void *y)
+static int
+_compare_sstats(const void *x,
+                const void *y)
 {
   int retval = 1;
 
@@ -675,6 +676,7 @@ _log_fields(void)
                                                    NULL,
                                                    m->n_vertices,
                                                    false, /* balance */
+                                                   2,  /* tr_ignore */
                                                    0); /* g_id_base */
 
           if (f->dim > 1)

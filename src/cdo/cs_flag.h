@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -270,9 +270,8 @@ cs_flag_test(cs_flag_t    flag_to_check,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief  Check if a two flag share the same pattern
- *         Return true if the flag to check has at least the pattern of the
- *         reference flag.
+ * \brief  Check if a flag has in common at least one of the given masks
+ *         Return true if the test is satisfied.
  *
  * \param[in]  flag_to_check   flag corresponding to the location to check
  * \param[in]  n_masks         number of masks to check
@@ -298,6 +297,7 @@ cs_flag_at_least(cs_flag_t    flag_to_check,
  * \brief  Check if a two compute flag share the same pattern
  *         Return true if the computed flag to check has at least the pattern
  *         of the reference compute flag.
+ *         Case of extended flags.
  *
  * \param[in]  flag_to_check   flag corresponding to the location to check
  * \param[in]  reference       flag corresponding to the referenced support

@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -74,18 +74,19 @@ BEGIN_C_DECLS
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief  Generic function pointer for an analytic function
- *         elt_ids is optional. If not NULL, it enables to access in coords
- *         at the right location and the same thing to fill retval if compact
- *         is set to false
+ * \brief  Generic function pointer for an evaluation relying on an analytic
+ *         function
+ *         elt_ids is optional. If not NULL, it enables to access to the coords
+ *         array with an indirection. The same indirection can be applied to
+ *         fill retval if dense_output is set to false.
  *
- * \param[in]      time     when ?
- * \param[in]      n_elts   number of elements to consider
- * \param[in]      elt_ids  list of elements ids (to access coords and fill)
- * \param[in]      coords   where ?
- * \param[in]      compact  true:no indirection, false:indirection for filling
- * \param[in]      input    pointer to a structure cast on-the-fly (may be NULL)
- * \param[in, out] retval   result of the function
+ * \param[in]      time          when ?
+ * \param[in]      n_elts        number of elements to consider
+ * \param[in]      elt_ids       list of elements ids (in coords and retval)
+ * \param[in]      coords        where ?
+ * \param[in]      dense_output  perform an indirection in retval or not
+ * \param[in]      input         NULL or pointer to a structure cast on-the-fly
+ * \param[in, out] retval        resulting value(s). Must be allocated.
  */
 /*----------------------------------------------------------------------------*/
 
@@ -94,30 +95,30 @@ typedef void
                       cs_lnum_t            n_elts,
                       const cs_lnum_t     *elt_ids,
                       const cs_real_t     *coords,
-                      bool                 compact,
+                      bool                 dense_output,
                       void                *input,
                       cs_real_t           *retval);
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief  Generic function pointer for defining a quantity at known locations
- *         (cells, faces, edges or vertices) with a function.  elt_ids is
- *         optional. If not NULL, the function works on a sub-list of
- *         elements. Moreover, it enables to fill retval with an indirection if
- *         compact is set to false
+ * \brief  Generic function pointer for computing a quantity at predefined
+ *         locations such as degrees of freedom (DoF): cells, faces, edges or
+ *         or vertices.
+ *         elt_ids is optional. If not NULL, it enables to fill retval partially
+ *         with this indirection if dense_output is set to false.
  *
- * \param[in]      n_elts   number of elements to consider
- * \param[in]      elt_ids  list of elements ids
- * \param[in]      compact  true:no indirection, false:indirection for retval
- * \param[in]      input    pointer to a structure cast on-the-fly (may be NULL)
- * \param[in, out] retval   result of the function
+ * \param[in]      n_elts        number of elements to consider
+ * \param[in]      elt_ids       list of elements ids
+ * \param[in]      dense_output  perform an indirection in retval or not
+ * \param[in]      input         NULL or pointer to a structure cast on-the-fly
+ * \param[in, out] retval        resulting value(s). Must be allocated.
  */
 /*----------------------------------------------------------------------------*/
 
 typedef void
 (cs_dof_func_t) (cs_lnum_t            n_elts,
                  const cs_lnum_t     *elt_ids,
-                 bool                 compact,
+                 bool                 dense_output,
                  void                *input,
                  cs_real_t           *retval);
 
@@ -127,7 +128,7 @@ typedef void
  *         current time and any structure given as a parameter
  *
  * \param[in]   time        value of the time at the end of the last iteration
- * \param[in]   input       pointer to a structure cast on-the-fly
+ * \param[in]   input       NULL or pointer to a structure cast on-the-fly
  * \param[in]   retval      result of the evaluation
  */
 /*----------------------------------------------------------------------------*/
@@ -136,10 +137,6 @@ typedef void
 (cs_time_func_t) (double        time,
                   void         *input,
                   cs_real_t    *retval);
-
-/* ================
- * ENUM definitions
- * ================ */
 
 /*! \enum cs_param_space_scheme_t
  *  \brief Type of numerical scheme for the discretization in space
@@ -229,6 +226,9 @@ typedef enum {
  *
  * \var CS_TIME_SCHEME_THETA
  * theta-scheme
+ *
+ * \var CS_TIME_SCHEME_BDF2
+ * theta-scheme
  */
 
 typedef enum {
@@ -238,6 +238,7 @@ typedef enum {
   CS_TIME_SCHEME_EULER_EXPLICIT,
   CS_TIME_SCHEME_CRANKNICO,
   CS_TIME_SCHEME_THETA,
+  CS_TIME_SCHEME_BDF2,
 
   CS_TIME_N_SCHEMES
 
@@ -320,6 +321,69 @@ typedef enum {
   CS_PARAM_N_ADVECTION_SCHEMES
 
 } cs_param_advection_scheme_t;
+
+/*! \enum cs_param_advection_strategy_t
+ *  \brief Choice of how to handle the advection term in an equation
+ *
+ * \var CS_PARAM_ADVECTION_IMPLICIT_FULL
+ * The advection term is implicitly treated. The non-linearity stemming from
+ * this term has to be solved using a specific algorithm such as the Picard
+ * (fixed-point) technique or more elaborated techniques.
+ *
+ * \var CS_PARAM_ADVECTION_IMPLICIT_LINEARIZED
+ * The advection term is implicitly treated. The non-linearity stemming from
+ * this term is simplified. Namely, one assumes a linearized advection. This is
+ * equivalent to a one-step Picard technique.
+ *
+ * \var CS_PARAM_ADVECTION_EXPLICIT
+ * The advection term is treated explicitly. One keeps the non-linearity
+ * stemming from this term at the right hand-side. An extrapolation can be
+ * used for the advection field (cf. \ref cs_param_advection_extrapol_t)
+ */
+
+typedef enum {
+
+  CS_PARAM_ADVECTION_IMPLICIT_FULL,
+  CS_PARAM_ADVECTION_IMPLICIT_LINEARIZED,
+  CS_PARAM_ADVECTION_EXPLICIT,
+
+  CS_PARAM_N_ADVECTION_STRATEGIES
+
+} cs_param_advection_strategy_t;
+
+/*! \enum cs_param_advection_extrapol_t
+ *  \brief Choice of how to extrapolate the advection field in the advection
+ *         term
+ *
+ * \var CS_PARAM_ADVECTION_EXTRAPOL_NONE
+ * The advection field is not extrapolated. The last known advection field
+ * is considered \phi^n if one computes u^(n+1) knowing u^n. In case of a
+ * a non-linearity, this is \phi^(n+1,k) if one computes u^(n+1,k+1) knowing
+ * u^(n+1,k) and u^n. The initial step is such that u^(n+1,0) = u^n
+ * This is a good choice with a first-order forward or backward time scheme.
+ *
+ * \var CS_PARAM_ADVECTION_EXTRAPOL_TAYLOR_2
+ * The advection field is extrapolated with a 2nd order Taylor expansion
+ * yielding \phi^extrap = 2 \phi^n - \phi^(n-1)
+ * This corresponds to an estimation of \phi at n+1. Thus, this is a good
+ * choice when associated with a BDF2 time scheme.
+ *
+ * \var CS_PARAM_ADVECTION_EXTRAPOL_ADAMS_BASHFORTH_2
+ * The advection field is extrapolated with a 2nd order Adams-Bashforth
+ * technique yielding \phi^extrap = 3/2 \phi^n - 1/2 \phi^(n-1)
+ * This corresponds to an estimation of \phi at n+1/2. Thus, this is a good
+ * choice when associated with a Crank-Nilcolson time scheme.
+ */
+
+typedef enum {
+
+  CS_PARAM_ADVECTION_EXTRAPOL_NONE,
+  CS_PARAM_ADVECTION_EXTRAPOL_TAYLOR_2,
+  CS_PARAM_ADVECTION_EXTRAPOL_ADAMS_BASHFORTH_2,
+
+  CS_PARAM_N_ADVECTION_EXTRAPOLATIONS
+
+} cs_param_advection_extrapol_t;
 
 /*!
  * @}
@@ -541,8 +605,8 @@ typedef enum {
   CS_PARAM_PRECOND_AMG_BLOCK,
   CS_PARAM_PRECOND_AS,          /*!< Only with PETSc */
   CS_PARAM_PRECOND_DIAG,
-  CS_PARAM_PRECOND_GKB_CG,
-  CS_PARAM_PRECOND_GKB_GMRES,
+  CS_PARAM_PRECOND_GKB_CG,      /*!< Only with PETSc */
+  CS_PARAM_PRECOND_GKB_GMRES,   /*!< Only with PETSc */
   CS_PARAM_PRECOND_ILU0,        /*!< Only with PETSc */
   CS_PARAM_PRECOND_ICC0,        /*!< Only with PETSc*/
   CS_PARAM_PRECOND_POLY1,
@@ -635,8 +699,8 @@ typedef enum {
   CS_PARAM_ITSOL_GMRES,            /*!< Only with PETsc */
   CS_PARAM_ITSOL_JACOBI,
   CS_PARAM_ITSOL_MINRES,           /*!< Only with PETsc */
-  CS_PARAM_ITSOL_MUMPS,            /*!< Only with PETsc */
-  CS_PARAM_ITSOL_MUMPS_LDLT,       /*!< Only with PETsc */
+  CS_PARAM_ITSOL_MUMPS,            /*!< Only with PETsc/MUMPS */
+  CS_PARAM_ITSOL_MUMPS_LDLT,       /*!< Only with PETsc/MUMPS */
   CS_PARAM_ITSOL_SYM_GAUSS_SEIDEL,
 
   CS_PARAM_N_ITSOL_TYPES
@@ -662,34 +726,6 @@ typedef enum {
   CS_PARAM_N_RESNORM_TYPES
 
 } cs_param_resnorm_type_t;
-
-/*!
- * \struct cs_param_sles_t
- * \brief Structure storing all metadata related to the resolution of a linear
- *        system with an iterative solver.
- */
-
-typedef struct {
-
-  bool                     setup_done;   /*!< SLES setup step has been done */
-  int                      verbosity;    /*!< SLES verbosity */
-  int                      field_id;     /*!< Field id related to a SLES
-                                           By default, this is set to -1 */
-
-  cs_param_sles_class_t    solver_class; /*!< class of SLES to consider  */
-  cs_param_precond_type_t  precond;      /*!< type of preconditioner */
-  cs_param_itsol_type_t    solver;       /*!< type of solver */
-  cs_param_amg_type_t      amg_type;     /*!< type of AMG algorithm if needed */
-
-  /*! \var resnorm_type
-   *  normalized or not the norm of the residual used for the stopping criterion
-   *  See \ref CS_EQKEY_ITSOL_RESNORM_TYPE for more details.
-   */
-  cs_param_resnorm_type_t  resnorm_type;
-  int                      n_max_iter;   /*!< max. number of iterations */
-  double                   eps;          /*!< stopping criterion on accuracy */
-
-} cs_param_sles_t;
 
 /*============================================================================
  * Global variables
@@ -744,6 +780,59 @@ cs_param_get_space_scheme_name(cs_param_space_scheme_t    scheme);
 
 const char *
 cs_param_get_time_scheme_name(cs_param_time_scheme_t    scheme);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief   Get the label associated to the advection formulation
+ *
+ * \param[in] adv_form      type of advection formulation
+ *
+ * \return the associated label
+ */
+/*----------------------------------------------------------------------------*/
+
+const char *
+cs_param_get_advection_form_name(cs_param_advection_form_t    adv_form);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief   Get the label of the advection scheme
+ *
+ * \param[in] scheme      type of advection scheme
+ *
+ * \return the associated advection scheme label
+ */
+/*----------------------------------------------------------------------------*/
+
+const char *
+cs_param_get_advection_scheme_name(cs_param_advection_scheme_t    scheme);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief   Get the label associated to the advection strategy
+ *
+ * \param[in] adv_stra      type of advection strategy
+ *
+ * \return the associated label
+ */
+/*----------------------------------------------------------------------------*/
+
+const char *
+cs_param_get_advection_strategy_name(cs_param_advection_strategy_t  adv_stra);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Get the label associated to the extrapolation used for the advection
+ *         field
+ *
+ * \param[in] adv_stra      type of extrapolation for the advection field
+ *
+ * \return the associated label
+ */
+/*----------------------------------------------------------------------------*/
+
+const char *
+cs_param_get_advection_extrapol_name(cs_param_advection_extrapol_t   extrapol);
 
 /*----------------------------------------------------------------------------*/
 /*!

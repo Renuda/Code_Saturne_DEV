@@ -4,7 +4,7 @@
 
 /* This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -103,9 +103,9 @@ cs_rad_transfer_write(void)
                   "      -----------------------------------\n"
                   "    Writing a restart file\n"));
 
-  cs_restart_t *rp = cs_restart_create ("radiative_transfer.csc",
-                                        NULL,
-                                        CS_RESTART_MODE_WRITE);
+  cs_restart_t *rp = cs_restart_create("radiative_transfer.csc",
+                                       NULL,
+                                       CS_RESTART_MODE_WRITE);
 
   cs_log_printf(CS_LOG_DEFAULT,
                 _("      Write start\n"));

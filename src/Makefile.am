@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -138,7 +138,7 @@ atmo/atincl.lo: pprt/ppppar.lo pprt/ppincl.lo base/mesh.lo atmo/atsoil.lo \
  base/cs_c_bindings.lo atmo/atchem.lo atmo/sshaerosol.lo
 atmo/atchem.lo: pprt/ppppar.lo base/mesh.lo base/entsor.lo base/numvar.lo \
  base/cs_c_bindings.lo
-atmo/atimbr.lo: base/cstphy.lo base/entsor.lo atmo/atincl.lo
+atmo/atimbr.lo: base/cstphy.lo base/entsor.lo atmo/atincl.lo ctwr/ctincl.lo
 atmo/sshaerosol.lo: pprt/ppppar.lo base/cs_c_bindings.lo atmo/atchem.lo \
  base/mesh.lo
 atmo/spefun.lo: base/entsor.lo

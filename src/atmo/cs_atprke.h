@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -71,9 +71,9 @@ BEGIN_C_DECLS
 /*----------------------------------------------------------------------------*/
 
 void
-cs_atprke(cs_real_t  *tinstk,
-          cs_real_t  *smbrk,
-          cs_real_t  *smbre);
+cs_atmo_buoyancy_ke_prod(cs_real_t  *tinstk,
+                         cs_real_t  *smbrk,
+                         cs_real_t  *smbre);
 
 /*----------------------------------------------------------------------------*/
 

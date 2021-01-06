@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -533,7 +533,7 @@ _assemble_row_scal_ld(const cs_matrix_assembler_t      *ma,
 {
   assert(ma->d_r_idx != NULL); /* local-id-based function, need to adapt */
 
-  const cs_lnum_t l_r_id = row->l_id; // g_r_id - ma->l_range[0];
+  const cs_lnum_t l_r_id = row->l_id; /* g_r_id - ma->l_range[0]; */
   const cs_lnum_t l_start = ma->r_idx[l_r_id], l_end = ma->r_idx[l_r_id+1];
   const cs_lnum_t d_start = ma->d_r_idx[l_r_id], d_end = ma->d_r_idx[l_r_id+1];
   const int n_d_cols = d_end - d_start;

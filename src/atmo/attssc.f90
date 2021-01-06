@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -110,7 +110,7 @@ if (imeteo.ge.2) then
 endif
 
 !===============================================================================
-! 2. Taking into acount radiative forcing for the 1d radiative module
+! 2. Taking into account radiative forcing for the 1d radiative module
 !    (if the 3D module is not activated)
 !===============================================================================
 

@@ -10,7 +10,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -118,18 +118,24 @@ cs_cdofb_monolithic_finalize_common(const cs_navsto_param_t       *nsp);
 /*!
  * \brief  Initialize a \ref cs_cdofb_monolithic_t structure
  *
- * \param[in] nsp         pointer to a \ref cs_navsto_param_t structure
- * \param[in] bf_type     type of boundary for each boundary face
- * \param[in] cc_context  pointer to a \ref cs_navsto_monolithic_t structure
+ * \param[in] nsp          pointer to a \ref cs_navsto_param_t structure
+ * \param[in] adv_field    pointer to \ref cs_adv_field_t structure
+ * \param[in] mflux        current values of the mass flux across primal faces
+ * \param[in] mflux_pre    current values of the mass flux across primal faces
+ * \param[in] bf_type      type of boundary for each boundary face
+ * \param[in] cc_context   pointer to a \ref cs_navsto_monolithic_t structure
  *
  * \return a pointer to a new allocated \ref cs_cdofb_monolithic_t structure
  */
 /*----------------------------------------------------------------------------*/
 
 void *
-cs_cdofb_monolithic_init_scheme_context(const cs_navsto_param_t   *nsp,
-                                        cs_boundary_type_t        *bf_type,
-                                        void                      *cc_context);
+cs_cdofb_monolithic_init_scheme_context(const cs_navsto_param_t  *nsp,
+                                        cs_adv_field_t           *adv_field,
+                                        cs_real_t                *mflux,
+                                        cs_real_t                *mflux_pre,
+                                        cs_boundary_type_t       *bf_type,
+                                        void                     *cc_context);
 
 /*----------------------------------------------------------------------------*/
 /*!

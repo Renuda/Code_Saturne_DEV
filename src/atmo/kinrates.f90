@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -83,7 +83,7 @@ dens = ro0
 press = dens*rair*temp ! ideal gas law
 hspec = 0.0d0
 
-if (imeteo.eq.2) then
+if (imeteo.ge.2) then
   call field_get_val_s_by_name('meteo_temperature', cpro_met_temp)
   call field_get_val_s_by_name('meteo_pressure', cpro_met_p)
   call field_get_id_try('meteo_humidity', met_qv_id)
@@ -185,10 +185,10 @@ do iel = 1, ncel
 enddo
 
 !--------
-! FORMATS
+! Formats
 !--------
 !----
-! END
+! End
 !----
 
 return

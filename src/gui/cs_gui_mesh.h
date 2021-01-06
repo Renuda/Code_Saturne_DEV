@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -97,6 +97,20 @@ cs_gui_mesh_extrude(cs_mesh_t  *mesh);
 
 void
 cs_gui_mesh_save_if_modified(cs_mesh_t  *mesh);
+
+/*----------------------------------------------------------------------------
+ * Define if cartesian mesh is to be built through GUI.
+ *----------------------------------------------------------------------------*/
+
+int
+cs_gui_mesh_build_cartesian(void);
+
+/*----------------------------------------------------------------------------
+ * Read cartesian mesh parameters defined with GUI.
+ *----------------------------------------------------------------------------*/
+
+void
+cs_gui_mesh_cartesian_define(void);
 
 /*----------------------------------------------------------------------------*/
 

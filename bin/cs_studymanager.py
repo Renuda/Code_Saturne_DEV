@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -162,6 +162,9 @@ def process_cmd_line(argv, pkg):
     parser.add_option("--create-xml", action="store_true",
                       dest="create_xml", default=False,
                       help="create xml from study (current directory has to be a study)")
+
+    parser.add_option("--create-graph", action="store_true", dest="create_graph", default=False,
+                      help="create a dependency graph based on all cases from all studies")
 
     if len(argv)==0:
         parser.print_help(sys.stderr)
@@ -355,6 +358,11 @@ def run_studymanager(pkg, options):
 
     if options.compare or options.post or options.runcase:
         studies.create_studies()
+
+    # Create dependency graph based on studies and all cases
+
+    if options.create_graph:
+        studies.create_graph()
 
     # Preprocessing and run all cases
     if options.debug:

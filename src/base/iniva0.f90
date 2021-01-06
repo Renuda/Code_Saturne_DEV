@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -107,6 +107,7 @@ double precision, dimension(:), pointer :: cpro_viscls, cproa_viscls, cvar_tempk
 double precision, dimension(:), pointer :: cpro_visma_s
 double precision, dimension(:), pointer :: mix_mol_mas
 double precision, dimension(:,:), pointer :: cpro_visma_v
+double precision, dimension(:,:), pointer :: xyzno0
 
 type(var_cal_opt) :: vcopt_uma
 
@@ -618,6 +619,7 @@ if (iale.ge.1) then
 endif
 
 if (iale.ge.1) then
+  call field_get_val_v_by_name("vtx_coord0", xyzno0)
   do ii = 1, nnod
     do idim = 1, 3
       xyzno0(idim,ii) = xyznod(idim,ii)

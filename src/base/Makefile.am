@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -155,6 +155,7 @@ cs_restart.h \
 cs_restart_default.h \
 cs_restart_map.h \
 cs_rotation.h \
+cs_runaway_check.h \
 cs_sat_coupling.h \
 cs_search.h \
 cs_selector.h \
@@ -314,6 +315,7 @@ cs_restart.c \
 cs_restart_default.c \
 cs_restart_map.c \
 cs_rotation.c \
+cs_runaway_check.c \
 cs_sat_coupling.c \
 cs_search.c \
 cs_selector.c \

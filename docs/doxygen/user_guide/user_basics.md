@@ -1,7 +1,7 @@
 <!--
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -18,7 +18,7 @@
   Street, Fifth Floor, Boston, MA 02110-1301, USA.
 -->
 
-\page cs_ug_user_basics Running a Computation
+\page cs_ug_user_basics Running a computation
 
 This section contains a quick-start guide followed by more detailed information
 various user aspects, describing how code_saturne computations are organized
@@ -41,3 +41,5 @@ and run.
 \subpage cs_ug_parallel
 
 \subpage cs_ug_output
+
+\subpage cs_ug_udf

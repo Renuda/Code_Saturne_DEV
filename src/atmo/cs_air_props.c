@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -66,8 +66,8 @@ BEGIN_C_DECLS
 
 static cs_air_fluid_props_t _props = {
   .humidity0 = 0.,
-  .cp_a = 0.,
-  .cp_v = 0.,
+  .cp_a = 1006.,
+  .cp_v = 1877.196, /* 1.866 * cp_a */
   .cp_l = 0.,
   .hv0 = 0.,
   .rho_l = 0.,

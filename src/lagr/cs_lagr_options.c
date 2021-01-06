@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -259,15 +259,12 @@ cs_lagr_options_definition(int         isuite,
   cs_glob_lagr_source_terms->ltsmas = 0;
   cs_glob_lagr_source_terms->ltsthe = 0;
 
-  cs_glob_lagr_stat_options->idstnt = 1;
-  cs_glob_lagr_stat_options->nstist = 1;
-
   cs_glob_lagr_boundary_interactions->nombrd = NULL;
 
   lagr_time_scheme->t_order = 2;
   lagr_model->modcpl = 1;
-  lagr_model->idistu = 1;
-  lagr_model->idiffl = 0;
+  lagr_model->idistu = -1;
+  lagr_model->idiffl = -1;
   lagr_time_scheme->ilapoi = 0;
   lagr_time_scheme->iadded_mass = 0;
   lagr_time_scheme->added_mass_const = 1.0;
@@ -704,6 +701,40 @@ cs_lagr_options_definition(int         isuite,
                                 lagr_time_scheme->t_order,
                                 1, 3);
 
+  /* Ensure complete model option has valid values */
+
+  if (lagr_model->modcpl < 0)
+    lagr_model->modcpl = 0;
+  else if (lagr_model->modcpl > 0)
+    lagr_model->modcpl = 1;
+
+  /* Default diffusion model depending on complete model or fluid particles */
+
+  if (lagr_model->modcpl == 0) {
+
+    if (lagr_model->idistu < 0)
+      lagr_model->idistu = 0;
+    if (lagr_model->idiffl < 0)
+      lagr_model->idiffl = 1;
+
+  }
+  else {
+
+    if (lagr_model->idistu < 0)
+      lagr_model->idistu = 1;
+    if (lagr_model->idiffl < 0)
+      lagr_model->idiffl = 0;
+
+    /* Velocity statistics are needed for this model */
+    cs_lagr_stat_activate_attr(CS_LAGR_VELOCITY);
+
+    /* Force immediate activation of volume statistics
+       (may be adjusted later based on restart time step) */
+    if (cs_glob_lagr_stat_options->idstnt > 1)
+      cs_glob_lagr_stat_options->idstnt = 1;
+
+  }
+
   cs_parameters_is_in_range_int(CS_ABORT_DELAYED,
                                 _("in Lagrangian module"),
                                 "cs_glob_lagr_model->idistu",
@@ -745,27 +776,6 @@ cs_lagr_options_definition(int         isuite,
                                 "cs_glob_lagr_model->idiffl",
                                 lagr_model->idiffl,
                                 0, 2);
-
-  if (lagr_model->modcpl < 0)
-    lagr_model->modcpl = 0;
-
-  if (lagr_model->modcpl == 1) {
-
-    if (cs_glob_lagr_stat_options->idstnt != 1)
-      cs_parameters_error
-        (CS_ABORT_DELAYED,
-         _("in Lagrangian module"),
-         _("The turbulent dispersion option is incompatible with that of\n"
-           "statistics.\n\n"
-           "Statistics must be actιve fo this model, so we must have\n"
-           "cs_glob_lagr_stat_options->idstnt = 1\n"
-           "while its current value is %d."),
-         cs_glob_lagr_stat_options->idstnt);
-
-    /* Velocity statistics are needed for this model */
-    cs_lagr_stat_activate_attr(CS_LAGR_VELOCITY);
-
-  }
 
   cs_parameters_is_in_range_int(CS_ABORT_DELAYED,
                                 _("in Lagrangian module"),
@@ -998,7 +1008,7 @@ cs_lagr_options_definition(int         isuite,
   /* Now activate basic statistics */
 
 #if 0
-  if (   cs_glob_lagr_model->modcpl == 1
+  if (   cs_glob_lagr_model->modcpl > 0
       || cs_glob_lagr_time_scheme->ilapoi == 1)
     cs_lagr_stat_activate(CS_LAGR_STAT_CUMULATIVE_WEIGHT);
 #endif

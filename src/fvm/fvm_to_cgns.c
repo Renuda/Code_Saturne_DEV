@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -3520,7 +3520,7 @@ fvm_to_cgns_init_writer(const char             *name,
       writer->rank = rank;
       writer->n_ranks = n_ranks;
       writer->min_rank_step = 1;
-      writer->min_block_size = 1024*1024*8;
+      writer->min_block_size = cs_parall_get_min_coll_buf_size();
     }
     else
       writer->comm = MPI_COMM_NULL;

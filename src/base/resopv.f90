@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -70,7 +70,7 @@
 !>                               of the reference outlet face
 !> \param[in]     dt            time step (per cell)
 !> \param[in]     vel           velocity
-!> \param[in,out] da_u          inverse of diagonal part of velocity matrix
+!> \param[in,out] da_u          diagonal part of velocity matrix
 !> \param[in]     coefav        boundary condition array for the variable
 !>                               (explicit part)
 !> \param[in]     coefbv        boundary condition array for the variable
@@ -159,7 +159,7 @@ double precision tslagr(ncelet,*)
 double precision coefav(3  ,nfabor)
 double precision coefbv(3,3,nfabor)
 double precision vel   (3  ,ncelet)
-double precision, dimension (1:ncelet), target :: da_u
+double precision da_u  (ncelet)
 double precision coefa_dp(nfabor)
 double precision coefb_dp(nfabor)
 
@@ -218,8 +218,8 @@ double precision, allocatable, dimension(:) :: velflx, velflb, ddphi
 double precision, allocatable, dimension(:,:) :: coefar, cofafr
 double precision, allocatable, dimension(:,:,:) :: coefbr, cofbfr
 double precision, allocatable, dimension(:) :: adxk, adxkm1, dphim1, rhs0
-double precision, allocatable, dimension(:,:) :: weighf
-double precision, allocatable, dimension(:) :: weighb
+double precision, allocatable, dimension(:,:) :: weighf, weighftp
+double precision, allocatable, dimension(:) :: weighb, weighbtp
 double precision, dimension(:), pointer :: coefa_p, coefb_p
 double precision, dimension(:), pointer :: coefaf_p, coefbf_p
 double precision, allocatable, dimension(:) :: iflux, bflux
@@ -290,9 +290,9 @@ call field_get_coefaf_s(f_iddp, coefaf_dp)
 call field_get_coefbf_s(f_iddp, coefbf_dp)
 
 ! Associate pointers to pressure diffusion coefficient
-viscap => da_u(:)
+viscap => dt(:)
 if (iand(vcopt_p%idften, ANISOTROPIC_DIFFUSION).ne.0) then
-  vitenp => tpucou(:,:)!TODO FIXME
+  vitenp => tpucou(:,:)
 endif
 
 ! Index of the field
@@ -406,13 +406,13 @@ endif
 
 i_vof_mass_transfer = iand(ivofmt,VOF_MERKLE_MASS_TRANSFER)
 
-! Calculation of dt/rho (or 1/(rho a_u))
+! Calculation of dt/rho
 if (ivofmt.gt.0.or.idilat.eq.4) then
 
   if (iand(vcopt_p%idften, ISOTROPIC_DIFFUSION).ne.0) then
     allocate(xdtsro(ncelet))
     do iel = 1, ncel
-      xdtsro(iel) = da_u(iel)/crom(iel)
+      xdtsro(iel) = dt(iel)/crom(iel)
     enddo
     call synsca(xdtsro)
   elseif (iand(vcopt_p%idften, ANISOTROPIC_DIFFUSION).ne.0) then
@@ -608,7 +608,7 @@ if (iphydr.eq.1.or.iifren.eq.1) then
             ! the entrance
             kpdc = b_head_loss(ifac)
             rho = brom(ifac)
-            cfl = -(bmasfl(ifac)/surfbn(ifac)*dt(iel))    & !FIXME dt or viscap for VOF?
+            cfl = -(bmasfl(ifac)/surfbn(ifac)*dt(iel))    &
                 / (2.d0*rho*distb(ifac))*(1.d0 + kpdc)
 
             pimp = - cvar_pr(iel)                                              &
@@ -814,7 +814,7 @@ endif
 if (idilat.ge.4.or.ivofmt.gt.0) then
   if (arak.gt.0.d0 .and. iand(vcopt_p%idften, ISOTROPIC_DIFFUSION).ne.0) then
     do iel = 1, ncel
-      ardtsr  = arak * viscap(iel)
+      ardtsr  = arak * da_u(iel) / crom(iel)
       do isou = 1, 3
         trav(isou,iel) = ardtsr*trav(isou,iel)
       enddo
@@ -994,35 +994,44 @@ if (arak.gt.0.d0) then
   allocate(ipro_visc(nfac))
   allocate(bpro_visc(nfabor))
 
-  ! --- Prise en compte de Arak: la viscosite face est multipliee
-  !       Le pas de temps aussi.
-  do ifac = 1, nfac
-    ipro_visc(ifac) = arak*viscf(ifac)
-  enddo
-  do ifac = 1, nfabor
-    bpro_visc(ifac) = arak*viscb(ifac)
-  enddo
-
-  ! On annule la viscosite facette pour les faces couplees pour ne pas modifier
-  ! le flux de masse au bord dans le cas d'un dirichlet de pression: la correction
-  ! de pression et le filtre sont annules.
-  if (nbrcpl.gt.0) then
-    do ifac = 1, nfabor
-      if (itypfb(ifac).eq.icscpd) then
-        bpro_visc(ifac) = 0.d0
-      endif
-    enddo
-  endif
-
   ! Scalar diffusivity
   !-------------------
   if (iand(vcopt_p%idften, ISOTROPIC_DIFFUSION).ne.0) then
 
     allocate(cpro_visc(ncelet))
 
-    do iel = 1, ncel
-      cpro_visc(iel) = arak * viscap(iel)
-    enddo
+    if (idilat.eq.4.or.ivofmt.gt.0) then
+      do iel = 1, ncel
+        cpro_visc(iel) = arak * da_u(iel) / crom(iel)
+      enddo
+    else
+      do iel = 1, ncel
+        cpro_visc(iel) = arak * da_u(iel)
+      enddo
+    endif
+
+    if (ivofmt.gt.0) then
+      imvisp = 1  ! VOF algorithm: continuity of the flux across internal faces
+    else
+      imvisp = imvisf
+    endif
+
+    call viscfa &
+    !==========
+  ( imvisp ,               &
+    cpro_visc ,            &
+    ipro_visc , bpro_visc)
+
+    ! On annule la viscosite facette pour les faces couplees pour ne pas modifier
+    ! le flux de masse au bord dans le cas d'un dirichlet de pression: la correction
+    ! de pression et le filtre sont annules.
+    if (nbrcpl.gt.0) then
+      do ifac = 1, nfabor
+        if (itypfb(ifac).eq.icscpd) then
+          bpro_visc(ifac) = 0.d0
+        endif
+      enddo
+    endif
 
     imrgrp = vcopt_p%imrgra
     nswrgp = vcopt_p%nswrgr
@@ -1081,6 +1090,29 @@ if (arak.gt.0.d0) then
       cpro_vitenp(5,iel) = arak*vitenp(5,iel)
       cpro_vitenp(6,iel) = arak*vitenp(6,iel)
     enddo
+
+    allocate(weighftp(2,nfac))
+    allocate(weighbtp(ndimfb))
+
+    call vitens &
+    !==========
+   ( cpro_vitenp, iwarnp   ,             &
+     weighftp   , weighbtp ,             &
+     ipro_visc  , bpro_visc)
+
+    deallocate(weighftp)
+    deallocate(weighbtp)
+
+    ! On annule la viscosite facette pour les faces couplees pour ne pas modifier
+    ! le flux de masse au bord dans le cas d'un dirichlet de pression: la correction
+    ! de pression et le filtre sont annules.
+    if (nbrcpl.gt.0) then
+      do ifac = 1, nfabor
+        if (itypfb(ifac).eq.icscpd) then
+          bpro_visc(ifac) = 0.d0
+        endif
+      enddo
+    endif
 
     imrgrp = vcopt_p%imrgra
     nswrgp = vcopt_p%nswrgr
@@ -1327,15 +1359,13 @@ sinfo%rnsmbr = residu
 
 ! --- Norm resiudal
 ! Historical norm for the pressure step:
-!       div(rho u* + 1/a_u gradP^(n))-Gamma
-!       or
-!       i.e.  RHS of the pressure + div(1/a_u gradP^n) (otherwise there is a risk
+!       div(rho u* + dt gradP^(n))-Gamma
+!       i.e.  RHS of the pressure + div(dt gradP^n) (otherwise there is a risk
 !       a 0 norm at steady states...). Represents terms that pressure has to
 !       balance.
-!       Note 1/a_u is dt in the algorithm by default
 
 do iel = 1, ncel
-  dtsrom = da_u(iel) / crom(iel)
+  dtsrom = dt(iel) / crom(iel)
   do isou = 1, 3
     trav(isou, iel) = dtsrom * gradp(isou,iel)
   enddo
@@ -1385,8 +1415,8 @@ if (idilat.ge.4) then
   enddo
 endif
 
-! It is: div( 1/(a_u rho)*rho grad P) + div(rho u*) - Gamma
-! NB: if iphydr=1, div(rho u*) contains div(1/a_u d fext).
+! It is: div(dt/rho*rho grad P) + div(rho u*) - Gamma
+! NB: if iphydr=1, div(rho u*) contains div(dt d fext).
 do iel = 1, ncel
   res(iel) = res(iel) + cpro_divu(iel)
 enddo
@@ -1482,13 +1512,13 @@ do while (isweep.le.nswmpr.and.residu.gt.vcopt_p%epsrsm*rnormp)
 
   ! Solving on the increment dphi
   !-------------------------------
-  if (iswdyp.eq.0) then
+  if (iswdyp.ge.1) then
     do iel = 1, ncel
+      dphim1(iel) = dphi(iel)
       dphi(iel) = 0.d0
     enddo
   else
     do iel = 1, ncel
-      dphim1(iel) = dphi(iel)
       dphi(iel) = 0.d0
     enddo
   endif
@@ -1620,7 +1650,7 @@ do while (isweep.le.nswmpr.and.residu.gt.vcopt_p%epsrsm*rnormp)
   ! Update the increment of pressure
   !---------------------------------
 
-  if (iswdyp.eq.0) then
+  if (iswdyp.le.0) then
     if (idtvar.ge.0.and.isweep.le.nswmpr.and.residu.gt.vcopt_p%epsrsm*rnormp) then
       do iel = 1, ncel
         phia(iel) = phi(iel)
@@ -1646,7 +1676,7 @@ do while (isweep.le.nswmpr.and.residu.gt.vcopt_p%epsrsm*rnormp)
   endif
 
   ! --- Update the right hand side and update the residual
-  !      rhs^{k+1} = - div(rho u^n) - D(1/a_u, delta delta p^{k+1})
+  !      rhs^{k+1} = - div(rho u^n) - D(dt, delta delta p^{k+1})
   !-------------------------------------------------------------
 
   iccocg = 1

@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -398,7 +398,7 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
   cs_real_t *cvara_k  =  (cs_real_t *)f_k->val_pre;
   cs_real_t *cvar_ep  =  (cs_real_t *)f_eps->val;
   cs_real_t *cvara_ep =  (cs_real_t *)f_eps->val_pre;
-  cs_real_t *cvara_phi;
+  cs_real_t *cvara_phi = NULL;
   if (   cs_glob_turb_model->iturb == CS_TURB_V2F_PHI
       || cs_glob_turb_model->iturb == CS_TURB_V2F_BL_V2K){
     cvara_phi = (cs_real_t *)CS_F_(phi)->val_pre;
@@ -856,7 +856,7 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
   if (   cs_glob_turb_rans_model->igrake == 1
       && cs_glob_physical_model_flag[CS_ATMOSPHERIC] >= 1) {
 
-    cs_atprke(tinstk, smbrk, smbre);
+    cs_atmo_buoyancy_ke_prod(tinstk, smbrk, smbre);
 
     /* --- Buoyancy term     G = Beta*g.Grad(scalar)/prdtur/rho
        Here is computed  G =-g.grad(rho)/prdtur/rho */

@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -89,7 +89,7 @@ def process_cmd_line(argv, pkg):
 
     parser.add_option("--copy-ref", dest="use_ref",
                       action="store_true",
-                      help="don't copy references")
+                      help="copy references and examples")
 
     parser.add_option("-q", "--quiet",
                       action="store_const", const=0, dest="verbose",
@@ -308,13 +308,7 @@ class study:
 
         # Creating Cathare case
         if self.cat_case_name is not None:
-            config = configparser.ConfigParser()
-            config.read(self.package.get_configfiles())
-            if config.has_option('install', 'cathare'):
-                self.create_cathare_case(repbase, config.get('install', 'cathare'))
-            else:
-                sys.stderr.write("Cannot locate Cathare installation.")
-                sys.exit(1)
+            self.create_cathare_case(repbase)
 
         # Creating the Python script case
         if self.py_case_name is not None:
@@ -352,7 +346,7 @@ class study:
 
     #---------------------------------------------------------------------------
 
-    def create_cathare_case(self, repbase, cathare_path):
+    def create_cathare_case(self, repbase):
         """
         Create and initialize Cathare case directory for coupling.
         """
@@ -455,16 +449,8 @@ class study:
         if not os.path.isdir(resu):
             os.mkdir(resu)
 
-        if self.cat_case_name is not None:
-            config = configparser.ConfigParser()
-            config.read(self.package.get_configfiles())
-            cathare_libpath=config.get('install', 'cathare')
-        else:
-            cathare_libpath=None
-
         self.__build_run_cfg__(distrep = repbase,
-                               casename = 'coupling',
-                               cathare_path = cathare_libpath)
+                               casename = 'coupling')
 
         self.__coupled_run_cfg__(distrep = repbase,
                                  coupled_domains = coupled_domains)
@@ -643,8 +629,7 @@ class study:
 
     def __build_run_cfg__(self,
                           distrep,
-                          casename,
-                          cathare_path=None):
+                          casename):
         """
         Retrieve batch file for the current system
         Update batch file for the study
@@ -664,18 +649,6 @@ class study:
         run_conf = cs_run_conf.run_conf(run_conf_path,
                                         package=self.package,
                                         create_if_missing=True)
-
-        # If a cathare LIBPATH is given, it is added to LD_LIBRARY_PATH.
-        # This modification is needed for the dlopen of the cathare .so file
-        if cathare_path:
-            i_c = cs_run_conf.get_install_config_info(self.package)
-            resource_name = cs_run_conf.get_resource_name(i_c)
-            v25_3_line="export v25_3=%s\n" % cathare_path
-            new_line="export LD_PATH_LIBRARY=$v25_3/%s/"+":$LD_LIBRARY_PATH\n"
-            add_lines = v25_3_line
-            add_lines += new_line % ("lib")
-            add_lines += new_line % ("ICoCo/lib")
-            run_conf.set(resource_name, 'compute_prologue', add_lines)
 
         run_conf.save()
 

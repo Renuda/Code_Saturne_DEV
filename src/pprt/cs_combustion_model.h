@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -98,13 +98,17 @@ typedef struct {
 
 typedef struct {
 
+  int     n_coals;                  /*< number of coal types */
   int     nclacp;                   /*< number of coal classes */
 
-  /*! ashes concentration (kg/kg) */
-  double  xashch[CS_COMBUSTION_MAX_COALS];
+  /*! number of classes per coal */
+  int     n_classes_per_coal[CS_COMBUSTION_MAX_COALS];
 
   /*! coal id if considered class belongs to coal ich[1, 2, ...] */
   int     ichcor[CS_COMBUSTION_MAX_COAL_CLASSES];
+
+  /*! ashes concentration (kg/kg) */
+  double  xashch[CS_COMBUSTION_MAX_COALS];
 
   /*! initial diameter (m) */
   double  diam20[CS_COMBUSTION_MAX_COAL_CLASSES];
@@ -177,6 +181,15 @@ extern cs_combustion_model_t  *cs_glob_combustion_model;
 /*=============================================================================
  * Public function prototypes
  *============================================================================*/
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Print the combustion module options to setup.log.
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_combustion_log_setup(void);
 
 /*----------------------------------------------------------------------------*/
 

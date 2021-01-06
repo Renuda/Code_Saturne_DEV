@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -78,7 +78,7 @@ InitializationView.py \
 InterfacialEnthalpyView.py \
 InterfacialForcesView.py \
 InterfacialAreaView.py \
-LagrangianBoundariesView.py \
+LagrangianBoundaryView.py \
 LagrangianOutputView.py \
 LagrangianStatisticsView.py \
 LagrangianView.py \
@@ -122,7 +122,10 @@ OutputFieldsView.py \
 OpenTurnsDialogView.py \
 SolidView.py \
 ThermodynamicsView.py \
-TimeStepViewNeptune.py
+TimeStepViewNeptune.py \
+VolumicNatureView.py \
+BoundaryNatureView.py \
+VolumicConditionsView.py
 
 # PyQt User Interface files
 UIFILES = \
@@ -167,7 +170,7 @@ HeadLossesForm.ui \
 IdentityAndPathesForm.ui \
 ImmersedBoundariesNeptune.ui \
 InitializationForm.ui \
-LagrangianBoundariesForm.ui \
+LagrangianBoundaryForm.ui \
 LagrangianForm.ui \
 LagrangianOutputForm.ui \
 LagrangianStatisticsForm.ui \
@@ -229,7 +232,10 @@ BoundaryConditionsNonCondensable.ui \
 BoundaryConditionsScalar.ui \
 BoundaryConditionsWall.ui \
 BoundaryConditionsInterfacialArea.ui \
-TimeStep.ui
+TimeStep.ui \
+VolumicNatureForm.ui \
+BoundaryNatureForm.ui \
+VolumicConditionsForm.ui
 
 # PyQt Resources files
 

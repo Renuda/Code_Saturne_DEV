@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -129,8 +129,6 @@ if (iscalt.gt.0) then
 
   call field_get_key_int(f_id, kbmasf, iflmab)
   call field_get_val_s(iflmab, bmasfl)
-
-  call field_get_key_int(f_id, kscacp, iscacp)
 
   ! Compute variable values at boundary faces
 

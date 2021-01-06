@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -714,7 +714,7 @@ cs_mesh_coarsen_simple(cs_mesh_t  *m,
      0: total
   */
 
-  cs_timer_counter_t  timers[1];
+  cs_timer_counter_t  timers[2];
   for (int i = 0; i < 2; i++)
     CS_TIMER_COUNTER_INIT(timers[i]);
 
@@ -762,7 +762,7 @@ cs_mesh_coarsen_simple(cs_mesh_t  *m,
 
   BFT_FREE(c_o2n);
 
-  m->modified = CS_MAX(m->modified, 1);
+  m->modified |= (CS_MESH_MODIFIED | CS_MESH_MODIFIED_BALANCE);
 
   bft_printf("\nWarning mesh coarsening algorithm not complete yet\n");
 

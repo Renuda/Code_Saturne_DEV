@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -869,6 +869,57 @@ pressure = p0 + g * ro * z;\n"""
 
         return formula
 
+
+    def getCombustionFormulaComponents(self, zone, scalar):
+        exp = self.getCombustionFormula(zone, scalar)
+        if not exp:
+            exp = str(scalar)+""" = 0;\n"""
+        req = [(str(scalar), str(scalar))]
+        sym = [('x', 'cell center coordinate'),
+               ('y', 'cell center coordinate'),
+               ('z', 'cell center coordinate'),
+               ('volume', 'Zone volume')]
+
+        for (nme, val) in self.notebook.getNotebookList():
+            sym.append((nme, 'value (notebook) = ' + str(val)))
+
+        return exp, req, sym
+
+
+    @Variables.undoLocal
+    def setCombustionFormula(self, zone, scalar, formula):
+        """
+        Public method.
+        Set the formula for a gas combustion variable.
+        """
+        self.__verifyZone(zone)
+        self.isInList(scalar, DefineUserScalarsModel( self.case).getGasCombScalarsNameList())
+        node_gas = self.models.xmlGetNode('gas_combustion')
+        node = node_gas.xmlGetNode('variable', name = str(scalar))
+        if not node:
+            msg = "There is an error: this node " + str(node) + "should be present"
+            raise ValueError(msg)
+        n = node.xmlInitChildNode('formula', zone_id=zone)
+        n.xmlSetTextNode(formula)
+
+
+    @Variables.noUndo
+    def getCombustionFormula(self, zone, scalar):
+        """
+        Public method.
+        Return the formula for a gas combustion variable.
+        """
+        self.__verifyZone(zone)
+        self.isInList(scalar, DefineUserScalarsModel( self.case).getGasCombScalarsNameList())
+        node_gas = self.models.xmlGetNode('gas_combustion')
+        node = node_gas.xmlGetNode('variable', name = str(scalar))
+        if not node:
+            msg = "There is an error: this node " + str(node) + " should be present"
+            raise ValueError(msg)
+
+        formula = node.xmlGetString('formula', zone_id=zone)
+
+        return formula
 
 #-------------------------------------------------------------------------------
 # InitializationModel test case

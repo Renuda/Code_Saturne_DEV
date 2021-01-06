@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -45,9 +45,6 @@
 #include "cs_blas.h"
 #include "cs_boundary_zone.h"
 #include "cs_cdo_local.h"
-#if defined(DEBUG) && !defined(NDEBUG)
-#include "cs_dbg.h"
-#endif
 #include "cs_log.h"
 #include "cs_math.h"
 #include "cs_parall.h"
@@ -445,12 +442,10 @@ cs_equation_sync_rhs_normalization(cs_param_resnorm_type_t    type,
  * \param[in]      rhs_redux  do or not a parallel sum reduction on the RHS
  * \param[in, out] x          array of unknowns (in: initial guess)
  * \param[in, out] b          right-hand side
- *
- * \returns the number of non-zeros in the matrix
  */
 /*----------------------------------------------------------------------------*/
 
-cs_gnum_t
+void
 cs_equation_prepare_system(int                     stride,
                            cs_lnum_t               x_size,
                            const cs_matrix_t      *matrix,
@@ -475,8 +470,8 @@ cs_equation_prepare_system(int                     stride,
                 cs_matrix_get_n_columns(matrix));
 #endif
 
-  if (cs_glob_n_ranks > 1) { /* Parallel mode */
-                             /* ============= */
+  if (rset != NULL) { /* Parallel or periodic mode
+                         ========================= */
 
     /* x and b should be changed to have a "gathered" view through the range set
        operation.  Their size is equal to n_sles_gather_elts <=
@@ -492,7 +487,7 @@ cs_equation_prepare_system(int                     stride,
     /* The right-hand side stems from a cellwise building on this rank.
        Other contributions from distant ranks may contribute to an element
        owned by the local rank */
-    if (rhs_redux)
+    if (rhs_redux && rset->ifs != NULL)
       cs_interface_set_sum(rset->ifs,
                            n_scatter_elts, stride, false, CS_REAL_TYPE,
                            b);
@@ -504,23 +499,82 @@ cs_equation_prepare_system(int                     stride,
                         b);          /* out: size = n_sles_gather_elts */
   }
 
-  /* Output information related to the linear system */
+#if defined(DEBUG) && !defined(NDEBUG) && CS_EQUATION_COMMON_DBG > 2
   const cs_lnum_t  *row_index, *col_id;
   const cs_real_t  *d_val, *x_val;
 
   cs_matrix_get_msr_arrays(matrix, &row_index, &col_id, &d_val, &x_val);
 
-#if defined(DEBUG) && !defined(NDEBUG) && CS_EQUATION_COMMON_DBG > 2
   cs_dbg_dump_linear_system("Dump linear system",
                             n_gather_elts, CS_EQUATION_COMMON_DBG,
                             x, b,
                             row_index, col_id, x_val, d_val);
 #endif
+}
 
-  cs_gnum_t  nnz = row_index[n_gather_elts];
-  cs_parall_counter(&nnz, 1);
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Solve a linear system arising with scalar-valued cell-based DoFs
+ *
+ * \param[in]  n_dofs         local number of DoFs
+ * \param[in]  slesp          pointer to a cs_param_sles_t structure
+ * \param[in]  matrix         pointer to a cs_matrix_t structure
+ * \param[in]  normalization  value used for the residual normalization
+ * \param[in, out] sles       pointer to a cs_sles_t structure
+ * \param[in, out] x          solution of the linear system (in: initial guess)
+ * \param[in, out] b          right-hand side (scatter/gather if needed)
+ *
+ * \return the number of iterations of the linear solver
+ */
+/*----------------------------------------------------------------------------*/
 
-  return nnz;
+int
+cs_equation_solve_scalar_cell_system(cs_lnum_t                n_dofs,
+                                     const cs_param_sles_t   *slesp,
+                                     const cs_matrix_t       *matrix,
+                                     cs_real_t                normalization,
+                                     cs_sles_t               *sles,
+                                     cs_real_t               *x,
+                                     cs_real_t               *b)
+{
+  assert(n_dofs == cs_matrix_get_n_rows(matrix));
+
+  /* Retrieve the solving info structure stored in the cs_field_t structure */
+  cs_solving_info_t  sinfo;
+  cs_field_t  *fld = NULL;
+  if (slesp->field_id > -1) {
+    fld = cs_field_by_id(slesp->field_id);
+    cs_field_get_key_struct(fld, cs_field_key_id("solving_info"), &sinfo);
+  }
+
+  sinfo.n_it = 0;
+  sinfo.res_norm = DBL_MAX;
+  sinfo.rhs_norm = normalization;
+
+  /* Solve the linear solver */
+  cs_sles_convergence_state_t  code = cs_sles_solve(sles,
+                                                    matrix,
+                                                    CS_HALO_ROTATION_IGNORE,
+                                                    slesp->eps,
+                                                    sinfo.rhs_norm,
+                                                    &(sinfo.n_it),
+                                                    &(sinfo.res_norm),
+                                                    b,
+                                                    x,
+                                                    0,      /* aux. size */
+                                                    NULL);  /* aux. buffers */
+
+  /* Output information about the convergence of the resolution */
+  if (slesp->verbosity > 0)
+    cs_log_printf(CS_LOG_DEFAULT, "  <%20s/sles_cvg_code=%-d> n_iters %d |"
+                  " residual % -8.4e | normalization % -8.4e\n",
+                  slesp->name, code,
+                  sinfo.n_it, sinfo.res_norm, sinfo.rhs_norm);
+
+  if (slesp->field_id > -1)
+    cs_field_set_key_struct(fld, cs_field_key_id("solving_info"), &sinfo);
+
+  return (sinfo.n_it);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -529,7 +583,7 @@ cs_equation_prepare_system(int                     stride,
  *         degrees of freedom
  *
  * \param[in]  n_scatter_dofs local number of DoFs (may be != n_gather_elts)
- * \param[in]  eqp            pointer to a cs_equation_param_t structure
+ * \param[in]  slesp          pointer to a cs_param_sles_t structure
  * \param[in]  matrix         pointer to a cs_matrix_t structure
  * \param[in]  rs             pointer to a cs_range_set_t structure
  * \param[in]  normalization  value used for the residual normalization
@@ -544,7 +598,7 @@ cs_equation_prepare_system(int                     stride,
 
 int
 cs_equation_solve_scalar_system(cs_lnum_t                     n_scatter_dofs,
-                                const cs_equation_param_t    *eqp,
+                                const cs_param_sles_t        *slesp,
                                 const cs_matrix_t            *matrix,
                                 const cs_range_set_t         *rset,
                                 cs_real_t                     normalization,
@@ -554,7 +608,6 @@ cs_equation_solve_scalar_system(cs_lnum_t                     n_scatter_dofs,
                                 cs_real_t                    *b)
 {
   const cs_lnum_t  n_cols = cs_matrix_get_n_columns(matrix);
-  const cs_param_sles_t  slesp = eqp->sles_param;
 
   /* Set xsol */
   cs_real_t  *xsol = NULL;
@@ -567,7 +620,7 @@ cs_equation_solve_scalar_system(cs_lnum_t                     n_scatter_dofs,
     xsol = x;
 
   /* Retrieve the solving info structure stored in the cs_field_t structure */
-  cs_field_t  *fld = cs_field_by_id(slesp.field_id);
+  cs_field_t  *fld = cs_field_by_id(slesp->field_id);
   cs_solving_info_t  sinfo;
   cs_field_get_key_struct(fld, cs_field_key_id("solving_info"), &sinfo);
 
@@ -575,20 +628,16 @@ cs_equation_solve_scalar_system(cs_lnum_t                     n_scatter_dofs,
   sinfo.res_norm = DBL_MAX;
   sinfo.rhs_norm = normalization;
 
-  /* Prepare solving (handle parallelism) */
-  cs_gnum_t  nnz = cs_equation_prepare_system(1, /* stride for scalar-valued */
-                                              n_scatter_dofs,
-                                              matrix,
-                                              rset,
-                                              rhs_redux,
-                                              xsol,
-                                              b);
+  /* Prepare solving (handle parallelism)
+   * stride = 1 for scalar-valued */
+  cs_equation_prepare_system(1, n_scatter_dofs, matrix, rset, rhs_redux,
+                             xsol, b);
 
   /* Solve the linear solver */
   cs_sles_convergence_state_t  code = cs_sles_solve(sles,
                                                     matrix,
                                                     CS_HALO_ROTATION_IGNORE,
-                                                    slesp.eps,
+                                                    slesp->eps,
                                                     sinfo.rhs_norm,
                                                     &(sinfo.n_it),
                                                     &(sinfo.res_norm),
@@ -598,24 +647,22 @@ cs_equation_solve_scalar_system(cs_lnum_t                     n_scatter_dofs,
                                                     NULL);  /* aux. buffers */
 
   /* Output information about the convergence of the resolution */
-  if (slesp.verbosity > 0)
-    cs_log_printf(CS_LOG_DEFAULT, "  <%s/sles_cvg> code %-d | n_iters %d"
-                  " residual % -8.4e | normalization % -8.4e | nnz %lu\n",
-                  eqp->name, code, sinfo.n_it, sinfo.res_norm, sinfo.rhs_norm,
-                  nnz);
+  if (slesp->verbosity > 0)
+    cs_log_printf(CS_LOG_DEFAULT, "  <%20s/sles_cvg_code=%-d> n_iters %d |"
+                  " residual % -8.4e | normalization % -8.4e\n",
+                  slesp->name, code,
+                  sinfo.n_it, sinfo.res_norm, sinfo.rhs_norm);
 
-  if (cs_glob_n_ranks > 1) { /* Parallel mode */
-    cs_range_set_scatter(rset,
-                         CS_REAL_TYPE, 1, /* type and stride */
-                         xsol, x);
-    cs_range_set_scatter(rset,
-                         CS_REAL_TYPE, 1, /* type and stride */
-                         b, b);
-  }
+  cs_range_set_scatter(rset,
+                       CS_REAL_TYPE, 1, /* type and stride */
+                       xsol, x);
+  cs_range_set_scatter(rset,
+                       CS_REAL_TYPE, 1, /* type and stride */
+                       b, b);
 
 #if defined(DEBUG) && !defined(NDEBUG) && CS_EQUATION_COMMON_DBG > 1
-  cs_dbg_fprintf_system(eqp->name, cs_shared_time_step->nt_cur,
-                        slesp.verbosity,
+  cs_dbg_fprintf_system(slesp->name, cs_shared_time_step->nt_cur,
+                        slesp->verbosity,
                         x, b, n_scatter_dofs);
 #endif
 
@@ -1163,20 +1210,20 @@ void
 cs_equation_balance_sync(const cs_cdo_connect_t    *connect,
                          cs_equation_balance_t     *b)
 {
-  if (cs_glob_n_ranks < 2)
-    return;
   if (b == NULL)
     bft_error(__FILE__, __LINE__, 0, " %s: structure not allocated", __func__);
 
   if (cs_flag_test(b->location, cs_flag_primal_vtx)) {
 
     assert(b->size == connect->n_vertices);
-    cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
-                         b->size,
-                         7,   /* stride: 1 for each kind of balance */
-                         false,
-                         CS_REAL_TYPE,
-                         b->balance);
+
+    if (connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL)
+      cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
+                           b->size,
+                           7,   /* stride: 1 for each kind of balance */
+                           false,
+                           CS_REAL_TYPE,
+                           b->balance);
 
   }
 
@@ -1262,18 +1309,14 @@ cs_equation_sync_vol_def_at_vertices(const cs_cdo_connect_t  *connect,
 
   } /* Loop on definitions */
 
-  if (cs_glob_n_ranks > 1) { /* Parallel mode */
-
-    assert(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL);
-    /* Last definition is used if there is a conflict between several
-       definitions */
+  if (connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL) {
+    /* Last definition is used in case of conflict */
     cs_interface_set_max(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                          n_vertices,
                          1,             /* stride */
                          false,         /* interlace (not useful here) */
                          CS_INT_TYPE,   /* int */
                          v2def_ids);
-
   }
 
   /* 0. Initialization */
@@ -1363,18 +1406,14 @@ cs_equation_sync_vol_def_at_edges(const cs_cdo_connect_t  *connect,
 
   } /* Loop on definitions */
 
-  if (cs_glob_n_ranks > 1) { /* Parallel mode */
-
-    assert(connect->interfaces[CS_CDO_CONNECT_EDGE_SCAL] != NULL);
-    /* Last definition is used if there is a conflict between several
-       definitions */
+  if (connect->interfaces[CS_CDO_CONNECT_EDGE_SCAL] != NULL) {
+    /* Last definition is used in case of conflict */
     cs_interface_set_max(connect->interfaces[CS_CDO_CONNECT_EDGE_SCAL],
                          n_edges,
                          1,             /* stride */
                          false,         /* interlace (not useful here) */
                          CS_INT_TYPE,   /* int */
                          e2def_ids);
-
   }
 
   /* 0. Initialization */
@@ -1464,18 +1503,14 @@ cs_equation_sync_vol_def_at_faces(const cs_cdo_connect_t    *connect,
 
   } /* Loop on definitions */
 
-  if (cs_glob_n_ranks > 1) { /* Parallel mode */
-
-    assert(connect->interfaces[CS_CDO_CONNECT_FACE_SP0] != NULL);
-    /* Last definition is used if there is a conflict between several
-       definitions */
+  if (connect->interfaces[CS_CDO_CONNECT_FACE_SP0] != NULL) {
+    /* Last definition is used in case of conflict */
     cs_interface_set_max(connect->interfaces[CS_CDO_CONNECT_FACE_SP0],
                          n_faces,
                          1,             /* stride */
                          false,         /* interlace (not useful here) */
                          CS_INT_TYPE,   /* int */
                          f2def_ids);
-
   }
 
   /* 0. Initialization */
@@ -1526,9 +1561,7 @@ cs_equation_sync_vertex_mean_values(const cs_cdo_connect_t     *connect,
 {
   const cs_lnum_t  n_vertices = connect->n_vertices;
 
-  if (cs_glob_n_ranks > 1) { /* Parallel mode */
-
-    assert(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL);
+  if (connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL) {
 
     cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                          n_vertices,

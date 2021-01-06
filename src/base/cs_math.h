@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -638,6 +638,22 @@ cs_math_sym_33_3_product_add(const cs_real_t  m[6],
   mv[0] += m[0] * v[0] + m[3] * v[1] + m[5] * v[2];
   mv[1] += m[3] * v[0] + m[1] * v[1] + m[4] * v[2];
   mv[2] += m[5] * v[0] + m[4] * v[1] + m[2] * v[2];
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Compute the trace of a symmetric tensor.
+ *
+ * \param[in]   t   vector of 6 real values (symmetric tensor)
+ *
+ * \return trace (t[0] + t[1] + t[2])
+ */
+/*----------------------------------------------------------------------------*/
+
+static inline cs_real_t
+cs_math_6_trace(const cs_real_t  t[6])
+{
+  return (t[0] + t[1] + t[2]);
 }
 
 /*----------------------------------------------------------------------------*/

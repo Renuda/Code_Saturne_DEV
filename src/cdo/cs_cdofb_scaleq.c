@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -359,29 +359,18 @@ _sfb_conv_diff_reac(const cs_equation_param_t     *eqp,
   if (cs_equation_param_has_convection(eqp) &&
       ((cb->cell_flag & CS_FLAG_SOLID_CELL) == 0)) {  /* ADVECTION TERM
                                                        * ============== */
+    /* Open hook: Compute the advection flux for the numerical scheme and store
+       the advection fluxes across primal faces */
+    eqc->advection_open(eqp, cm, csys, eqc->advection_input, cb);
 
     /* Define the local advection matrix and store the advection fluxes across
        primal faces (Boundary conditions are treated at this stage since there
        are always weakly enforced) */
-    eqc->advection_build(eqp, cm, csys, eqc->advection_func, cb);
+    eqc->advection_build(eqp, cm, csys, eqc->advection_scheme, cb);
 
-    /* Add it to the local system */
-    if (eqp->adv_scaling_property == NULL)
-      cs_sdm_add(csys->mat, cb->loc);
-
-    else {
-
-      if (cs_property_is_uniform(eqp->adv_scaling_property))
-        cs_sdm_add_mult(csys->mat,
-                        eqp->adv_scaling_property->ref_value, cb->loc);
-      else {
-        cs_real_t scaling = cs_property_value_in_cell(cm,
-                                                      eqp->adv_scaling_property,
-                                                      cb->t_pty_eval);
-        cs_sdm_add_mult(csys->mat, scaling, cb->loc);
-      }
-
-    }
+    /* Close hook: Modify if needed the computed advection matrix and update
+       the local system */
+    eqc->advection_close(eqp, cm, csys, cb, cb->loc);
 
 #if defined(DEBUG) && !defined(NDEBUG) && CS_CDOFB_SCALEQ_DBG > 1
     if (cs_dbg_cw_test(eqp, cm, csys))
@@ -1062,7 +1051,7 @@ cs_cdofb_scaleq_init_context(const cs_equation_param_t   *eqp,
                                            CS_CDO_CONNECT_FACE_SP0);
 
   /* Renormalization of the residual */
-  if (eqp->sles_param.resnorm_type == CS_PARAM_RESNORM_WEIGHTED_RHS)
+  if (eqp->sles_param->resnorm_type == CS_PARAM_RESNORM_WEIGHTED_RHS)
     eqb->msh_flag |= CS_FLAG_COMP_PFC;
 
   return eqc;
@@ -1405,7 +1394,7 @@ cs_cdofb_scaleq_interpolate(const cs_mesh_t            *mesh,
 
       /* Compute a cellwise norm of the RHS for the normalization of the
          residual during the resolution of the linear system */
-      rhs_norm += _sfb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _sfb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                             cm, csys);
 
       /* Remaining part of boundary conditions */
@@ -1438,15 +1427,15 @@ cs_cdofb_scaleq_interpolate(const cs_mesh_t            *mesh,
   /* ======================= */
 
   /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      n_faces,
                                      rhs,
                                      &rhs_norm);
 
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(n_faces,
-                                  eqp,
+                                  eqp->sles_param,
                                   matrix,
                                   rs,
                                   rhs_norm,
@@ -1623,7 +1612,7 @@ cs_cdofb_scaleq_solve_steady_state(bool                        cur2prev,
 
       /* Compute a cellwise norm of the RHS for the normalization of the
          residual during the resolution of the linear system */
-      rhs_norm += _sfb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _sfb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                             cm, csys);
 
       /* Remaining part of boundary conditions */
@@ -1659,15 +1648,15 @@ cs_cdofb_scaleq_solve_steady_state(bool                        cur2prev,
   /* ======================= */
 
   /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      n_faces,
                                      rhs,
                                      &rhs_norm);
 
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(n_faces,
-                                  eqp,
+                                  eqp->sles_param,
                                   matrix,
                                   rs,
                                   rhs_norm,
@@ -1901,7 +1890,7 @@ cs_cdofb_scaleq_solve_implicit(bool                        cur2prev,
 
       /* Compute a cellwise norm of the RHS for the normalization of the
          residual during the resolution of the linear system */
-      rhs_norm += _sfb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _sfb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                             cm, csys);
 
       /* Remaining part of BOUNDARY CONDITIONS
@@ -1940,15 +1929,15 @@ cs_cdofb_scaleq_solve_implicit(bool                        cur2prev,
   /* ======================= */
 
     /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      n_faces,
                                      rhs,
                                      &rhs_norm);
 
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(n_faces,
-                                  eqp,
+                                  eqp->sles_param,
                                   matrix,
                                   rs,
                                   rhs_norm,
@@ -2235,7 +2224,7 @@ cs_cdofb_scaleq_solve_theta(bool                        cur2prev,
 
       /* Compute a cellwise norm of the RHS for the normalization of the
          residual during the resolution of the linear system */
-      rhs_norm += _sfb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _sfb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                             cm, csys);
 
       /* Remaining part of BOUNDARY CONDITIONS
@@ -2272,15 +2261,15 @@ cs_cdofb_scaleq_solve_theta(bool                        cur2prev,
   /* ======================= */
 
   /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      n_faces,
                                      rhs,
                                      &rhs_norm);
 
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(n_faces,
-                                  eqp,
+                                  eqp->sles_param,
                                   matrix,
                                   rs,
                                   rhs_norm,
@@ -2376,7 +2365,7 @@ cs_cdofb_scaleq_balance(const cs_equation_param_t     *eqp,
       cb->t_st_eval = t_cur + dt_cur;
       break;
 
-    default:                  /* Implicit */
+    default:                    /* Implicit (Forward Euler or BDF2) */
       cb->t_pty_eval = t_cur + dt_cur;
       cb->t_bc_eval = t_cur + dt_cur;
       cb->t_st_eval = t_cur + dt_cur;
@@ -2475,7 +2464,7 @@ cs_cdofb_scaleq_balance(const cs_equation_param_t     *eqp,
           p_theta[i] = eqp->theta*p_cur[i] + (1-eqp->theta)*p_prev[i];
         break;
 
-      default:                  /* Implicit */
+      default:                  /* Implicit (Euler or BDF2) */
         for (short int i = 0; i < cm->n_fc + 1; i++)
           p_theta[i] = p_cur[i];
         break;
@@ -2524,7 +2513,7 @@ cs_cdofb_scaleq_balance(const cs_equation_param_t     *eqp,
            since there are always weakly enforced) */
 
         /* TODO: Boundary condition and csys --> set to NULL up to now */
-        eqc->advection_build(eqp, cm, NULL, eqc->advection_func, cb);
+        eqc->advection_build(eqp, cm, NULL, eqc->advection_scheme, cb);
 
         cs_real_t  *res = cb->values;
         memset(res, 0, (cm->n_fc + 1)*sizeof(cs_real_t));

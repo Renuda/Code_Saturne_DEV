@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1113,7 +1113,6 @@ _cs_io_convert_read(void           *buffer,
                     cs_datatype_t   dest_type)
 {
   cs_file_off_t ii;
-  size_t buffer_type_size = cs_datatype_size[buffer_type];
 
   assert(dest_type != buffer_type);
 

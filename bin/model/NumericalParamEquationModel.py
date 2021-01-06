@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -152,7 +152,7 @@ class NumericalParamEquationModel(Model):
                         self.default['min_value'] = 0
                         self.default['max_value'] = 1e+12
                     elif mdl =='enthalpy':
-                        self.default['min_value'] = 0
+                        self.default['min_value'] = -1e+12
                         self.default['max_value'] = 1e+12
                     elif mdl =='potential_temperature':
                         self.default['min_value'] = 0

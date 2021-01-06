@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -208,6 +208,7 @@ _get_time_eval(const cs_gwf_t  *const gw,
   case CS_TIME_SCHEME_EULER_EXPLICIT:
   case CS_TIME_SCHEME_THETA:    /* One assumes that theta != 0 and != 1 */
   case CS_TIME_SCHEME_CRANKNICO:
+  case CS_TIME_SCHEME_BDF2:
     theta = cs_equation_get_theta_time_val(gw->richards);
     t_eval = t_cur + theta*dt_cur;
     break;

@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -92,7 +92,8 @@ if ( ippmod(icod3p).ge.0 ) then
   ! ---- Variance du taux de melange
   !        Type de clipping superieur pour la variance
   !        0 pas de clipping, 1 clipping var max de fm, 2 clipping a SCAMAX
-  iclvfl(ifp2m) = 1
+  !iclvfl(ifp2m) = 1
+  iclvfl(ifp2m) = 2
   !        scamin(ifp2m) = 0.d0
   !        scamax(ifp2m) = 0.25D0
 

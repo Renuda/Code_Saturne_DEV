@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -65,6 +65,7 @@ cs_mesh_bad_cells.h \
 cs_mesh_boundary.h \
 cs_mesh_boundary_layer.h \
 cs_mesh_builder.h \
+cs_mesh_cartesian.h \
 cs_mesh_coherency.h \
 cs_mesh_coarsen.h \
 cs_mesh_connect.h \
@@ -109,6 +110,7 @@ cs_mesh_bad_cells.c \
 cs_mesh_boundary.c \
 cs_mesh_boundary_layer.c \
 cs_mesh_builder.c \
+cs_mesh_cartesian.c \
 cs_mesh_coarsen.c \
 cs_mesh_coherency.c \
 cs_mesh_connect.c \

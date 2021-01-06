@@ -4,7 +4,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -284,10 +284,8 @@ enddo
 !< [usstr2_example_1]
 
 ! --- Example 1): In following example structure '1' is defined as an isotropic
-!     system (i.e. matrices M, C and K are diagonal) : mass equals 5 kg,
-!     stiffness equals 2 N/m and friction
-!     =  =     =
-!     coefficient equals 3 kg.s .
+!     system (i.e. matrices M, C and K are diagonal): mass equals 5 kg,
+!     damping coefficient equals 2 N.s/m and stiffness equals 3 N/m.
 
 do ii = 1, 3
   xmstru(ii,ii,1) = 5.d0

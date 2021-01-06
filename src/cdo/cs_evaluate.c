@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -337,7 +337,7 @@ _tag_geometric_entities(cs_lnum_t          n_elts,
   BFT_FREE(c_tags);
 
   /* Handle parallelism (always the scalar interface) */
-  if (cs_glob_n_ranks > 1)
+  if (cs_cdo_connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL)
     cs_interface_set_max(cs_cdo_connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                          n_vertices,
                          1,           /* stride */
@@ -393,8 +393,7 @@ _pvsp_by_qov(const cs_real_t    quantity_val,
   } /* Loop on selected cells */
 
   /* Handle parallelism */
-  if (cs_glob_n_ranks > 1)
-    cs_parall_sum(1, CS_DOUBLE, &volume_marked);
+  cs_parall_sum(1, CS_DOUBLE, &volume_marked);
 
   cs_real_t  val_to_set = quantity_val;
   if (volume_marked > 0)
@@ -1436,7 +1435,7 @@ cs_evaluate_set_shared_pointers(const cs_cdo_quantities_t    *quant,
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief  Compute reduced quantities for an array of size equal to dim * n_x
- *         The quantities computed are synchronized in parallel.
+ *         The computed quantities are synchronized in parallel.
  *
  * \param[in]      dim     local array dimension (max: 3)
  * \param[in]      n_x     number of elements
@@ -1487,7 +1486,7 @@ cs_evaluate_array_reduction(int                     dim,
  *         face or edge DoFs
  *         The weight to apply to each entity x is scanned using the adjacency
  *         structure. array size is equal to dim * n_x
- *         The quantities computed are synchronized in parallel.
+ *         The computed quantities are synchronized in parallel.
  *
  * \param[in]      dim     local array dimension (max: 3)
  * \param[in]      n_x     number of elements
@@ -1538,10 +1537,10 @@ cs_evaluate_scatter_array_reduction(int                     dim,
 /*!
  * \brief  Compute the weighted L2-norm of an array. The weight is scanned
  *         by a \ref cs_adjacency_t structure
- *         The quantities computed are synchronized in parallel.
+ *         The computed quantities are synchronized in parallel.
  *
  * \param[in]  array   array to analyze
- * \param[in]  c2x     ajacency structure from cell to x entities (mandatory)
+ * \param[in]  c2x     adjacency structure from cell to x entities (mandatory)
  * \param[in]  w_c2x   weight to apply (mandatory), scanned by c2x
  *
  * \return the square weighted L2-norm
@@ -1615,8 +1614,7 @@ cs_evaluate_square_wc2x_norm(const cs_real_t        *array,
   } /* OpenMP block */
 
   /* Parallel treatment */
-  if (cs_glob_n_ranks > 1)
-    cs_parall_sum(1, CS_REAL_TYPE, &l2norm);
+  cs_parall_sum(1, CS_REAL_TYPE, &l2norm);
 
   return (cs_real_t)l2norm;
 }
@@ -1626,10 +1624,10 @@ cs_evaluate_square_wc2x_norm(const cs_real_t        *array,
  * \brief  Compute the weighted L2-norm of an array. The weight is scanned
  *         by a \ref cs_adjacency_t structure.
  *         Case of a vector-valued array.
- *         The quantities computed are synchronized in parallel.
+ *         The computed quantities are synchronized in parallel.
  *
  * \param[in]  array   array to analyze
- * \param[in]  c2x     ajacency structure from cell to x entities (mandatory)
+ * \param[in]  c2x     adjacency structure from cell to x entities (mandatory)
  * \param[in]  w_c2x   weight to apply (mandatory), scanned by c2x
  *
  * \return the square weighted L2-norm
@@ -1710,13 +1708,94 @@ cs_evaluate_3_square_wc2x_norm(const cs_real_t        *array,
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief  Compute the weighted L2-norm of the magnitude of vector-valued
+ *         array. A weight has to be given as parameter.
+ *         The computed quantities are synchronized in parallel.
+ *
+ * \param[in]  size    size of the weight array
+ * \param[in]  weight  weight to apply (mandatory)
+ * \param[in]  array   array to analyze (array size = 3*size)
+ *
+ * \return the square weighted L2-norm
+ */
+/*----------------------------------------------------------------------------*/
+
+cs_real_t
+cs_evaluate_3_square_weighted_norm(cs_lnum_t               size,
+                                   const cs_real_t        *weight,
+                                   const cs_real_t        *array)
+{
+  /*
+   * The algorithm used is l3superblock60, based on the article:
+   * "Reducing Floating Point Error in Dot Product Using the Superblock Family
+   * of Algorithms" by Anthony M. Castaldo, R. Clint Whaley, and Anthony
+   * T. Chronopoulos, SIAM J. SCI. COMPUT., Vol. 31, No. 2, pp. 1156--1174
+   * 2008 Society for Industrial and Applied Mathematics
+   */
+
+  double  l2norm = 0;
+
+# pragma omp parallel reduction(+:l2norm) if (size > CS_THR_MIN)
+  {
+    cs_lnum_t s_id, e_id;
+    _thread_range(size, &s_id, &e_id);
+
+    const cs_lnum_t  n = e_id - s_id;
+    const cs_real_t  *_w = weight + s_id;
+    const cs_lnum_t  block_size = CS_SBLOCK_BLOCK_SIZE;
+    const cs_lnum_t  n_blocks = (n + block_size - 1) / block_size;
+    const cs_lnum_t  n_sblocks = (n_blocks > 3) ? sqrt(n_blocks) : 1;
+    const cs_lnum_t  blocks_in_sblocks =
+      (n + block_size*n_sblocks - 1) / (block_size*n_sblocks);
+
+    cs_lnum_t  shift = 0;
+
+    for (cs_lnum_t s = 0; s < n_sblocks; s++) { /* Loop on slices */
+
+      double  s_l2norm = 0.0;
+
+      for (cs_lnum_t b_id = 0; b_id < blocks_in_sblocks; b_id++) {
+
+        const cs_lnum_t  start_id = shift;
+        shift += block_size;
+        if (shift > n)
+          shift = n, b_id = blocks_in_sblocks;
+        const cs_lnum_t  end_id = shift;
+
+        double  _l2norm = 0.0;
+        for (cs_lnum_t j = start_id; j < end_id; j++) {
+
+          const cs_real_t  *v = array + 3*j;
+
+          _l2norm += _w[j] * cs_math_3_square_norm(v);
+
+        } /* Loop on block_size */
+
+        s_l2norm += _l2norm;
+
+      } /* Loop on blocks */
+
+      l2norm += s_l2norm;
+
+    } /* Loop on super-blocks */
+
+  } /* OpenMP block */
+
+  /* Parallel treatment */
+  cs_parall_sum(1, CS_DOUBLE, &l2norm);
+
+  return (cs_real_t)l2norm;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
  * \brief  Compute the norm of the difference of two arrays scanne by the same
  *         \ref cs_adjacency_t structure with the reference array.
- *         The quantities computed are synchronized in parallel.
+ *         The computed quantities are synchronized in parallel.
  *
  * \param[in]  array   array to analyze
  * \param[in]  ref     array used for normalization and difference
- * \param[in]  c2x     ajacency structure from cell to x entities (mandatory)
+ * \param[in]  c2x     adjacency structure from cell to x entities (mandatory)
  * \param[in]  w_c2x   weight to apply (mandatory), scanned by c2x
  *
  * \return the computed square weighted and normalized L2-norm of the
@@ -1804,11 +1883,11 @@ cs_evaluate_delta_square_wc2x_norm(const cs_real_t        *array,
  * \brief  Compute the relative norm of the difference of two arrays scanned
  *         by the same \ref cs_adjacency_t structure. Normalization is done
  *         with the reference array.
- *         The quantities computed are synchronized in parallel.
+ *         The computed quantities are synchronized in parallel.
  *
  * \param[in]  array   array to analyze
  * \param[in]  ref     array used for normalization and difference
- * \param[in]  c2x     ajacency structure from cell to x entities (mandatory)
+ * \param[in]  c2x     adjacency structure from cell to x entities (mandatory)
  * \param[in]  w_c2x   weight to apply (mandatory), scanned by c2x
  *
  * \return the computed square weighted and normalized L2-norm of the
@@ -1908,12 +1987,12 @@ cs_evaluate_delta_square_wc2x_rnorm(const cs_real_t        *array,
  * \brief  Compute the relative norm of the difference of two arrays scanned
  *         by the same \ref cs_adjacency_t structure. Normalization is done
  *         with the reference array.
- *         The quantities computed are synchronized in parallel.
+ *         The computed quantities are synchronized in parallel.
  *         Case of vector-valued arrays.
  *
  * \param[in]  array   array to analyze
  * \param[in]  ref     array used for normalization and difference
- * \param[in]  c2x     ajacency structure from cell to x entities (mandatory)
+ * \param[in]  c2x     adjacency structure from cell to x entities (mandatory)
  * \param[in]  w_c2x   weight to apply (mandatory), scanned by c2x
  *
  * \return the computed square weighted and normalized L2-norm of the
@@ -3275,8 +3354,7 @@ cs_evaluate_scal_domain_integral_by_array(cs_flag_t         array_loc,
     bft_error(__FILE__, __LINE__, 0,
               " %s: Invalid array location. Stop evaluation.", __func__);
 
-  if (cs_glob_n_ranks > 1)      /* MPI synchronization */
-    cs_parall_sum(1, CS_REAL_TYPE, &result);
+  cs_parall_sum(1, CS_REAL_TYPE, &result);
 
   return result;
 }

@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -79,7 +79,8 @@ type variables_sol
   double precision :: w2
 end type variables_sol
 
-! Initialisation values for soil variables (filled in usati1)
+! Initialisation values for soil variables
+! (filled in usispu/cs_user_parameters)
 
 !> initial soil surface temperature
 double precision :: tsini

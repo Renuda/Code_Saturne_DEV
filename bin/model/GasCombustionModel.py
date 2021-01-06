@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -79,6 +79,8 @@ class GasCombustionModel(Variables, Model):
                          "3-peak_adiabatic", "3-peak_enthalpy",
                          "4-peak_adiabatic", "4-peak_enthalpy")
 
+        self.sootModels = ('off', 'soot_product_fraction', 'moss')
+
 
     def defaultGasCombustionValues(self):
         """
@@ -110,16 +112,9 @@ class GasCombustionModel(Variables, Model):
 
     def gasCombustionModelsList(self):
         """
-        Create a tuple with the gas combustion models allowed
-        by the calculation features.
+        Create a tuple with the available gas combustion models.
         """
-        gasCombustionList = self.gasCombustionModel
-        turb_mdl = TurbulenceModel(self.case)
-
-        if self.node_turb['model'] not in turb_mdl.RANSmodels():
-            gasCombustionList = ('off',)
-
-        return gasCombustionList
+        return self.gasCombustionModel
 
 
     @Variables.undoGlobal
@@ -141,7 +136,8 @@ class GasCombustionModel(Variables, Model):
             for tag in ('variable',
                         'property',
                         'reference_mass_molar',
-                        'reference_temperature'):
+                        'reference_temperature',
+                        'soot_model'):
                 for node in self.node_gas.xmlGetNodeList(tag):
                     node.xmlRemoveNode()
             for zone in LocalizationModel('BoundaryZone', self.case).getZones():
@@ -311,13 +307,23 @@ class GasCombustionModel(Variables, Model):
 
             for name in new_list:
                 if name not in previous_list:
-                    self.setNewVariable(self.node_gas, name, tpe="model", label=name)
+                    self.setNewVariable(self.node_gas, name, tpe='var_model', label=name)
 
             NPE = NumericalParamEquationModel(self.case)
             for node in self.node_gas.xmlGetChildNodeList('variable'):
-                NPE.setBlendingFactor(node['name'], 0.)
-                NPE.setScheme(node['name'], 'upwind')
-                NPE.setFluxReconstruction(node['name'], 'off')
+                name = node['name']
+                NPE.setBlendingFactor(name, 0.)
+                NPE.setScheme(name, 'upwind')
+                NPE.setFluxReconstruction(name, 'off')
+
+                if self.getGasCombustionModel() == "d3p":
+                    if name == "mixture_fraction":
+                        NPE.setMinValue(name, 0.)
+                        NPE.setMaxValue(name, 1.)
+                    elif name == "mixture_fraction_variance":
+                        NPE.setMinValue(name, 0.)
+                        NPE.setMaxValue(name, 1.e+12)
+                        node.xmlSetData('variance', "mixture_fraction")
 
 
     @Variables.noUndo
@@ -385,7 +391,103 @@ class GasCombustionModel(Variables, Model):
         """
         self.node_gas.xmlSetData('data_file', name)
 
+    def _defaultValues(self):
+        """
+        default values
+        """
+        self.default = {}
+        self.default['thermodynamical_pressure'] = 'off'
+        self.default['soot_model']               = 'off'
+        self.default['soot_density']             = 0.0
+        self.default['soot_fraction']            = 0.0
+        return self.default
 
+    @Variables.noUndo
+    def getUniformVariableThermodynamicalPressure(self):
+        """
+        Return status of uniform variable thermodynamical pressure
+        """
+        node = self.node_gas.xmlInitNode('thermodynamical_pressure', 'status')
+        status = node['status']
+        if not status:
+            status = self._defaultValues()['thermodynamical_pressure']
+            self.setUniformVariableThermodynamicalPressure(status)
+        return status
+
+    @Variables.undoLocal
+    def setUniformVariableThermodynamicalPressure(self, status):
+        """
+        Put status of uniform variable thermodynamical pressure
+        """
+        self.isOnOff(status)
+        node = self.node_gas.xmlInitNode('thermodynamical_pressure', 'status')
+        node['status'] = status
+
+    @Variables.noUndo
+    def getSootModel(self):
+        """
+        Return value of attribute model
+        """
+        node = self.node_gas.xmlInitChildNode('soot_model', 'model')
+        model = node['model']
+        if model not in self.sootModels:
+            model = self._defaultValues()['soot_model']
+            self.setSootModel(model)
+        return model
+
+    @Variables.undoGlobal
+    def setSootModel(self, model):
+        """
+        Put value of attribute model to soot model
+        """
+        self.isInList(model, self.sootModels)
+        node  = self.node_gas.xmlInitChildNode('soot_model', 'model')
+        node['model'] = model
+        if model == 'moss':
+            self.node_gas.xmlRemoveChild('soot_fraction')
+        if model == 'off':
+            self.node_gas.xmlRemoveChild('soot_density')
+            self.node_gas.xmlRemoveChild('soot_fraction')
+
+    @Variables.noUndo
+    def getSootDensity(self):
+        """
+        Return value of soot density
+        """
+        val = self.node_gas.xmlGetDouble('soot_density')
+        if val == None:
+            val = self._defaultValues()['soot_density']
+            self.setSootDensity(val)
+        return val
+
+    @Variables.undoGlobal
+    def setSootDensity(self, val):
+        """
+        Put value of soot density
+        """
+        self.isPositiveFloat(val)
+        self.node_soot = self.node_gas.xmlGetNode('soot_model')
+        self.node_soot.xmlSetData('soot_density', val)
+
+    @Variables.noUndo
+    def getSootFraction(self):
+        """
+        Return value of soot fraction
+        """
+        val = self.node_gas.xmlGetDouble('soot_fraction')
+        if val == None:
+            val = self._defaultValues()['soot_fraction']
+            self.setSootFraction(val)
+        return val
+
+    @Variables.undoGlobal
+    def setSootFraction(self, val):
+        """
+        Put value of soot fraction
+        """
+        self.isPositiveFloat(val)
+        self.node_soot = self.node_gas.xmlGetNode('soot_model')
+        self.node_soot.xmlSetData('soot_fraction', val)
 #-------------------------------------------------------------------------------
 # Gas combustion test case
 #-------------------------------------------------------------------------------

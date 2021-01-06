@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -211,9 +211,8 @@ _sync_circulation_def_at_edges(const cs_cdo_connect_t    *connect,
 
   } /* Loop on definitions */
 
-  if (cs_glob_n_ranks > 1) { /* Parallel mode */
+  if (connect->interfaces[CS_CDO_CONNECT_EDGE_SCAL] != NULL) {
 
-    assert(connect->interfaces[CS_CDO_CONNECT_EDGE_SCAL] != NULL);
     /* Last definition is used if there is a conflict between several
        definitions */
     cs_interface_set_max(connect->interfaces[CS_CDO_CONNECT_EDGE_SCAL],
@@ -327,7 +326,7 @@ cs_equation_init_boundary_flux_from_bc(cs_real_t                    t_eval,
 
           ac->func(t_eval,
                    z->n_elts, z->elt_ids, cdoq->b_face_center,
-                   false,       /* compacted output ? */
+                   false,       /* dense output ? */
                    ac->input,
                    values);
         }
@@ -674,7 +673,7 @@ cs_equation_compute_dirichlet_vb(cs_real_t                   t_eval,
         /* Evaluate the boundary condition at each boundary vertex */
         cs_xdef_eval_at_vertices_by_array(n_vf,
                                           lst,
-                                          true, /* compact output */
+                                          true, /* dense output */
                                           mesh,
                                           connect,
                                           quant,
@@ -697,7 +696,7 @@ cs_equation_compute_dirichlet_vb(cs_real_t                   t_eval,
         /* Evaluate the boundary condition at each boundary vertex */
         cs_xdef_eval_at_vertices_by_analytic(n_vf,
                                              lst,
-                                             true, /* compact output */
+                                             true, /* dense output */
                                              mesh,
                                              connect,
                                              quant,
@@ -852,12 +851,26 @@ cs_equation_compute_dirichlet_fb(const cs_mesh_t            *mesh,
           cs_xdef_array_context_t  *ac =
             (cs_xdef_array_context_t *)def->context;
 
-          assert(eqp->n_bc_defs == 1); /* Only one definition allowed */
-          assert(bz->n_elts == quant->n_b_faces);
           assert(ac->stride == eqp->dim);
           assert(cs_flag_test(ac->loc, cs_flag_primal_face));
 
-          memcpy(values, ac->values, sizeof(cs_real_t)*bz->n_elts*eqp->dim);
+          if (eqp->n_bc_defs == 1) { /* Only one definition */
+
+            assert(bz->n_elts == quant->n_b_faces);
+            memcpy(values, ac->values, sizeof(cs_real_t)*bz->n_elts*eqp->dim);
+
+          }
+          else { /* Only a selection has to be considered */
+
+            assert(elt_ids != NULL);
+#           pragma omp parallel for if (bz->n_elts > CS_THR_MIN)
+            for (cs_lnum_t i = 0; i < bz->n_elts; i++) {
+              const cs_lnum_t  shift = def->dim*elt_ids[i];
+              for (int k = 0; k < def->dim; k++)
+                values[shift+k] = ac->values[shift+k];
+            }
+
+          }
         }
         break;
 
@@ -868,7 +881,7 @@ cs_equation_compute_dirichlet_fb(const cs_mesh_t            *mesh,
         case CS_PARAM_REDUCTION_DERHAM:
           cs_xdef_eval_at_b_faces_by_analytic(bz->n_elts,
                                               bz->elt_ids,
-                                              false, /* compact output */
+                                              false, /* dense output */
                                               mesh,
                                               connect,
                                               quant,
@@ -880,7 +893,7 @@ cs_equation_compute_dirichlet_fb(const cs_mesh_t            *mesh,
         case CS_PARAM_REDUCTION_AVERAGE:
           cs_xdef_eval_avg_at_b_faces_by_analytic(bz->n_elts,
                                                   bz->elt_ids,
-                                                  false, /* compact output */
+                                                  false, /* dense output */
                                                   mesh,
                                                   connect,
                                                   quant,
@@ -897,6 +910,18 @@ cs_equation_compute_dirichlet_fb(const cs_mesh_t            *mesh,
                       " Stop computing the Dirichlet value.\n"), __func__);
 
         } /* switch on reduction */
+        break;
+
+      case CS_XDEF_BY_DOF_FUNCTION:
+        cs_xdef_eval_at_b_faces_by_dof_func(bz->n_elts,
+                                            bz->elt_ids,
+                                            false, /* dense output */
+                                            mesh,
+                                            connect,
+                                            quant,
+                                            t_eval,
+                                            def->context,
+                                            values);
         break;
 
       default:
@@ -973,16 +998,13 @@ cs_equation_set_vertex_bc_flag(const cs_cdo_connect_t     *connect,
   } /* Loop on border faces */
 #endif
 
-  if (cs_glob_n_ranks > 1) { /* Parallel mode */
-
-    assert(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL);
+  if (connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL) {
     cs_interface_set_inclusive_or(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                                   n_vertices,
                                   1,             /* stride */
                                   false,         /* interlace */
                                   CS_FLAG_TYPE,  /* unsigned short int */
                                   vflag);
-
   }
 }
 
@@ -1036,16 +1058,13 @@ cs_equation_set_edge_bc_flag(const cs_cdo_connect_t     *connect,
   } /* Loop on border faces */
 #endif
 
-  if (cs_glob_n_ranks > 1) { /* Parallel mode */
-
-    assert(connect->interfaces[CS_CDO_CONNECT_EDGE_SCAL] != NULL);
+  if (connect->interfaces[CS_CDO_CONNECT_EDGE_SCAL] != NULL) {
     cs_interface_set_inclusive_or(connect->interfaces[CS_CDO_CONNECT_EDGE_SCAL],
                                   n_edges,
                                   1,             /* stride */
                                   false,         /* interlace */
                                   CS_FLAG_TYPE,  /* unsigned short int */
                                   edge_flag);
-
   }
 }
 
@@ -1278,7 +1297,7 @@ cs_equation_compute_robin(cs_real_t                    t_eval,
         (cs_xdef_analytic_context_t *)def->context;
 
       ac->func(t_eval, 1, NULL,
-               cm->face[f].center, true, /* compacted output ? */
+               cm->face[f].center, true, /* dense output ? */
                ac->input,
                (cs_real_t *)parameters);
 

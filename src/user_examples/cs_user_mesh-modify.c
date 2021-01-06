@@ -9,7 +9,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -102,7 +102,7 @@ cs_user_mesh_modify(cs_mesh_t  *mesh)
 
     /* Set mesh modification flag if it should be saved for future re-use. */
 
-    mesh->modified = 1;
+    mesh->modified |= CS_MESH_MODIFIED;
   }
   /*! [mesh_modify_coords] */
 
@@ -117,7 +117,7 @@ cs_user_mesh_modify(cs_mesh_t  *mesh)
 
     const char criteria[] = "outlet";
 
-    /* Select boudary faces */
+    /* Select boundary faces */
 
     cs_lnum_t   n_selected_faces = 0;
     cs_lnum_t  *selected_faces = NULL;
@@ -225,7 +225,7 @@ cs_user_mesh_modify(cs_mesh_t  *mesh)
 
     cs_lnum_t n_prev_cells = mesh->n_cells ;
 
-    /* Select boudary faces */
+    /* Select boundary faces */
 
     cs_lnum_t   n_selected_faces = 0;
     cs_lnum_t  *selected_faces = NULL;
@@ -297,7 +297,7 @@ cs_user_mesh_modify(cs_mesh_t  *mesh)
 
     /* Mark mesh as modified to save it */
 
-    mesh->modified = 1;
+    mesh->modified |= CS_MESH_MODIFIED;
   }
   /*! [mesh_modify_groups_1] */
 
@@ -325,7 +325,7 @@ cs_user_mesh_modify(cs_mesh_t  *mesh)
 
     /* Mark mesh as modified to save it */
 
-    mesh->modified = 1;
+    mesh->modified |= CS_MESH_MODIFIED;
   }
   /*! [mesh_modify_groups_2] */
 
@@ -440,7 +440,8 @@ cs_user_mesh_modify(cs_mesh_t  *mesh)
     BFT_FREE(selected_elts);
     BFT_FREE(flag);
 
-    mesh->modified = 1;
+    /* Mark for re-partitioning */
+    mesh->modified |= CS_MESH_MODIFIED_BALANCE;
   }
   /*! [mesh_modify_remove_cells] */
 

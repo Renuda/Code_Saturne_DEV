@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -88,7 +88,7 @@ if (idilat.eq.0) then
   call field_get_val_s_by_name("thermal_expansion", cpro_beta)
 endif
 
-if (imeteo.eq.2) then
+if (imeteo.ge.2) then
   call field_get_val_s_by_name('meteo_pressure', cpro_met_p)
 endif
 
@@ -242,11 +242,12 @@ double precision a_coeff
 double precision alpha,al
 double precision sig_flu ! standard deviation of qw'-alpha*theta'
 double precision var_tl,var_q,cov_tlq
-double precision q1,qsup
+double precision q1,qsup, rvap
 
 double precision, dimension(:), pointer :: cvar_k, cvar_ep
+double precision, dimension(:), pointer :: nn, nebdia
 
-! rvap = rair*rvsra
+rvap = rair*rvsra
 
 allocate(dtlsd(3,ncelet))
 allocate(dqsd(3,ncelet))
@@ -262,6 +263,8 @@ call field_gradient_scalar(ivarfl(isca(iymw)), 1, 0, inc, iccocg, dqsd)
 
 call field_get_val_s(ivarfl(ik), cvar_k)
 call field_get_val_s(ivarfl(iep), cvar_ep)
+call field_get_val_s_by_name("nebulosity_frac", nn)
+call field_get_val_s_by_name("nebulosity_diag", nebdia)
 
 ! -------------------------------------------------------------
 ! Gradients are used for estimating standard deviations of the

@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -37,6 +37,7 @@
 
 #include "cs_defs.h"
 #include "cs_block_dist.h"
+#include "cs_rank_neighbors.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -65,6 +66,7 @@ BEGIN_C_DECLS
 typedef enum {
 
   CS_ALL_TO_ALL_MPI_DEFAULT,
+  CS_ALL_TO_ALL_HYBRID,
   CS_ALL_TO_ALL_CRYSTAL_ROUTER
 
 } cs_all_to_all_type_t;
@@ -378,6 +380,28 @@ cs_all_to_all_get_type(void);
 
 void
 cs_all_to_all_set_type(cs_all_to_all_type_t  t);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Get current type of hybrid all-to-all distributor parameters.
+ *
+ * \param[out]  rne_type  type of metadata exchange algorithm, or NULL
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_all_to_all_get_hybrid_parameters(cs_rank_neighbors_exchange_t  *rne_type);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Set current type of all-to-all distributor algorithm choice.
+ *
+ * \param[in]  rne_type  type of metadata exchange algorithm
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_all_to_all_set_hybrid_parameters(cs_rank_neighbors_exchange_t  rne_type);
 
 /*----------------------------------------------------------------------------*/
 /*!

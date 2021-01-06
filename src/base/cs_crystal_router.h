@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -265,6 +265,24 @@ cs_crystal_router_get_data(cs_crystal_router_t   *cr,
                            cs_lnum_t            **src_id,
                            cs_lnum_t            **data_index,
                            void                 **data);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Query maximum buffer sizes reached by a Crystal Router.
+ *
+ * Order of data from a same source rank is preserved.
+ *
+ * \param[in]   cr      pointer to associated Crystal Router
+ * \param[out]  max_sizes   pointer to maximum local/receive (max_sizes[0])
+ *                          and send (max_sizes[1]) sizes, or NULL
+ *
+ * \return  maximum total allocated buffer memory
+ */
+/*----------------------------------------------------------------------------*/
+
+size_t
+cs_crystal_router_get_max_sizes(cs_crystal_router_t  *cr,
+                                size_t               *max_sizes);
 
 #endif /* defined(HAVE_MPI) */
 

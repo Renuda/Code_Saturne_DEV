@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -139,7 +139,6 @@ class LagrangianBoundariesModel(Model):
         self.node_particles['choice'] = value
         self.setCurrentBoundaryNode(nature, labelbc)
 
-
     @Variables.noUndo
     def getBoundaryChoice(self, nature, labelbc):
         """
@@ -211,11 +210,10 @@ class LagrangianBoundariesModel(Model):
             for i in range(value-nnodes):
                 self.newSetNode()
         else:
-            for i in range(nnodes-value):
-                node_list[-1].xmlRemoveNode()
+            for i in range(nnodes - value):
+                node_to_delete = node_list.pop()
+                node_to_delete.xmlRemoveNode()
             # redefine self.node_set
-            self.setCurrentSetNode(labelbc, value)
-
 
     @Variables.noUndo
     def getNumberOfSetsValue(self, labelbc):

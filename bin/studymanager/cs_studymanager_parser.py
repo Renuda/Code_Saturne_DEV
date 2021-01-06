@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -351,6 +351,21 @@ class Parser(object):
                     d['tags'] = [tag.strip() for tag in re.split(',', tags)]
                 except:
                     d['tags'] = None
+
+                try:
+                    d['depends'] = str(node.attributes["depends"].value)
+                except:
+                    d['depends'] = None
+
+                try:
+                    d['n_iter'] = str(node.attributes["n_iter"].value)
+                except:
+                    d['n_iter'] = None
+
+                try:
+                    d['estim_wtime'] = str(node.attributes["estim_wtime"].value)
+                except:
+                    d['estim_wtime'] = None
 
                 for n in node.childNodes:
                     if n.nodeType == minidom.Node.ELEMENT_NODE and n.childNodes:
