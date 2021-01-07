@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>526</width>
-    <height>467</height>
+    <height>500</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -208,6 +208,9 @@
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Minimal temperature for the tabulation (ENTH-TEMP).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
          </widget>
         </item>
         <item row="1" column="0">
@@ -239,6 +242,9 @@
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Maximal temperature for the tabulation (ENTH-TEMP).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
          </widget>
         </item>
         <item row="0" column="0">
@@ -261,6 +267,9 @@
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Number of points for the tabulation (ENTH-TEMP).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
@@ -290,6 +299,9 @@
        <layout class="QGridLayout" name="gridLayout_4">
         <item row="2" column="0">
          <widget class="QTableView" name="tableViewSpecies">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;List of all the species.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;For each specie give:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;- the chemical formula (example : O2, N2). The chemical elements available are &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;C&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;H&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;O&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;N &lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;and&lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt; C(S)&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;. &lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;- the Fuel, Oxidant or Product composition (example for the two oxidants : &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;1&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;O2 + &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;3.76&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;N2).&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;- the absorption coefficient.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Remarks : The chemical reaction is automatically set to the equilibrium, so for the products, the user needs only to specify the composition for the species which share the same chemical elements. (example: for products CO2, CO and C(S), the user will need to give the composition for two of this three species). Check the chemical reaction in the listing.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
           <property name="alternatingRowColors">
            <bool>true</bool>
           </property>
@@ -298,17 +310,38 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="labelListSpecies">
-          <property name="text">
-           <string>List of species</string>
-          </property>
-         </widget>
-        </item>
         <item row="3" column="0">
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
+           <spacer name="horizontalSpacer_7">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
            <widget class="QPushButton" name="pushButtonAddSpecie">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>141</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Add a Specie.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
              <string>Add</string>
             </property>
@@ -316,12 +349,99 @@
           </item>
           <item>
            <widget class="QPushButton" name="pushButtonDeleteSpecie">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>141</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Delete the selected species.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
              <string>Delete</string>
             </property>
            </widget>
           </item>
+          <item>
+           <spacer name="horizontalSpacer_8">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
          </layout>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="labelListSpecies">
+          <property name="text">
+           <string>List of species</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_5">
+        <item>
+         <spacer name="horizontalSpacer_6">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="pushButtonGenerateJanafFile">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>288</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Generate the thermochemistry data file and automatically select it.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>Generate the Thermochemistry data file</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_5">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
         </item>
        </layout>
       </item>

@@ -139,7 +139,7 @@ class ChemicalFormulaDelegate(QItemDelegate):
     def createEditor(self, parent, option, index):
         editor = QLineEdit(parent)
         self.old_pname = ""
-        rx = "[chonCHON][CHONchon0-9]{1," + str(LABEL_LENGTH_MAX-1) + "}"
+        rx = "[chonsCHONS()][CHONSchons()1-9]{0," + str(LABEL_LENGTH_MAX-1) + "}"
         self.regExp = QRegExp(rx)
         v = RegExpValidator(editor, self.regExp)
         editor.setValidator(v)
@@ -225,8 +225,9 @@ class StandardItemModelSpecies(QStandardItemModel):
 
         self.headers = [self.tr("Specie"),
                         self.tr("Chemical Formula"),
-                        self.tr("stoich coeff (if Fuel)"), 
-                        self.tr("stoich coeff (if Oxidant)"), 
+                        self.tr("Fuel Composition"), 
+                        self.tr("Oxidant Composition"), 
+                        self.tr("Product Composition"), 
                         self.tr("Coeff absorption")]
 
         self.setColumnCount(len(self.headers))
@@ -283,22 +284,29 @@ class StandardItemModelSpecies(QStandardItemModel):
             label = self._data[row][0]
             self.mdl.setSpecieChemicalFormula(label, ChemicalFormula)
 
-        # stoich coeff fuel
+        # Fuel Composition
         elif col == 2:
-            StCoeffFuel = str(from_qvariant(value, to_text_string))
-            self._data[row][col] = StCoeffFuel
+            CompFuel = str(from_qvariant(value, to_text_string))
+            self._data[row][col] = CompFuel
             label = self._data[row][0]
-            self.mdl.setStCoeffFuel(label, StCoeffFuel)
+            self.mdl.setCompFuel(label, CompFuel)
 
-        # stoich coeff oxi
+        # Oxi Composition
         elif col == 3:
-            StCoeffOxi = str(from_qvariant(value, to_text_string))
-            self._data[row][col] = StCoeffOxi
+            CompOxi = str(from_qvariant(value, to_text_string))
+            self._data[row][col] = CompOxi
             label = self._data[row][0]
-            self.mdl.setStCoeffOxi(label, StCoeffOxi)
+            self.mdl.setCompOxi(label, CompOxi)
+
+        # Product Composition
+        elif col == 4:
+            CompProd = str(from_qvariant(value, to_text_string))
+            self._data[row][col] = CompProd
+            label = self._data[row][0]
+            self.mdl.setCompProd(label, CompProd)
 
         # Coeff absorption
-        elif col == 4:
+        elif col == 5:
             CoeffAbsorp = str(from_qvariant(value, to_text_string))
             self._data[row][col] = CoeffAbsorp
             label = self._data[row][0]
@@ -322,11 +330,12 @@ class StandardItemModelSpecies(QStandardItemModel):
         label = self.mdl.addSpecie(existing_name)
 
         ChemicalFormula = self.mdl.getSpecieChemicalFormula(label)
-        StCoeffFuel = self.mdl.getStCoeffFuel(label)
-        StCoeffOxi = self.mdl.getStCoeffOxi(label)
+        CompFuel = self.mdl.getCompFuel(label)
+        CompOxi = self.mdl.getCompOxi(label)
+        CompProd = self.mdl.getCompProd(label)
         CoeffAbsorp = self.mdl.getCoeffAbsorp(label)
         
-        specie = [label, ChemicalFormula, StCoeffFuel, StCoeffOxi, CoeffAbsorp]
+        specie = [label, ChemicalFormula, CompFuel, CompOxi, CompProd, CoeffAbsorp]
 
         self.setRowCount(row+1)
         self._data.append(specie)
@@ -336,8 +345,8 @@ class StandardItemModelSpecies(QStandardItemModel):
         """
         Return the values for an item.
         """
-        [label, ChemicalFormula, StCoeffFuel, StCoeffOxi, CoeffAbsorp] = self._data[row]
-        return label, ChemicalFormula, StCoeffFuel, StCoeffOxi, CoeffAbsorp
+        [label, ChemicalFormula, CompFuel, CompOxi, CompProd, CoeffAbsorp] = self._data[row]
+        return label, ChemicalFormula, CompFuel, CompOxi, CompProd, CoeffAbsorp
 
 
     def deleteItem(self, row):
@@ -381,15 +390,17 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         # Delegates
         delegateLabel            = NameDelegate(self.tableViewSpecies)
         delegateChemicalFormula  = ChemicalFormulaDelegate(self.tableViewSpecies)
-        delegateStCoeffFuel  = ValueDelegate(self.tableViewSpecies)
-        delegateStCoeffOxi   = ValueDelegate(self.tableViewSpecies)
+        delegateCompFuel  = ValueDelegate(self.tableViewSpecies)
+        delegateCompOxi   = ValueDelegate(self.tableViewSpecies)
+        delegateCompProd  = ValueDelegate(self.tableViewSpecies)
         delegateCoeffAbsorp  = ValueDelegate(self.tableViewSpecies)
 
         self.tableViewSpecies.setItemDelegateForColumn(0, delegateLabel)
         self.tableViewSpecies.setItemDelegateForColumn(1, delegateChemicalFormula)
-        self.tableViewSpecies.setItemDelegateForColumn(2, delegateStCoeffFuel)
-        self.tableViewSpecies.setItemDelegateForColumn(3, delegateStCoeffOxi)
-        self.tableViewSpecies.setItemDelegateForColumn(4, delegateCoeffAbsorp)
+        self.tableViewSpecies.setItemDelegateForColumn(2, delegateCompFuel)
+        self.tableViewSpecies.setItemDelegateForColumn(3, delegateCompOxi)
+        self.tableViewSpecies.setItemDelegateForColumn(4, delegateCompProd)
+        self.tableViewSpecies.setItemDelegateForColumn(5, delegateCoeffAbsorp)
 
         # tableView
         if QT_API == "PYQT4":
@@ -413,20 +424,21 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         self.lineEditMinimalTemp.textChanged[str].connect(self.slotMinimalTemp)
         self.pushButtonAddSpecie.clicked.connect(self.slotAddSpecie)
         self.pushButtonDeleteSpecie.clicked.connect(self.slotDeleteSpecie)
+        self.pushButtonGenerateJanafFile.clicked.connect(self.slotGenerateJanafFile)
         self.modelSpecies.dataChanged.connect(self.dataChanged)
 
         # Validators
         validatorNbPointsTabu = IntValidator(self.lineEditNbPointsTabu, min=1)
-        validatorMaximalTemp = DoubleValidator(self.lineEditMaximalTemp, min=273.0)
-        validatorMinimalTemp = DoubleValidator(self.lineEditMinimalTemp, min=273.0)
+        validatorMaximalTemp  = DoubleValidator(self.lineEditMaximalTemp, min=273.0)
+        validatorMinimalTemp  = DoubleValidator(self.lineEditMinimalTemp, min=273.0)
 
         self.lineEditNbPointsTabu.setValidator(validatorNbPointsTabu)
         self.lineEditMaximalTemp.setValidator(validatorMaximalTemp)
         self.lineEditMinimalTemp.setValidator(validatorMinimalTemp)
 
-        NbPointsTabu = self.thermodata.getNbPointsTabu(self.thermodata.nodes[0])
-        MaximalTemp = self.thermodata.getMaximalTemp(self.thermodata.nodes[1])
-        MinimalTemp = self.thermodata.getMinimalTemp(self.thermodata.nodes[2])
+        NbPointsTabu = self.thermodata.getNbPointsTabu()
+        MaximalTemp  = self.thermodata.getMaximalTemp()
+        MinimalTemp  = self.thermodata.getMinimalTemp()
 
         self.lineEditNbPointsTabu.setText(str(NbPointsTabu))
         self.lineEditMaximalTemp.setText(str(MaximalTemp))
@@ -460,7 +472,8 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         self.modelGasCombustionOption.setItem(str_model= option)
 
         name = self.mdl.getThermoChemistryDataFileName()
-        if name != None:
+        
+        if name != "":
             self.labelThermochemistryFile.setText(str(name))
             self.pushButtonThermochemistryData.setStyleSheet("background-color: green")
         else:
@@ -530,14 +543,14 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
     @pyqtSlot()
     def slotCreateJanafFile(self):
         """
-        Determine if the Thermodynamic file is created with the GUI.
+        Determine if the Thermochemistry file is created with the GUI.
         """
         if self.radioButtonCreateJanafFile.isChecked():
             self.thermodata.setCreateThermoDataFile("on")
             self.groupBoxCreateJanafFile.show()
-            self.lineEditNbPointsTabu.setText(str(self.thermodata.getNbPointsTabu('NbPointsTabu')))
-            self.lineEditMaximalTemp.setText(str(self.thermodata.getMaximalTemp('MaximalTemp')))
-            self.lineEditMinimalTemp.setText(str(self.thermodata.getMinimalTemp('MinimalTemp')))
+            self.lineEditNbPointsTabu.setText(str(self.thermodata.getNbPointsTabu()))
+            self.lineEditMaximalTemp.setText(str(self.thermodata.getMaximalTemp()))
+            self.lineEditMinimalTemp.setText(str(self.thermodata.getMinimalTemp()))
             return
         else:
             self.thermodata.setCreateThermoDataFile("off")
@@ -550,7 +563,7 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         """
         if self.lineEditNbPointsTabu.validator().state == QValidator.Acceptable:
             NbPointsTabu = from_qvariant(text, int)
-            self.thermodata.setNbPointsTabu('NbPointsTabu', NbPointsTabu)
+            self.thermodata.setNbPointsTabu(NbPointsTabu)
 
     @pyqtSlot(str)
     def slotMaximalTemp(self, text):
@@ -559,7 +572,7 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         """
         if self.lineEditMaximalTemp.validator().state == QValidator.Acceptable:
             MaximalTemp = from_qvariant(text, float)
-            self.thermodata.setMinMaxTemp('MaximalTemp', MaximalTemp)
+            self.thermodata.setMaximalTemp(MaximalTemp)
 
     @pyqtSlot(str)
     def slotMinimalTemp(self, text):
@@ -568,7 +581,7 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         """
         if self.lineEditMinimalTemp.validator().state == QValidator.Acceptable:
             MinimalTemp = from_qvariant(text, float)
-            self.thermodata.setMinMaxTemp('MinimalTemp', MinimalTemp)
+            self.thermodata.setMinimalTemp(MinimalTemp)
 
     @pyqtSlot()
     def slotAddSpecie(self):
@@ -598,6 +611,25 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
             self.modelSpecies.deleteItem(row)
 
         self.tableViewSpecies.clearSelection()
+
+    @pyqtSlot()
+    def slotGenerateJanafFile(self):
+        """
+        Generate the Thermochemistry file.
+        """
+
+        data = self.case['data_path']
+        if not data:
+            data = "."
+        filename = "dp_ThermochemistryFromGui"
+        file_path = os.path.join(data, filename)
+
+        self.thermodata.WriteThermochemistryDataFile(file_path)
+
+        self.labelThermochemistryFile.setText(str(filename))
+        self.mdl.setThermoChemistryDataFileName(filename)
+        self.pushButtonThermochemistryData.setStyleSheet("background-color: green")
+
 
     @pyqtSlot("QModelIndex, QModelIndex")
     def dataChanged(self, topLeft, bottomRight):
