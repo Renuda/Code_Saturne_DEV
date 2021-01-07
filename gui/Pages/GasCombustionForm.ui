@@ -201,7 +201,7 @@
       <item>
        <layout class="QGridLayout" name="gridLayout_5">
         <item row="2" column="1">
-         <widget class="QLineEdit" name="lineEditMinimalTemp">
+         <widget class="QLineEdit" name="lineEditMinimumTemp">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -209,14 +209,14 @@
            </sizepolicy>
           </property>
           <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Minimal temperature for the tabulation (ENTH-TEMP).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Minimum temperature for the tabulation (ENTH-TEMP).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
         <item row="1" column="0">
-         <widget class="QLabel" name="labelMaximalTemp">
+         <widget class="QLabel" name="labelMaximumTemp">
           <property name="text">
-           <string>Maximal temperature</string>
+           <string>Maximum temperature</string>
           </property>
          </widget>
         </item>
@@ -235,7 +235,7 @@
          </widget>
         </item>
         <item row="1" column="1">
-         <widget class="QLineEdit" name="lineEditMaximalTemp">
+         <widget class="QLineEdit" name="lineEditMaximumTemp">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -243,7 +243,7 @@
            </sizepolicy>
           </property>
           <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Maximal temperature for the tabulation (ENTH-TEMP).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Maximum temperature for the tabulation (ENTH-TEMP).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
@@ -274,9 +274,9 @@
          </widget>
         </item>
         <item row="2" column="0">
-         <widget class="QLabel" name="labelMinimalTemp">
+         <widget class="QLabel" name="labelMinimumTemp">
           <property name="text">
-           <string>Minimal temperature</string>
+           <string>Minimum temperature</string>
           </property>
          </widget>
         </item>
@@ -300,7 +300,7 @@
         <item row="2" column="0">
          <widget class="QTableView" name="tableViewSpecies">
           <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;List of all the species.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;For each specie give:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;- the chemical formula (example : O2, N2). The chemical elements available are &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;C&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;H&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;O&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;N &lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;and&lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt; C(S)&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;. &lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;- the Fuel, Oxidant or Product composition (example for the two oxidants : &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;1&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;O2 + &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;3.76&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;N2).&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;- the absorption coefficient.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Remarks : The chemical reaction is automatically set to the equilibrium, so for the products, the user needs only to specify the composition for the species which share the same chemical elements. (example: for products CO2, CO and C(S), the user will need to give the composition for two of this three species). Check the chemical reaction in the listing.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;List of all the species.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;For each species give:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;- the chemical formula (example : O2, N2). The chemical elements available are &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;C&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;H&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;O&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;N &lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;and&lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt; C(S)&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;. &lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;- the Fuel, Oxidiser or Product composition (example for the two oxidisers : &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;1&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;O2 + &lt;/span&gt;&lt;span style=&quot; font-size:9pt; font-weight:600;&quot;&gt;3.76&lt;/span&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;N2).&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;- the absorption coefficient.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Remarks : The chemical reaction is automatically set to the equilibrium, so for the products, the user needs only to specify the composition for the species which share the same chemical elements. (example: for products CO2, CO and C(S), the user will need to give the composition for two of this three species). Check the chemical reaction in the listing.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="alternatingRowColors">
            <bool>true</bool>
@@ -326,7 +326,7 @@
            </spacer>
           </item>
           <item>
-           <widget class="QPushButton" name="pushButtonAddSpecie">
+           <widget class="QPushButton" name="pushButtonAddSpecies">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -340,7 +340,7 @@
              </size>
             </property>
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Add a Specie.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;Add a Species.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
              <string>Add</string>
@@ -348,7 +348,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="pushButtonDeleteSpecie">
+           <widget class="QPushButton" name="pushButtonDeleteSpecies">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
               <horstretch>0</horstretch>

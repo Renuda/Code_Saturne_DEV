@@ -67,7 +67,7 @@ log = logging.getLogger("GasCombustionView")
 log.setLevel(GuiParam.DEBUG)
 
 #-------------------------------------------------------------------------------
-# Line edit delegate for the specie label
+# Line edit delegate for the species label
 #-------------------------------------------------------------------------------
 
 class NameDelegate(QItemDelegate):
@@ -104,10 +104,10 @@ class NameDelegate(QItemDelegate):
         if editor.validator().state == QValidator.Acceptable:
             new_pname = str(editor.text())
 
-            if new_pname in model.mdl.getSpecieNamesList():
+            if new_pname in model.mdl.getSpeciesNamesList():
                 default = {}
                 default['name']  = self.old_pname
-                default['list']   = model.mdl.getSpecieNamesList()
+                default['list']   = model.mdl.getSpeciesNamesList()
                 default['regexp'] = self.regExp
                 log.debug("setModelData -> default = %s" % default)
 
@@ -160,10 +160,10 @@ class ChemicalFormulaDelegate(QItemDelegate):
         if editor.validator().state == QValidator.Acceptable:
             new_pname = str(editor.text())
 
-            if new_pname in model.mdl.getSpecieNamesList():
+            if new_pname in model.mdl.getSpeciesNamesList():
                 default = {}
                 default['name']  = self.old_pname
-                default['list']   = model.mdl.getSpecieNamesList()
+                default['list']   = model.mdl.getSpeciesNamesList()
                 default['regexp'] = self.regExp
                 log.debug("setModelData -> default = %s" % default)
 
@@ -223,12 +223,12 @@ class StandardItemModelSpecies(QStandardItemModel):
         """
         QStandardItemModel.__init__(self)
 
-        self.headers = [self.tr("Specie"),
+        self.headers = [self.tr("Species"),
                         self.tr("Chemical Formula"),
                         self.tr("Fuel Composition"), 
-                        self.tr("Oxidant Composition"), 
+                        self.tr("Oxidiser Composition"), 
                         self.tr("Product Composition"), 
-                        self.tr("Coeff absorption")]
+                        self.tr("Absorption Coeff")]
 
         self.setColumnCount(len(self.headers))
 
@@ -273,7 +273,7 @@ class StandardItemModelSpecies(QStandardItemModel):
         row = index.row()
         col = index.column()
 
-        # Label (nothing to do for the specie label)
+        # Label (nothing to do for the species label)
         if col == 0:
             pass
             
@@ -282,7 +282,7 @@ class StandardItemModelSpecies(QStandardItemModel):
             ChemicalFormula = str(from_qvariant(value, to_text_string))
             self._data[row][col] = ChemicalFormula
             label = self._data[row][0]
-            self.mdl.setSpecieChemicalFormula(label, ChemicalFormula)
+            self.mdl.setSpeciesChemicalFormula(label, ChemicalFormula)
 
         # Fuel Composition
         elif col == 2:
@@ -327,18 +327,18 @@ class StandardItemModelSpecies(QStandardItemModel):
         """
         row = self.rowCount()
 
-        label = self.mdl.addSpecie(existing_name)
+        label = self.mdl.addSpecies(existing_name)
 
-        ChemicalFormula = self.mdl.getSpecieChemicalFormula(label)
+        ChemicalFormula = self.mdl.getSpeciesChemicalFormula(label)
         CompFuel = self.mdl.getCompFuel(label)
         CompOxi = self.mdl.getCompOxi(label)
         CompProd = self.mdl.getCompProd(label)
         CoeffAbsorp = self.mdl.getCoeffAbsorp(label)
         
-        specie = [label, ChemicalFormula, CompFuel, CompOxi, CompProd, CoeffAbsorp]
+        species = [label, ChemicalFormula, CompFuel, CompOxi, CompProd, CoeffAbsorp]
 
         self.setRowCount(row+1)
-        self._data.append(specie)
+        self._data.append(species)
 
 
     def getItem(self, row):
@@ -420,29 +420,29 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         self.pushButtonThermochemistryData.pressed.connect(self.__slotSearchThermochemistryData)
         self.radioButtonCreateJanafFile.clicked.connect(self.slotCreateJanafFile)
         self.lineEditNbPointsTabu.textChanged[str].connect(self.slotNbPointsTabu)
-        self.lineEditMaximalTemp.textChanged[str].connect(self.slotMaximalTemp)
-        self.lineEditMinimalTemp.textChanged[str].connect(self.slotMinimalTemp)
-        self.pushButtonAddSpecie.clicked.connect(self.slotAddSpecie)
-        self.pushButtonDeleteSpecie.clicked.connect(self.slotDeleteSpecie)
+        self.lineEditMaximumTemp.textChanged[str].connect(self.slotMaximumTemp)
+        self.lineEditMinimumTemp.textChanged[str].connect(self.slotMinimumTemp)
+        self.pushButtonAddSpecies.clicked.connect(self.slotAddSpecies)
+        self.pushButtonDeleteSpecies.clicked.connect(self.slotDeleteSpecies)
         self.pushButtonGenerateJanafFile.clicked.connect(self.slotGenerateJanafFile)
         self.modelSpecies.dataChanged.connect(self.dataChanged)
 
         # Validators
         validatorNbPointsTabu = IntValidator(self.lineEditNbPointsTabu, min=1)
-        validatorMaximalTemp  = DoubleValidator(self.lineEditMaximalTemp, min=273.0)
-        validatorMinimalTemp  = DoubleValidator(self.lineEditMinimalTemp, min=273.0)
+        validatorMaximumTemp  = DoubleValidator(self.lineEditMaximumTemp, min=273.0)
+        validatorMinimumTemp  = DoubleValidator(self.lineEditMinimumTemp, min=273.0)
 
         self.lineEditNbPointsTabu.setValidator(validatorNbPointsTabu)
-        self.lineEditMaximalTemp.setValidator(validatorMaximalTemp)
-        self.lineEditMinimalTemp.setValidator(validatorMinimalTemp)
+        self.lineEditMaximumTemp.setValidator(validatorMaximumTemp)
+        self.lineEditMinimumTemp.setValidator(validatorMinimumTemp)
 
         NbPointsTabu = self.thermodata.getNbPointsTabu()
-        MaximalTemp  = self.thermodata.getMaximalTemp()
-        MinimalTemp  = self.thermodata.getMinimalTemp()
+        MaximumTemp  = self.thermodata.getMaximumTemp()
+        MinimumTemp  = self.thermodata.getMinimumTemp()
 
         self.lineEditNbPointsTabu.setText(str(NbPointsTabu))
-        self.lineEditMaximalTemp.setText(str(MaximalTemp))
-        self.lineEditMinimalTemp.setText(str(MinimalTemp))
+        self.lineEditMaximumTemp.setText(str(MaximumTemp))
+        self.lineEditMinimumTemp.setText(str(MinimumTemp))
 
         # Initialize Widgets
 
@@ -493,7 +493,7 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
 
         self.slotCreateJanafFile()
 
-        for label in self.thermodata.getSpecieNamesList():
+        for label in self.thermodata.getSpeciesNamesList():
             self.modelSpecies.newItem(label)
 
         self.case.undoStartGlobal()
@@ -549,8 +549,8 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
             self.thermodata.setCreateThermoDataFile("on")
             self.groupBoxCreateJanafFile.show()
             self.lineEditNbPointsTabu.setText(str(self.thermodata.getNbPointsTabu()))
-            self.lineEditMaximalTemp.setText(str(self.thermodata.getMaximalTemp()))
-            self.lineEditMinimalTemp.setText(str(self.thermodata.getMinimalTemp()))
+            self.lineEditMaximumTemp.setText(str(self.thermodata.getMaximumTemp()))
+            self.lineEditMinimumTemp.setText(str(self.thermodata.getMinimumTemp()))
             return
         else:
             self.thermodata.setCreateThermoDataFile("off")
@@ -566,25 +566,25 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
             self.thermodata.setNbPointsTabu(NbPointsTabu)
 
     @pyqtSlot(str)
-    def slotMaximalTemp(self, text):
+    def slotMaximumTemp(self, text):
         """
-        Input Maximal temperature for the tabulation (ENTH-TEMP)
+        Input Maximum temperature for the tabulation (ENTH-TEMP)
         """
-        if self.lineEditMaximalTemp.validator().state == QValidator.Acceptable:
-            MaximalTemp = from_qvariant(text, float)
-            self.thermodata.setMaximalTemp(MaximalTemp)
+        if self.lineEditMaximumTemp.validator().state == QValidator.Acceptable:
+            MaximumTemp = from_qvariant(text, float)
+            self.thermodata.setMaximumTemp(MaximumTemp)
 
     @pyqtSlot(str)
-    def slotMinimalTemp(self, text):
+    def slotMinimumTemp(self, text):
         """
-        Input Minimal temperature for the tabulation (ENTH-TEMP)
+        Input Minimum temperature for the tabulation (ENTH-TEMP)
         """
-        if self.lineEditMinimalTemp.validator().state == QValidator.Acceptable:
-            MinimalTemp = from_qvariant(text, float)
-            self.thermodata.setMinimalTemp(MinimalTemp)
+        if self.lineEditMinimumTemp.validator().state == QValidator.Acceptable:
+            MinimumTemp = from_qvariant(text, float)
+            self.thermodata.setMinimumTemp(MinimumTemp)
 
     @pyqtSlot()
-    def slotAddSpecie(self):
+    def slotAddSpecies(self):
         """
         Add a new item in the table when the 'Create' button is pushed.
         """
@@ -592,7 +592,7 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         self.modelSpecies.newItem()
 
     @pyqtSlot()
-    def slotDeleteSpecie(self):
+    def slotDeleteSpecies(self):
         """
         Just delete the current selected entries from the table and
         of course from the XML file.
@@ -607,7 +607,7 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
 
         for row in lst:
             label = self.modelSpecies.getItem(row)[0]
-            self.thermodata.deleteSpecie(label)
+            self.thermodata.deleteSpecies(label)
             self.modelSpecies.deleteItem(row)
 
         self.tableViewSpecies.clearSelection()

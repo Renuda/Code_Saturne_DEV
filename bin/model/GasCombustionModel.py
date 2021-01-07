@@ -557,7 +557,7 @@ class ThermochemistryData(Model):
         self.node_thermodata = nModels.xmlInitNode('Thermochemistry_data')
 
         self.thermodatafile = ('off', 'on')
-        self.nodes = ['NbPointsTabu', 'MaximalTemp', 'MinimalTemp']
+        self.nodes = ['NbPointsTabu', 'MaximumTemp', 'MinimumTemp']
 
         # Parameters to create the Thermochemistry Data File
         # Available Chemical Elements
@@ -580,8 +580,8 @@ class ThermochemistryData(Model):
         default = {}
         default['CreateThermoDataFile'] = 'off'
         default['NbPointsTabu'] = 10
-        default['MaximalTemp'] = 3000.0
-        default['MinimalTemp'] = 273.0
+        default['MaximumTemp'] = 3000.0
+        default['MinimumTemp'] = 273.0
 
         return default
 
@@ -609,8 +609,8 @@ class ThermochemistryData(Model):
         node['status'] = status
         if status != 'on':
             self.node_thermodata.xmlRemoveChild('NbPointsTabu')
-            self.node_thermodata.xmlRemoveChild('MaximalTemp')
-            self.node_thermodata.xmlRemoveChild('MinimalTemp')
+            self.node_thermodata.xmlRemoveChild('MaximumTemp')
+            self.node_thermodata.xmlRemoveChild('MinimumTemp')
             nodes = self.node_thermodata.xmlGetChildNodeList('variable')
             for node in nodes:
                 node.xmlRemoveNode()
@@ -639,55 +639,55 @@ class ThermochemistryData(Model):
 
 
     @Variables.noUndo
-    def getMaximalTemp(self):
+    def getMaximumTemp(self):
         """
-        Return value of MaximalTemp
+        Return value of MaximumTemp
         """
-        MaximalTemp = self.node_thermodata.xmlGetDouble('MaximalTemp')
-        if MaximalTemp == None:
-            MaximalTemp = self.defaultParamforTabu()['MaximalTemp']
-            self.setMaximalTemp(MaximalTemp)
+        MaximumTemp = self.node_thermodata.xmlGetDouble('MaximumTemp')
+        if MaximumTemp == None:
+            MaximumTemp = self.defaultParamforTabu()['MaximumTemp']
+            self.setMaximumTemp(MaximumTemp)
 
-        return MaximalTemp
+        return MaximumTemp
 
 
     @Variables.undoGlobal
-    def setMaximalTemp(self, value):
+    def setMaximumTemp(self, value):
         """
-        Put value of MaximalTemp
+        Put value of MaximumTemp
         """
         self.isFloat(value)
-        self.node_thermodata.xmlSetData('MaximalTemp', value)
+        self.node_thermodata.xmlSetData('MaximumTemp', value)
 
 
     @Variables.noUndo
-    def getMinimalTemp(self):
+    def getMinimumTemp(self):
         """
-        Return value of MinimalTemp
+        Return value of MinimumTemp
         """
-        MinimalTemp = self.node_thermodata.xmlGetDouble('MinimalTemp')
-        if MinimalTemp == None:
-            MinimalTemp = self.defaultParamforTabu()['MinimalTemp']
-            self.setMinimalTemp(MinimalTemp)
+        MinimumTemp = self.node_thermodata.xmlGetDouble('MinimumTemp')
+        if MinimumTemp == None:
+            MinimumTemp = self.defaultParamforTabu()['MinimumTemp']
+            self.setMinimumTemp(MinimumTemp)
 
-        return MinimalTemp
+        return MinimumTemp
 
 
     @Variables.undoGlobal
-    def setMinimalTemp(self, value):
+    def setMinimumTemp(self, value):
         """
-        Put value of MinimalTemp
+        Put value of MinimumTemp
         """
         self.isFloat(value)
-        self.node_thermodata.xmlSetData('MinimalTemp', value)
+        self.node_thermodata.xmlSetData('MinimumTemp', value)
 
 
     def defaultSpeciesProperties(self):
         """
-        Return the default properties for a specie
+        Return the default properties for a species
         """
         default = {}
-        default['specie_label']         = "specie"
+        default['species_label']         = "species"
         default['chemical_formula']     = "CHON"
         default['fuel_composition']    = 0.0
         default['oxi_composition']     = 0.0
@@ -697,20 +697,20 @@ class ThermochemistryData(Model):
         return default
 
 
-    def __defaultSpecieLabel(self, specie_name=None):
+    def __defaultSpeciesLabel(self, species_name=None):
         """
         Private method.
-        Return a default label for a new specie.
+        Return a default label for a new species.
         """
         __coef = {}
-        for l in self.getSpecieNamesList():
+        for l in self.getSpeciesNamesList():
             __coef[l] = l
         length = len(__coef)
-        Lspe = self.defaultSpeciesProperties()['specie_label']
+        Lspe = self.defaultSpeciesProperties()['species_label']
 
-        # new specie: default value 
+        # new species: default value 
 
-        if not specie_name:
+        if not species_name:
             if length != 0:
                 i = 1
                 while (Lspe + str(i)) in list(__coef.values()):
@@ -718,22 +718,22 @@ class ThermochemistryData(Model):
                 num = str(i)
             else:
                 num = str(1)
-            specie_name = Lspe + num
-        return specie_name
+            species_name = Lspe + num
+        return species_name
 
 
     @Variables.undoGlobal
-    def addSpecie(self, name=None):
+    def addSpecies(self, name=None):
         """
         Public method.
-        Input a new specie I{name}
+        Input a new species I{name}
         """
 
-        c = self.__defaultSpecieLabel(name)
+        c = self.__defaultSpeciesLabel(name)
 
-        if c not in self.getSpecieNamesList():
+        if c not in self.getSpeciesNamesList():
             self.node_thermodata.xmlInitNode('variable', label=c, name=c)
-            self.setSpecieChemicalFormula(c, self.defaultSpeciesProperties()['chemical_formula'])
+            self.setSpeciesChemicalFormula(c, self.defaultSpeciesProperties()['chemical_formula'])
             self.setCompFuel(c, self.defaultSpeciesProperties()['fuel_composition'])
             self.setCompOxi(c, self.defaultSpeciesProperties()['oxi_composition'])
             self.setCompProd(c, self.defaultSpeciesProperties()['prod_composition'])
@@ -743,21 +743,21 @@ class ThermochemistryData(Model):
 
 
     @Variables.undoGlobal
-    def deleteSpecie(self, specie_label):
+    def deleteSpecies(self, species_label):
         """
         Public method.
-        Delete specie I{name}
+        Delete species I{name}
         """
-        self.isInList(specie_label, self.getSpecieNamesList())
-        node = self.node_thermodata.xmlGetNode('variable', label=specie_label)
+        self.isInList(species_label, self.getSpeciesNamesList())
+        node = self.node_thermodata.xmlGetNode('variable', label=species_label)
         node.xmlRemoveNode()
 
 
     @Variables.noUndo
-    def getSpecieNamesList(self):
+    def getSpeciesNamesList(self):
         """
         Public method.
-        Return the Specie name list
+        Return the Species name list
         """
         lst = []
         for node in self.node_thermodata.xmlGetChildNodeList('variable'):
@@ -766,7 +766,7 @@ class ThermochemistryData(Model):
 
 
     @Variables.noUndo
-    def getSpecieChemicalFormula(self, l):
+    def getSpeciesChemicalFormula(self, l):
         """
         Public method.
         Return the Chemical Formula
@@ -777,12 +777,12 @@ class ThermochemistryData(Model):
 
 
     @Variables.undoGlobal
-    def setSpecieChemicalFormula(self, specie_label, specie_name):
+    def setSpeciesChemicalFormula(self, species_label, species_name):
         """
         Put the Chemical Formula
         """
-        n = self.case.xmlGetNode('variable', label=specie_label)
-        n.xmlSetData('chemical_formula', specie_name)
+        n = self.case.xmlGetNode('variable', label=species_label)
+        n.xmlSetData('chemical_formula', species_name)
 
 
     @Variables.undoGlobal
@@ -800,11 +800,11 @@ class ThermochemistryData(Model):
 
 
     @Variables.undoGlobal
-    def setCompFuel(self, specie_label, CompFuel):
+    def setCompFuel(self, species_label, CompFuel):
         """
         Put Fuel Composition
         """
-        n = self.case.xmlGetNode('variable', label=specie_label)
+        n = self.case.xmlGetNode('variable', label=species_label)
         n.xmlSetData('fuel_composition', CompFuel)
 
 
@@ -823,11 +823,11 @@ class ThermochemistryData(Model):
 
 
     @Variables.undoGlobal
-    def setCompOxi(self, specie_label, CompOxi):
+    def setCompOxi(self, species_label, CompOxi):
         """
         Put Oxi Composition
         """
-        n = self.case.xmlGetNode('variable', label=specie_label)
+        n = self.case.xmlGetNode('variable', label=species_label)
         n.xmlSetData('oxi_composition', CompOxi)
 
 
@@ -846,11 +846,11 @@ class ThermochemistryData(Model):
 
 
     @Variables.undoGlobal
-    def setCompProd(self, specie_label, CompProd):
+    def setCompProd(self, species_label, CompProd):
         """
         Put Product Composition
         """
-        n = self.case.xmlGetNode('variable', label=specie_label)
+        n = self.case.xmlGetNode('variable', label=species_label)
         n.xmlSetData('prod_composition', CompProd)
 
 
@@ -869,11 +869,11 @@ class ThermochemistryData(Model):
 
 
     @Variables.undoGlobal
-    def setCoeffAbsorp(self, specie_label, CoeffAbsorp):
+    def setCoeffAbsorp(self, species_label, CoeffAbsorp):
         """
         Put absorption coefficient
         """
-        n = self.case.xmlGetNode('variable', label=specie_label)
+        n = self.case.xmlGetNode('variable', label=species_label)
         n.xmlSetData('coeff_absorption', CoeffAbsorp)
 
 
@@ -919,8 +919,8 @@ class ThermochemistryData(Model):
         InfoLine = {}
         InfoLine['NumberOfSpecies'] = "Nb especes courantes"
         InfoLine['NbPointsTabu'] = "Nb de points de tabulation ENTH-TEMP"
-        InfoLine['MinimalTemp'] = "TMIN"
-        InfoLine['MaximalTemp'] = "TMAX"
+        InfoLine['MinimumTemp'] = "TMIN"
+        InfoLine['MaximumTemp'] = "TMAX"
         InfoLine['LineInfo-GaseousSpecies'] = "Especes Gazeuses"
         InfoLine['CoeffAbsorp'] = "Coeff absorption (ray)"
         InfoLine['GlobalElemCompo'] = "Nb especes elementaires"
@@ -934,23 +934,23 @@ class ThermochemistryData(Model):
         f = open(file_path, "w")
         
         # Write the number of species, and parameters for the tabulation ENTH TEMP
-        NumberOfSpecies = len(self.getSpecieNamesList())
+        NumberOfSpecies = len(self.getSpeciesNamesList())
         NbPointsTabu = self.getNbPointsTabu()
-        MinimalTemp  = self.getMinimalTemp()
-        MaximalTemp  = self.getMaximalTemp()
+        MinimumTemp  = self.getMinimumTemp()
+        MaximumTemp  = self.getMaximumTemp()
         f.write('{:<10}'.format(str(NumberOfSpecies))+InfoLine['NumberOfSpecies']+"\n")
         f.write('{:<10}'.format(str(NbPointsTabu))+InfoLine['NbPointsTabu']+"\n")
-        f.write('{:<10}'.format(str(MinimalTemp))+InfoLine['MinimalTemp']+"\n")
-        f.write('{:<10}'.format(str(MaximalTemp))+InfoLine['MaximalTemp']+"\n")
+        f.write('{:<10}'.format(str(MinimumTemp))+InfoLine['MinimumTemp']+"\n")
+        f.write('{:<10}'.format(str(MaximumTemp))+InfoLine['MaximumTemp']+"\n")
         f.write(InfoLine['LineInfo-GaseousSpecies']+"\n")
         f.write(" "*10)
 
-        # Reorder the species to have the Fuel in first, then Oxidant and 
+        # Reorder the species to have the Fuel in first, then Oxidiser and 
         # finish by the Product and sorted the compositions (see colecd.f90)
         maxCompFuel = 0.0
         maxCompOxi  = 0.0
         maxCompProd = 0.0
-        for label in self.getSpecieNamesList():
+        for label in self.getSpeciesNamesList():
             maxCompFuel = max(maxCompFuel, self.getCompFuel(label))
             maxCompOxi = max(maxCompOxi, self.getCompOxi(label))
             maxCompProd = max(maxCompProd, self.getCompProd(label))
@@ -960,7 +960,7 @@ class ThermochemistryData(Model):
             Order.append(3)
 
         i = 0
-        for label in self.getSpecieNamesList():
+        for label in self.getSpeciesNamesList():
             if self.getCompFuel(label) > 0.0:
                 Order[i] = 0 + self.getCompFuel(label)/maxCompFuel
             if self.getCompOxi(label) > 0.0:
@@ -969,26 +969,26 @@ class ThermochemistryData(Model):
                 Order[i] = 3 + self.getCompProd(label)/maxCompProd
             i = i + 1
       
-        getSpecieNamesList_Sorted = self.getSpecieNamesList()
-        Order, getSpecieNamesList_Sorted = zip(*sorted(zip(Order, getSpecieNamesList_Sorted)))
+        getSpeciesNamesList_Sorted = self.getSpeciesNamesList()
+        Order, getSpeciesNamesList_Sorted = zip(*sorted(zip(Order, getSpeciesNamesList_Sorted)))
 
         # Write the chemical formula of all the species
-        for label in getSpecieNamesList_Sorted:
-            ChemicalFormula = self.getSpecieChemicalFormula(label)
+        for label in getSpeciesNamesList_Sorted:
+            ChemicalFormula = self.getSpeciesChemicalFormula(label)
             f.write('{:>15}'.format(str(ChemicalFormula).upper()))
         f.write("\n")
         f.write(" "*10)
 
         # Write the absoption coefficient for all the species
-        for label in getSpecieNamesList_Sorted:
+        for label in getSpeciesNamesList_Sorted:
             CoeffAbsorp = self.getCoeffAbsorp(label)
             f.write('{:>15}'.format(str(CoeffAbsorp)))
         f.write(" "*5+InfoLine['CoeffAbsorp']+"\n")
 
         # List of all chemical formula
         LstChemicalFormula = []
-        for label in getSpecieNamesList_Sorted:
-            LstChemicalFormula.append(str(self.getSpecieChemicalFormula(label)))
+        for label in getSpeciesNamesList_Sorted:
+            LstChemicalFormula.append(str(self.getSpeciesChemicalFormula(label)))
 
         # Write the number of chemical element (CHON)
         GlobalElemCompo = {}
@@ -999,18 +999,18 @@ class ThermochemistryData(Model):
                 GlobalElemCompo[Elem] = True
         f.write('{:<15}'.format(str(str(GlobalElemCompo).count("True")))+" "*15*NumberOfSpecies+InfoLine['GlobalElemCompo']+"\n")
 
-        # Create a dictionnary with the composition in chemical elements for each specie
+        # Create a dictionnary with the composition in chemical elements for each species
         Composition = {}
-        for label in getSpecieNamesList_Sorted:
-            ChemicalFormula = self.getSpecieChemicalFormula(label)
+        for label in getSpeciesNamesList_Sorted:
+            ChemicalFormula = self.getSpeciesChemicalFormula(label)
             Composition[ChemicalFormula] = self.getNumberOfChemicalElem(ChemicalFormula)
 
-        # Write the number of chemical element (CHON) for each specie
+        # Write the number of chemical element (CHON) for each species
         for Elem in self.ChemicalElem:
             if GlobalElemCompo[Elem] == True:
                 f.write('{:<10}'.format(str(self.MolarMass.get(Elem))))
-                for label in getSpecieNamesList_Sorted:
-                    ChemicalFormula = self.getSpecieChemicalFormula(label)
+                for label in getSpeciesNamesList_Sorted:
+                    ChemicalFormula = self.getSpeciesChemicalFormula(label)
                     f.write('{:>15}'.format(str(Composition[ChemicalFormula][Elem])))
                 if Elem == self.ChemicalElem[0]:
                     f.write(" "*5+InfoLine['LineInfo-ChemElem'])
@@ -1021,19 +1021,19 @@ class ThermochemistryData(Model):
         f.write(" "*10)
 
         #Write the Fuel composition
-        for label in getSpecieNamesList_Sorted:
+        for label in getSpeciesNamesList_Sorted:
             f.write('{:>15}'.format(str(self.getCompFuel(label))))
         f.write(" "*5+InfoLine['FuelComposition']+"\n")
         f.write(" "*10)
 
-        #Write the Oxidant composition
-        for label in getSpecieNamesList_Sorted:
+        #Write the Oxidiser composition
+        for label in getSpeciesNamesList_Sorted:
             f.write('{:>15}'.format(str(self.getCompOxi(label))))
         f.write(" "*5+InfoLine['OxiComposition']+"\n")
         f.write(" "*10)
 
         #Write the Product composition
-        for label in getSpecieNamesList_Sorted:
+        for label in getSpeciesNamesList_Sorted:
             f.write('{:>15}'.format(str(self.getCompProd(label))))
         f.write(" "*5+InfoLine['ProdComposition'])
 
