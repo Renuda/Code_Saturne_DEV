@@ -120,9 +120,9 @@ enum {
        This option automatically implies \ref iccvfg = 1 */
 
 typedef enum {
-  CS_LAGR_OFF = 0,
-  CS_LAGR_ONEWAY_COUPLING = 1,
-  CS_LAGR_TWOWAY_COUPLING = 2,
+  CS_LAGR_OFF                     = 0,
+  CS_LAGR_ONEWAY_COUPLING         = 1,
+  CS_LAGR_TWOWAY_COUPLING         = 2,
   CS_LAGR_FROZEN_CONTINUOUS_PHASE = 3
 } cs_lagr_module_status_t;
 
@@ -967,9 +967,11 @@ typedef struct {
   /* Turbulence */
   /* Turbulent intensity */
   cs_field_t *cvar_k;
+  cs_field_t *cvar_k_sgs;
 
   /* Turbulent dissipation */
   cs_field_t *cvar_ep;
+  cs_field_t *cvar_ep_sgs;
 
   /* Omega from k-omega SST model*/
   cs_field_t *cvar_omg;

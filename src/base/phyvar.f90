@@ -97,15 +97,15 @@ integer          ii    , jj    , iok   , iok1  , iok2  , iisct, idfm, iggafm, ie
 integer          nn    , isou
 integer          mbrom , ifcvsl, iscacp
 integer          iclipc, idftnp
-integer          iprev , inc, iccocg
+integer          iprev , inc, iccocg, f_k_id, f_e_id
 
 double precision xk, xe, xnu, xrom, vismax(nscamx), vismin(nscamx)
-double precision xrij(3,3), xnal(3), xnoral
-double precision xfmu, xmu, xmut
+double precision xrij(3,3), xnal(3), xnoral, coef, delta
+double precision xfmu, xmu, xmut, s, s11, s22, s33
 double precision nusa, xi3, fv1, cv13
 double precision varmn(4), varmx(4), tt, ttmin, ttke, viscto, visls_0
 double precision xttkmg, xttdrb
-double precision trrij,rottke
+double precision trrij, rottke
 double precision alpha3, xrnn
 double precision, dimension(:), pointer :: brom, crom
 double precision, dimension(:), pointer :: cvar_k, cvar_ep, cvar_phi, cvar_nusa
@@ -119,6 +119,7 @@ double precision, dimension(:), pointer :: viscl, visct, cpro_vis
 double precision, dimension(:), pointer :: cvar_voidf
 double precision, dimension(:), pointer :: cpro_var, cpro_beta, cpro_visma_s
 double precision, allocatable, dimension(:,:) :: grad
+double precision, dimension(:,:,:), allocatable :: gradv
 
 integer          ipass
 data             ipass /0/
@@ -150,7 +151,7 @@ endif
 mbrom = 0
 
 ! First computation of physical properties for specific physics
-! BEFORE the user
+! before the user
 if (ippmod(iphpar).ge.1) then
 
   call cs_physical_properties1(mbrom)
@@ -187,7 +188,7 @@ if (mbrom.eq.0 .and. nfabor.gt.0) then
 endif
 
 ! Finalization of physical properties for specific physics
-! AFTER the user
+! after the user
 if (ippmod(iphpar).ge.1 .or. ippmod(idarcy).ge.1) then
   call cs_physical_properties2
 endif
@@ -271,7 +272,7 @@ endif
 ! 4. Compute the eddy viscosity
 !===============================================================================
 
-if     (iturb.eq. 0) then
+if (iturb.eq.0) then
 
 ! 4.1 Laminar
 ! ===========
@@ -717,7 +718,43 @@ if (iand(ivofmt,VOF_MERKLE_MASS_TRANSFER).ne.0.and.icvevm.eq.1) then
 endif
 
 !===============================================================================
-! 7. User modification of the turbulent viscosity and symmetric tensor
+! 7. Compute subgrid turbulence values for LES if required
+!===============================================================================
+
+if (itytur.eq.4) then
+
+  call field_get_id_try("k_sgs", f_k_id)
+  call field_get_id_try("eps_sgs", f_e_id)
+
+  if (f_k_id .ge. 0 .and. f_e_id .ge. 0) then
+
+    call field_get_val_s(f_k_id, cvar_k)
+    call field_get_val_s(f_e_id, cvar_ep)
+
+    coef = csmago**2 * sqrt(2.d0)
+    
+    inc = 1
+    iprev = 0
+
+    call field_gradient_vector(ivarfl(iu), iprev, 0, inc, gradv)
+
+    do iel = 1, ncel
+      s11 = gradv(1, 1, iel)
+      s22 = gradv(2, 2, iel)
+      s33 = gradv(3, 3, iel)
+      delta = xlesfl* (ales*volume(iel))**bles
+      delta = coef * delta**2
+      s = sqrt(s11 * s11 + s22 * s22 + s33 * s33)
+      cvar_ep(iel) = (s**3) * (csmago * delta)**2
+      cvar_k(iel) = (csmago**(4./3.)) * (csmago *delta)**2
+    enddo
+
+  endif
+
+endif
+
+!===============================================================================
+! 8. User modification of the turbulent viscosity and symmetric tensor
 !    diffusivity
 !===============================================================================
 
