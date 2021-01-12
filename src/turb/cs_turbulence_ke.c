@@ -299,13 +299,6 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
   cs_field_t  *f_k = CS_F_(k);
   cs_field_t  *f_eps = CS_F_(eps);
 
-  /* Lagrangian with SGS type of turbulence model uses different
-     fields for the k/epsilon variables */
-  if (cs_lagr_model_type() != 0 && cs_glob_turb_model->itytur == 4) {
-    f_k   = CS_F_(k_sgs);
-    f_eps = CS_F_(eps_sgs);
-  }
-
   cs_real_t sigmak = cs_field_get_key_double(f_k,
                                              cs_field_key_id("turbulent_schmidt"));
 

@@ -76,6 +76,7 @@ use mesh
 use field
 use field_operator
 use cavitation
+use lagran
 use vof
 use darcy_module
 use cs_c_bindings
@@ -721,7 +722,7 @@ endif
 ! 7. Compute subgrid turbulence values for LES if required
 !===============================================================================
 
-if (itytur.eq.4) then
+if (itytur.eq.4 .and. iilagr.gt.0) then
 
   call field_get_id_try("k_sgs", f_k_id)
   call field_get_id_try("eps_sgs", f_e_id)
