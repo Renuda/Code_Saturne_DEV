@@ -101,7 +101,7 @@ integer          iclipc, idftnp
 integer          iprev , inc, iccocg, f_k_id, f_e_id
 
 double precision xk, xe, xnu, xrom, vismax(nscamx), vismin(nscamx)
-double precision xrij(3,3), xnal(3), xnoral, coef, delta
+double precision xrij(3,3), xnal(3), xnoral, delta
 double precision xfmu, xmu, xmut, s, s11, s22, s33
 double precision nusa, xi3, fv1, cv13
 double precision varmn(4), varmx(4), tt, ttmin, ttke, viscto, visls_0
@@ -576,7 +576,7 @@ if (idfm.eq.1 .or. itytur.eq.3 .and. idirsm.eq.1) then
             enddo
           enddo
 
-          ! No damping with Durbing scale for the scalar
+        ! No damping with Durbing scale for the scalar
         else if (iggafm.eq.1) then
           call field_get_val_v(ivstes, vistes)
 
@@ -731,8 +731,6 @@ if (itytur.eq.4 .and. iilagr.gt.0) then
 
     call field_get_val_s(f_k_id, cvar_k)
     call field_get_val_s(f_e_id, cvar_ep)
-
-    coef = csmago**2 * sqrt(2.d0)
     
     inc = 1
     iprev = 0
@@ -744,7 +742,6 @@ if (itytur.eq.4 .and. iilagr.gt.0) then
       s22 = gradv(2, 2, iel)
       s33 = gradv(3, 3, iel)
       delta = xlesfl* (ales*volume(iel))**bles
-      delta = coef * delta**2
       s = sqrt(s11 * s11 + s22 * s22 + s33 * s33)
       cvar_ep(iel) = (s**3) * (csmago * delta)**2
       cvar_k(iel) = (csmago**(4./3.)) * (csmago *delta)**2
