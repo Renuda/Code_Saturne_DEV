@@ -486,8 +486,8 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         else:
             self.radioButtonCreateJanafFile.setChecked(False)
 
-        # for the moment the option to create Janaf file in the GUI is only available with d3p (extended)
-        if option == 'extended':
+        # for the moment the option to create Janaf file in the GUI is only available with d3p
+        if model == 'd3p':
             self.radioButtonCreateJanafFile.show()
             self.groupBoxCreateJanafFile.show()
 
@@ -507,14 +507,7 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         """
         option = self.modelGasCombustionOption.dicoV2M[str(text)]
         self.mdl.setGasCombustionOption(option)
-        # for the moment the option to create Janaf file in the GUI is only available with d3p (extended)
-        if option == 'extended':
-            self.radioButtonCreateJanafFile.show()
-        else:
-            self.radioButtonCreateJanafFile.setChecked(False)
-            self.thermodata.setCreateThermoDataFile("off")
-            self.radioButtonCreateJanafFile.hide()
-            self.groupBoxCreateJanafFile.hide()
+
 
     @pyqtSlot()
     def __slotSearchThermochemistryData(self):

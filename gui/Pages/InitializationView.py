@@ -215,6 +215,10 @@ class InitializationView(QWidget, Ui_InitializationForm):
         self.scalar_combustion = ""
         scalar_combustion_list = DefineUserScalarsModel( self.case).getGasCombScalarsNameList()
         if GasCombustionModel(self.case).getGasCombustionModel() == "d3p":
+            # For the d3p model (option extended), we let only the Automatic Initialization for the enthalpy
+            option = GasCombustionModel(self.case).getGasCombustionOption()
+            if option == 'extended':
+                self.modelThermal.disableItem(str_model = 'formula')
             self.scalar_combustion = scalar_combustion_list[0]
             for item in self.combustion_group:
                 item.show()

@@ -568,9 +568,13 @@ class ThermochemistryData(Model):
         self.MolarMass['H'] = 0.001
         self.MolarMass['O'] = 0.016
         self.MolarMass['N'] = 0.014
-        # Number of known global species, always 2 for the moment (Fuel and Oxy)
-        # 2 -> Automatic equilibrium of the reaction
-        self.NumberOfKnownGlobalSpecies = 2
+        # Number of known global species, (ngazg in colecd.f90)
+        # = 2 -> Automatic equilibrium of the reaction
+        # = 3 -> Equilibrium defined by the user
+        # NumberOfKnownGlobalSpecies is updated in WriteThermochemistryDataFile
+        self.NumberOfKnownGlobalSpecies = 3
+        # Always 1 reaction (see colecd.f90)
+        self.NbReaction = 1
 
 
     def defaultParamforTabu(self):
@@ -914,6 +918,11 @@ class ThermochemistryData(Model):
         """
         Write the thermochemistry Data File
         """
+        # Assumption : only one reaction (in colecd : ir = 1) (parameter NbReaction)
+        # in colecd : ngazg can equal to 2 or 3 (parameter NumberOfKnownGlobalSpecies)
+        # if ngazg = 3 we add the parameters:
+        # in colecd : igfuel and igoxy (parameters position_fuel and position_oxi) and in colecd : stoeg (parameter global_stoeg)
+        # see colecd.f90 for more information
 
         #Comment to add at the end of each lines FR
         InfoLine = {}
@@ -929,6 +938,8 @@ class ThermochemistryData(Model):
         InfoLine['FuelComposition'] = "Numero espece reactive / Composition Fuel     en especes elementaires"
         InfoLine['OxiComposition'] = "Numero espece reactive / Composition Oxydant  en especes elementaires"
         InfoLine['ProdComposition'] = "Numero espece reactive / Composition Produits en especes elementaires"
+        InfoLine['NbReaction'] = "Nb de reactions mises en jeu pour les especes globales"
+        InfoLine['Stoeg'] = "Stoechiometrie en nb de mole especes globales"
 
         #Open the Thermochemistry Data File
         f = open(file_path, "w")
@@ -1003,18 +1014,26 @@ class ThermochemistryData(Model):
         Composition = {}
         for label in getSpeciesNamesList_Sorted:
             ChemicalFormula = self.getSpeciesChemicalFormula(label)
-            Composition[ChemicalFormula] = self.getNumberOfChemicalElem(ChemicalFormula)
+            Composition[label] = self.getNumberOfChemicalElem(ChemicalFormula)
 
         # Write the number of chemical element (CHON) for each species
         for Elem in self.ChemicalElem:
             if GlobalElemCompo[Elem] == True:
                 f.write('{:<10}'.format(str(self.MolarMass.get(Elem))))
                 for label in getSpeciesNamesList_Sorted:
-                    ChemicalFormula = self.getSpeciesChemicalFormula(label)
-                    f.write('{:>15}'.format(str(Composition[ChemicalFormula][Elem])))
+                    f.write('{:>15}'.format(str(Composition[label][Elem])))
                 if Elem == self.ChemicalElem[0]:
                     f.write(" "*5+InfoLine['LineInfo-ChemElem'])
                 f.write('\n')
+
+        #Check if all the species have a given composition
+        CheckComp = {}
+        for label in getSpeciesNamesList_Sorted:
+            CheckComp[label] = self.getCompFuel(label)+self.getCompOxi(label)+self.getCompProd(label)
+        if 0 in CheckComp.values():
+            self.NumberOfKnownGlobalSpecies = 2
+        else:
+            self.NumberOfKnownGlobalSpecies = 3
 
         # Write the number of known global species (always 2 (Fuel and Oxy) for the moment)
         f.write('{:<15}'.format(str(self.NumberOfKnownGlobalSpecies))+" "*15*NumberOfSpecies+InfoLine['NumberOfKnownGlobalSpecies']+"\n")
@@ -1036,6 +1055,39 @@ class ThermochemistryData(Model):
         for label in getSpeciesNamesList_Sorted:
             f.write('{:>15}'.format(str(self.getCompProd(label))))
         f.write(" "*5+InfoLine['ProdComposition'])
+        
+        #If all the species have a given composition : ngazg == 3
+        if self.NumberOfKnownGlobalSpecies == 3 :
+            position_fuel = 1
+            position_oxi = 2
+            f.write("\n")
+            f.write('{:<15}'.format(str(self.NbReaction))+" "*15*NumberOfSpecies+InfoLine['NbReaction']+"\n")
+            f.write('{:<15}'.format(str(position_fuel)))
+            f.write('{:<15}'.format(str(position_oxi)))
+
+            Prodsum = {}
+            Prodsum['Fuel'] = 0.0
+            Prodsum['Oxi'] = 0.0
+            Prodsum['Prod'] = 0.0
+            global_stoeg = {}
+            global_stoeg['Fuel'] = 0.0
+            global_stoeg['Oxi'] = 0.0
+            global_stoeg['Prod'] = 0.0
+
+            for label in getSpeciesNamesList_Sorted:
+                Prodsum['Fuel'] = Prodsum['Fuel'] + float(Composition[label]['O'])*self.getCompFuel(label)
+                Prodsum['Oxi'] = Prodsum['Oxi'] + float(Composition[label]['O'])*self.getCompOxi(label)
+                Prodsum['Prod'] = Prodsum['Prod'] + float(Composition[label]['O'])*self.getCompProd(label)
+                global_stoeg['Fuel'] = global_stoeg['Fuel'] + self.getCompFuel(label)
+                global_stoeg['Oxi'] = global_stoeg['Oxi'] + self.getCompOxi(label)
+                global_stoeg['Prod'] = global_stoeg['Prod'] + self.getCompProd(label)
+
+            nreact_oxi = (Prodsum['Prod']-Prodsum['Fuel'])/Prodsum['Oxi']
+            global_stoeg['Oxi'] = -global_stoeg['Oxi']*nreact_oxi
+            f.write('{:<15}'.format(str(-global_stoeg['Fuel'])))
+            f.write('{:<15}'.format(str(global_stoeg['Oxi'])))
+            f.write('{:<15}'.format(str(global_stoeg['Prod'])))
+            f.write(" "*15*(max(1,NumberOfSpecies-4))+InfoLine['Stoeg']+"\n")
 
         #Close the Thermochemistry Data File
         f.close()
