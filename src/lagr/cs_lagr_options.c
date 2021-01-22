@@ -744,6 +744,7 @@ cs_lagr_options_definition(int         isuite,
   if (   lagr_model->idistu == 1
       && extra->itytur != 2
       && extra->itytur != 3
+      && extra->itytur != 4
       && extra->iturb != 50
       && extra->iturb != 60) {
     cs_parameters_error
@@ -759,6 +760,7 @@ cs_lagr_options_definition(int         isuite,
            && extra->iturb != 0
            && extra->itytur!= 2
            && extra->itytur!= 3
+           && extra->itytur!= 4
            && extra->iturb != 50
            && extra->iturb != 60) {
     cs_parameters_error
