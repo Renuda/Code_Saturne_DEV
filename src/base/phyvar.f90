@@ -728,8 +728,6 @@ endif
 
 if (itytur.eq.4 .and. iilagr.gt.0) then
   
-  write(*,*) "Computing SGS values"
-
   call field_get_val_s(ivarfl(ik_sgs), cvar_k)
   call field_get_val_s(ivarfl(iep_sgs), cvar_ep)    
     

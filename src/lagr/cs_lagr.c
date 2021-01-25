@@ -772,12 +772,10 @@ _lagr_map_fields_default(void)
     _lagr_extra_module.cpro_viscls = NULL;
 
     if (cs_glob_turb_model->itytur == 4) {
-      printf("Switching to SGS k/epsilon pointers\n");
       _lagr_extra_module.cvar_k = cs_field_by_name_try("k_sgs");
       _lagr_extra_module.cvar_ep = cs_field_by_name_try("epsilon_sgs");
     }
     else {
-      printf("Using original k/epsilon pointers\n");
       _lagr_extra_module.cvar_k  = cs_field_by_name_try("k");
       _lagr_extra_module.cvar_ep = cs_field_by_name_try("epsilon");
     }
