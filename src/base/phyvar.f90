@@ -439,26 +439,30 @@ elseif (iturb.eq.40) then
 ! 4.5 LES Smagorinsky
 ! ===================
 
-  call vissma
+  allocate(gradv(3, 3, ncelet))
+  call vissma (gradv)
 
 elseif (iturb.eq.41) then
 
 ! 4.6 LES dynamic
 ! ===============
 
+  allocate(gradv(3, 3, ncelet))
+
   call visdyn &
  ( nvar   , nscal  ,                                              &
    ncepdc , ncetsm ,                                              &
    icepdc , icetsm , itypsm ,                                     &
    dt     ,                                                       &
-   ckupdc , smacel )
+   ckupdc , smacel, gradv )
 
 elseif (iturb.eq.42) then
 
 ! 4.7 LES WALE
 ! ============
 
-  call viswal
+  allocate(gradv(3, 3, ncelet))
+  call viswal (gradv)
 
 elseif (itytur.eq.5) then
 
@@ -734,11 +738,6 @@ if (itytur.eq.4 .and. iilagr.gt.0) then
     call field_get_val_s(f_k_id, cvar_k)
     call field_get_val_s(f_e_id, cvar_ep)
     
-    inc = 1
-    iprev = 0
-
-    call field_gradient_vector(ivarfl(iu), iprev, 0, inc, gradv)
-
     do iel = 1, ncel
       s11 = gradv(1, 1, iel)
       s22 = gradv(2, 2, iel)
@@ -750,6 +749,8 @@ if (itytur.eq.4 .and. iilagr.gt.0) then
     enddo
 
   endif
+
+  deallocate (gradv)
 
 endif
 

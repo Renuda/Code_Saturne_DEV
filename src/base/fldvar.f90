@@ -283,9 +283,6 @@ else if (itytur.eq.3) then
     vcopt%idircl = 0
     call field_set_key_struct_var_cal_opt(ivarfl(ial), vcopt)
   endif
-else if (itytur.eq.4 .and. iilagr.gt.0) then
-  call add_variable_field('k_sgs', 'Turb Kinetic Energy', 1, ik)
-  call add_variable_field('epsilon_sgs', 'Turb Dissipation', 1, iep)
 else if (itytur.eq.5) then
   call add_variable_field('k', 'Turb Kinetic Energy', 1, ik)
   call add_variable_field('epsilon', 'Turb Dissipation', 1, iep)
