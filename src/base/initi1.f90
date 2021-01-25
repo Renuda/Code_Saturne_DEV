@@ -131,8 +131,8 @@ endif
 call cs_lagr_options_definition(isuite, have_thermal_model, dtref, iccvfg)
 
 if (itytur.eq.4 .and. iilagr.gt.0) then
-  call add_variable_field('k_sgs', 'Turb Kinetic Energy', 1, ik_sgs)
-  call add_variable_field('epsilon_sgs', 'Turb Dissipation', 1, iep_sgs)
+  call add_variable_field('k_sgs', 'SGS Turb Kinetic Energy', 1, ik_sgs)
+  call add_variable_field('epsilon_sgs', 'SGS Turb Dissipation', 1, iep_sgs)
 endif
 
 ! Additional fields if not in CDO mode only
