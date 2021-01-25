@@ -32,7 +32,6 @@ This module contains the following classes and function:
 #-------------------------------------------------------------------------------
 
 import logging
-from code_saturne.model.TurbulenceModel import *
 
 #-------------------------------------------------------------------------------
 # Third-party modules
@@ -91,7 +90,6 @@ class LagrangianOutputView(QWidget, Ui_LagrangianOutputForm):
         self.checkBoxIVISCH.clicked.connect(self.slotIVISCH)
         self.checkBoxIVISCK.clicked.connect(self.slotIVISCK)
         self.checkBoxMoisture.clicked.connect(self.slotMoisture)
-        self.checkBoxSGSTurbulenceFields.clicked.connect(self.slotSGSTurbulenceFields)
 
         # initialize Widgets
         status = self.model.getFluidVelocityStatus()
@@ -129,19 +127,6 @@ class LagrangianOutputView(QWidget, Ui_LagrangianOutputForm):
             self.checkBoxIVISMP.setChecked(True)
         else:
             self.checkBoxIVISMP.setChecked(False)
-
-        tm = TurbulenceModel(self.case).getTurbulenceModel()
-
-        if tm == "LES_Smagorinsky" or tm == "LES_dynamique" or \
-           tm == "LES_WALE":
-          status = self.model.getSGSTurbulenceFieldsStatus()
-          if status == "on":
-            self.checkBoxSGSTurbulenceFields.setChecked(True)
-          else:
-            self.checkBoxSGSTurbulenceFields.setChecked(False)
-        else:
-          self.checkBoxSGSTurbulenceFields.hide()
-          self.labelSGSTurbulenceFields.hide()
 
         if CoalCombustionModel(self.case).getCoalCombustionModel("only") == \
            "homogeneous_fuel_moisture":
@@ -290,24 +275,6 @@ class LagrangianOutputView(QWidget, Ui_LagrangianOutputForm):
         else:
             self.model.setMoistureMassStatus("off")
 
-    @pyqtSlot()
-    def slotSGSTurbulenceFields(self):
-        """
-        Input ISGSTurbulenceFields.
-        """
-        tm = TurbulenceModel(self.case).getTurbulenceModel()
-
-        if tm == "LES_Smagorinsky" or tm == "LES_dynamique" or \
-           tm == "LES_WALE":
-          self.checkBoxSGSTurbulenceFields.show()
-          self.labelSGSTurbulenceFields.show() 
-          if self.checkBoxSGSTurbulenceFields.isChecked():
-              self.model.setSGSTurbulenceFieldsStatus("on")
-          else:
-              self.model.setSGSTurbulenceFieldsStatus("off")
-        else:
-          self.checkBoxSGSTurbulenceFields.hide()
-          self.labelSGSTurbulenceFields.hide()
 
 #-------------------------------------------------------------------------------
 # Testing part

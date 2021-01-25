@@ -91,7 +91,6 @@ class LagrangianOutputModel(Model):
         default['raw_coal_mass_fraction']     = "off"
         default['char_mass_fraction']         = "off"
         default['moisture_mass_fraction']     = "off"
-        default['sgs_turbulence_fields']      = "off"
         return default
 
 
@@ -352,29 +351,6 @@ class LagrangianOutputModel(Model):
             self.setMoistureMassStatus(status)
         return status
 
-    @Variables.undoLocal
-    def setSGSTurbulenceFieldsStatus(self, status):
-        """
-        Update the status markup from the XML document to associate the variable
-        'SGS turbulence fields' with the display (trajectory or particles) mode.
-        """
-        self.isOnOff(status)
-        node_mass = self.node_output.xmlInitChildNode('sgs_turbulence_fields', 'status')
-        node_mass['status'] = status
-
-
-    @Variables.noUndo
-    def getSGSTurbulenceFieldsStatus(self):
-        """
-        Return status for association of the variable 'SGS turbulence fields'
-        with the display.
-        """
-        node_mass = self.node_output.xmlInitChildNode('sgs_turbulence_fields', 'status')
-        status = node_mass['status']
-        if not status:
-            status = self._defaultLagrangianOutputValues()['sgs_turbulence_fields']
-            self.setSGSTurbulenceFieldsStatus(status)
-        return status
 
 #-------------------------------------------------------------------------------
 # LagrangianOutput test case
@@ -420,15 +396,12 @@ class LagrangianOutputTestCase(unittest.TestCase):
         <output>
         <resident_time status="off"/>
         <diameter status="off"/>
-        <temperature status="off"/>
         <velocity_particles status="off"/>
         <velocity_fluid_seen status="off"/>
         <mass status="off"/>
         <shrinking_core_diameter status="off"/>
         <raw_coal_mass_fraction status="off"/>
         <char_mass_fraction status="off"/>
-        <moisture_mass_fraction status="off"/>
-        <sgs_turbulence_fields="off"/>
         </output>"""
 
         assert model.node_output == self.xmlNodeFromString(doc),\
@@ -627,23 +600,6 @@ class LagrangianOutputTestCase(unittest.TestCase):
         assert mdl.node_output.xmlInitChildNode('char_mass_fraction') == self.xmlNodeFromString(doc) ,\
             'Could not set values for status'
 
-
-    def checkSetandGetSGSTurbulenceFieldsStatus(self):
-        """
-        Check whether the method for 'SGS turbulence fields' association
-        with display could be set and get
-        """
-        mdl = LagrangianOutputModel(self.case)
-        status = mdl.getSGSTurbulenceFieldsStatus()
-        assert status == 'off',\
-            'Could not get default values for sgs_turbulence_fields status'
-        mdl.setSGSTurbulenceFieldsStatus('on')
-        doc = """
-        <sgs_turbulence_fields status="on"/>
-        """
-
-        assert mdl.node_output.xmlInitChildNode('sgs_turbulence_fields') == self.xmlNodeFromString(doc),\
-            'Could not set values for sgs_turbulence_fields status '
 
 
 def suite():

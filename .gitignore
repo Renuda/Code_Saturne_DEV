@@ -218,6 +218,6 @@ Makefile.in
 /src/TAGS
 
 /.vscode/
-/build*/
+/build-*/
 vsc-*.sh
 *.*~
