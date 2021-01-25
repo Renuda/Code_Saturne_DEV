@@ -728,17 +728,12 @@ endif
 
 if (itytur.eq.4 .and. iilagr.gt.0) then
   
-  call field_get_id_try("k_sgs", f_k_id)
-  call field_get_id_try("epsilon_sgs", f_e_id)
+  write(*,*) "Computing SGS values"
 
-  if (f_k_id.ge.0 .and. f_e_id.ge.0) then
-
-    write(*,*) "Computing SGS values"
-
-    call field_get_val_s(ivarfl(ik_sgs), cvar_k)
-    call field_get_val_s(ivarfl(iep_sgs), cvar_ep)    
+  call field_get_val_s(ivarfl(ik_sgs), cvar_k)
+  call field_get_val_s(ivarfl(iep_sgs), cvar_ep)    
     
-    do iel = 1, ncel
+  do iel = 1, ncel
       s11 = gradv(1, 1, iel)
       s22 = gradv(2, 2, iel)
       s33 = gradv(3, 3, iel)
@@ -746,9 +741,7 @@ if (itytur.eq.4 .and. iilagr.gt.0) then
       s = sqrt(s11 * s11 + s22 * s22 + s33 * s33)
       cvar_ep(iel) = (s**3) * (csmago * delta)**2
       cvar_k(iel) = (csmago**(4./3.)) * (csmago *delta)**2
-    enddo
-
-  endif
+  enddo
 
   deallocate (gradv)
 
