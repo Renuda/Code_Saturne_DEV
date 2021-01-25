@@ -723,13 +723,13 @@ endif
 !===============================================================================
 
 if (itytur.eq.4 .and. iilagr.gt.0) then
-
-  write(*,*) "Computing SGS values"
   
   call field_get_id_try("k_sgs", f_k_id)
   call field_get_id_try("epsilon_sgs", f_e_id)
 
   if (f_k_id.ge.0 .and. f_e_id.ge.0) then
+
+    write(*,*) "Computing SGS values"
 
     call field_get_val_s(f_k_id, cvar_k)
     call field_get_val_s(f_e_id, cvar_ep)
