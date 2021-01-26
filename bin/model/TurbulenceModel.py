@@ -97,7 +97,9 @@ class TurbulenceModel(Variables, Model):
                                'r23',
                                'rij',
                                'k',
+                               'k_sgs',
                                'epsilon',
+                               'epsilon_sgs',
                                'phi',
                                'alpha',
                                'omega',
@@ -244,7 +246,14 @@ class TurbulenceModel(Variables, Model):
                 self.setNewProperty(self.node_turb, 'smagorinsky_constant^2')
             else:
                 self.__removeVariablesAndProperties([], 'smagorinsky_constant^2')
+            
+            if self.node_lagr['model'] != "off":
+                lst = ('k_sgs', 'epsilon_sgs')
+                for v in lst:
+                    self.setNewVariable(self.node_turb, v, label=v)
+
             self.setNewProperty(self.node_turb, 'turbulent_viscosity')
+            self.__updateInletsForTurbulence()
             self.node_turb.xmlRemoveChild('wall_function')
 
             from code_saturne.model.TimeStepModel import TimeStepModel
@@ -272,7 +281,6 @@ class TurbulenceModel(Variables, Model):
             self.__removeVariablesAndProperties(lst, 'smagorinsky_constant^2')
 
         elif model_turb == 'Spalart-Allmaras':
-            lst = ('nu_tilda')
             self.setNewVariable(self.node_turb, 'nu_tilda', label='nu_tilda')
             self.setNewProperty(self.node_turb, 'turbulent_viscosity')
             self.__updateInletsForTurbulence()
@@ -487,6 +495,10 @@ class TurbulenceModel(Variables, Model):
         if model in ('k-epsilon','k-epsilon-PL'):
             nodeList.append(self.node_turb.xmlGetNode('variable', name='k'))
             nodeList.append(self.node_turb.xmlGetNode('variable', name='epsilon'))
+        elif model in self.LESmodels():
+            if self.node_lagr['model'] != "off":
+                nodeList.append(self.node_turb.xmlGetNode('variable', name='k_sgs'))
+                nodeList.append(self.node_turb.xmlGetNode('variable', name='epsilon_sgs'))
         elif model in ('Rij-epsilon', 'Rij-SSG', 'Rij-EBRSM'):
             for var in ('r11', 'r22', 'r33',
                         'r12', 'r13', 'r23', 'epsilon'):
