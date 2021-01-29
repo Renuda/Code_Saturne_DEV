@@ -54,7 +54,7 @@ implicit none
 
 ! Local variables
 
-integer          iok, ipp, nmodpp, have_thermal_model, f_vis
+integer          iok, ipp, nmodpp, have_thermal_model, f_vis, kscmin
 
 double precision ttsuit, wtsuit
 
