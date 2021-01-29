@@ -105,7 +105,7 @@ double precision xrij(3,3), xnal(3), xnoral, delta
 double precision xfmu, xmu, xmut, s, s11, s22, s33
 double precision nusa, xi3, fv1, cv13
 double precision varmn(4), varmx(4), tt, ttmin, ttke, viscto, visls_0
-double precision xttkmg, xttdrb
+double precision xttkmg, xttdrb, c_k, c_epsilon
 double precision trrij, rottke
 double precision alpha3, xrnn
 double precision, dimension(:), pointer :: brom, crom
@@ -730,15 +730,18 @@ if (itytur.eq.4 .and. iilagr.gt.0) then
   
   call field_get_val_s(ivarfl(ik_sgs), cvar_k)
   call field_get_val_s(ivarfl(iep_sgs), cvar_ep)    
-    
+  
+  c_epsilon = 1.0
+
   do iel = 1, ncel
       s11 = gradv(1, 1, iel)
       s22 = gradv(2, 2, iel)
       s33 = gradv(3, 3, iel)
       delta = xlesfl* (ales*volume(iel))**bles
       s = sqrt(s11 * s11 + s22 * s22 + s33 * s33)
+      c_k = c_epsilon * (csmago**(4./3.))
       cvar_ep(iel) = (s**3) * (csmago * delta)**2
-      cvar_k(iel) = (csmago**(4./3.)) * (csmago *delta)**2
+      cvar_k(iel) = c_k * (csmago * delta)**2
   enddo
 
   deallocate (gradv)
