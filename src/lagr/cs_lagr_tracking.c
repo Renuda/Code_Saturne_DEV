@@ -1661,7 +1661,7 @@ _boundary_treatment(cs_lagr_particle_set_t    *particles,
       }
 
     } 
-    else if (extra->itytur == 4 || extra->iturb == 20 || extra->iturb == 21) {
+    else if (extra->iturb == 20 || extra->iturb == 21) {
 
       const cs_real_t *cvar_k = CS_F_(k)->val;
 
