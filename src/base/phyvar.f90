@@ -734,14 +734,14 @@ if (itytur.eq.4 .and. iilagr.gt.0) then
   c_epsilon = 1.0
 
   do iel = 1, ncel
-      s11 = gradv(1, 1, iel)
-      s22 = gradv(2, 2, iel)
-      s33 = gradv(3, 3, iel)
-      delta = xlesfl* (ales*volume(iel))**bles
-      s = sqrt(s11 * s11 + s22 * s22 + s33 * s33)
-      c_k = c_epsilon * (csmago**(4./3.))
-      cvar_ep(iel) = (s**3) * (csmago * delta)**2
-      cvar_k(iel) = c_k * (csmago * delta)**2
+    s11 = gradv(1, 1, iel)
+    s22 = gradv(2, 2, iel)
+    s33 = gradv(3, 3, iel)
+    delta = xlesfl* (ales*volume(iel))**bles
+    s = sqrt(s11 * s11 + s22 * s22 + s33 * s33)
+    c_k = c_epsilon * (csmago**(4./3.))
+    cvar_ep(iel) = (s**3) * (csmago * delta)**2
+    cvar_k(iel) = c_k * (csmago * delta)**2
   enddo
 
   deallocate (gradv)

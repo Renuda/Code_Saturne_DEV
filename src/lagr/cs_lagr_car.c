@@ -321,7 +321,6 @@ cs_lagr_car(int              iprev,
            " V2f or k-omega are handled."),
          (int)cs_glob_lagr_model->idistu,
          (int)extra->iturb);
-
     }
 
     /* -> Calculation of TL and BX     */

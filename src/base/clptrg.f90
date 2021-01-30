@@ -975,7 +975,7 @@ do ifac = 1, nfabor
     if (itytur.eq.2 .or. iturb.eq.60 .or.        &
          iturb.eq.0 .or. iturb.eq.10 .or.        &
          iturb.eq.30.or. iturb.eq.31 .or.        &
-        itytur.eq.4 .or.                         &
+         itytur.eq.4 .or.                        &
          iturb.eq.70        ) then
 
       if (visctc.gt.epzero) then
