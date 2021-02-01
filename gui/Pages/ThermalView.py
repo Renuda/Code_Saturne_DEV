@@ -260,7 +260,6 @@ class ThermalView(QWidget, Ui_ThermalForm):
         #----------------
 
         self.__setSoot__()
-#        self.__setSoot__(model)
 
         # Undo/redo part
 
@@ -356,10 +355,13 @@ class ThermalView(QWidget, Ui_ThermalForm):
         """
         Update for soot model
         """
+        self.rmdl = ThermalRadiationModel(self.case)
+        self.modelrad = self.rmdl.getRadiativeModel()
+
         self.gas = GasCombustionModel(self.case)
         self.model = self.gas.getGasCombustionModel()
 
-        if self.model == "off":
+        if self.model == "off" or self.modelrad =="off":
             self.groupBoxSoot.hide()
             return
 
@@ -370,7 +372,7 @@ class ThermalView(QWidget, Ui_ThermalForm):
         self.modelSoot   = ComboModel(self.comboBoxSoot, 3, 1)
 
         self.modelSoot.addItem("None", 'off')
-        self.modelSoot.addItem("Constant fraction of product", 'soot_product_fraction')
+        self.modelSoot.addItem("Constant soot yield", 'constant_soot_yield')
         self.modelSoot.addItem("2 equations model of Moss et al.", 'moss')
 
         # Connections
@@ -391,6 +393,9 @@ class ThermalView(QWidget, Ui_ThermalForm):
 
         self.modelSoot.setItem(str_model=self.gas.getSootModel())
 
+        if self.rmdl.getRadiativeModel() == "off":
+            self.modelSoot.setItem(str_model='off')
+
         self.slotSoot()
 
 
@@ -410,13 +415,17 @@ class ThermalView(QWidget, Ui_ThermalForm):
     def slotRadiativeTransfer(self):
         """
         """
+        self.gas = GasCombustionModel(self.case)
         model = self.modelRadModel.dicoV2M[str(self.comboBoxRadModel.currentText())]
         self.rmdl.setRadiativeModel(model)
         if model == 'off':
             self.frameOptions.hide()
             self.groupBoxDirection.hide()
             self.groupBoxAbsorptionCoeff.hide()
+            self.gas.setSootModel("off")
+            self.groupBoxSoot.hide()
         else:
+            self.groupBoxSoot.show()
             self.groupBoxAbsorptionCoeff.show()
             self.frameOptions.show()
 
@@ -434,6 +443,7 @@ class ThermalView(QWidget, Ui_ThermalForm):
                 else:
                     self.label_2.hide()
                     self.lineEditNdirec.hide()
+        self.__setSoot__()
 
 
     @pyqtSlot(int)
@@ -478,10 +488,17 @@ class ThermalView(QWidget, Ui_ThermalForm):
         typeCoeff = self.modelAbsorption.dicoV2M[str(text)]
         self.rmdl.setTypeCoeff(typeCoeff)
 
+        self.gas = GasCombustionModel(self.case)
+        self.model = self.gas.getGasCombustionModel()
+
         if typeCoeff == 'constant':
             self.lineEditCoeff.show()
             self.lineEditCoeff.setEnabled(True)
             self.label.show()
+            # we don't show the absorption coeff when a gas combustion model is used because the value is read from the Janaf File.
+            if self.model != 'off':
+                self.lineEditCoeff.hide()
+                self.label.hide()
         elif typeCoeff == 'modak':
             self.lineEditCoeff.hide()
             self.lineEditCoeff.setDisabled(True)
@@ -534,9 +551,10 @@ class ThermalView(QWidget, Ui_ThermalForm):
             self.label_4.hide()
 
             self.labelSootFraction.hide()
+            self.labelSootFractionbis.hide()
             self.lineEditSootFraction.hide()
 
-        elif model == 'soot_product_fraction':
+        elif model == 'constant_soot_yield':
 
             self.labelSootDensity.show()
             self.lineEditSootDensity.show()
@@ -544,6 +562,7 @@ class ThermalView(QWidget, Ui_ThermalForm):
             self.label_4.show()
 
             self.labelSootFraction.show()
+            self.labelSootFractionbis.show()
             self.lineEditSootFraction.show()
             self.lineEditSootFraction.setText(str(self.gas.getSootFraction()))
 
@@ -555,6 +574,7 @@ class ThermalView(QWidget, Ui_ThermalForm):
             self.label_4.show()
 
             self.labelSootFraction.hide()
+            self.labelSootFractionbis.hide()
             self.lineEditSootFraction.hide()
 
     @pyqtSlot(str)
