@@ -1000,7 +1000,7 @@ cs_lagr_options_definition(int         isuite,
   cs_lagr_particle_attr_initialize();
   cs_lagr_event_initialize();
 
-  if (lagr_model->deposition > 0)
+  if (lagr_model->deposition >= 0)
     cs_field_find_or_create("ustar",
                             CS_FIELD_PROPERTY | CS_FIELD_PROPERTY,
                             CS_MESH_LOCATION_BOUNDARY_FACES,
