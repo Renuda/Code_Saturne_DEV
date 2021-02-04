@@ -556,9 +556,6 @@ class ThermochemistryData(Model):
         nModels              = self.case.xmlGetNode('thermophysical_models')
         self.node_thermodata = nModels.xmlInitNode('Thermochemistry_data')
 
-        self.thermodatafile = ('off', 'on')
-        self.nodes = ['NbPointsTabu', 'MaximumTemp', 'MinimumTemp']
-
         # Parameters to create the Thermochemistry Data File
         # Available Chemical Elements
         self.ChemicalElem = ['C', 'H', 'O', 'N']
@@ -579,10 +576,12 @@ class ThermochemistryData(Model):
 
     def defaultParamforTabu(self):
         """
-        Return in a dictionnary which contains default values for the tabulation
+        Return in a dictionnary which contains default values 
+        for parameters necessarry to create the Janaf File
         """
         default = {}
         default['CreateThermoDataFile'] = 'off'
+        default['user_mode_chem'] = 'auto'
         default['NbPointsTabu'] = 10
         default['MaximumTemp'] = 3000.0
         default['MinimumTemp'] = 273.0
@@ -615,7 +614,38 @@ class ThermochemistryData(Model):
             self.node_thermodata.xmlRemoveChild('NbPointsTabu')
             self.node_thermodata.xmlRemoveChild('MaximumTemp')
             self.node_thermodata.xmlRemoveChild('MinimumTemp')
-            nodes = self.node_thermodata.xmlGetChildNodeList('variable')
+            self.node_thermodata.xmlRemoveChild('user_mode_chem')
+
+
+    @Variables.noUndo
+    def getUserModeForChemicalReaction(self):
+        """
+        Return the mode to build the Janaf File
+        """
+        node = self.node_thermodata.xmlInitChildNode('user_mode_chem', 'choice')
+        model = node['choice']
+        if not model:
+            model = self.defaultParamforTabu()['user_mode_chem']
+            self.setUserModeForChemicalReaction(model)
+        return model
+
+
+    @Variables.undoGlobal
+    def setUserModeForChemicalReaction(self, model):
+        """
+        Put the mode to build the Janaf File
+        """
+        self.node_mode_chem = self.node_thermodata.xmlInitChildNode('user_mode_chem', 'choice')
+        self.node_mode_chem['choice'] = model
+
+        if model == 'user':
+            self.node_mode_chem.xmlRemoveChild('Fuel')
+            self.node_mode_chem.xmlRemoveChild('VolPropO2')
+            self.node_mode_chem.xmlRemoveChild('VolPropN2')
+            self.node_mode_chem.xmlRemoveChild('COyield')
+            self.node_mode_chem.xmlRemoveChild('CSyield')
+        if model == 'auto':
+            nodes = self.node_mode_chem.xmlGetChildNodeList('variable')
             for node in nodes:
                 node.xmlRemoveNode()
 
@@ -688,17 +718,136 @@ class ThermochemistryData(Model):
 
     def defaultSpeciesProperties(self):
         """
-        Return the default properties for a species
+        Return the default properties for a species (mode "auto" and "user")
         """
         default = {}
-        default['species_label']         = "species"
-        default['chemical_formula']     = "CHON"
+        default['species_label']       = "species"
+        default['chemical_formula']    = "CHON"
         default['fuel_composition']    = 0.0
         default['oxi_composition']     = 0.0
-        default['prod_composition']     = 0.0
-        default['coeff_absorption']     = 0.35
+        default['prod_composition']    = 0.0
+        default['coeff_absorption']    = 0.35
+        default['fuel']                = "C4H10"
+        default['volPropO2']           = 0.21
+        default['volPropN2']           = 0.79
+        default['COyield']             = 0.0
+        default['CSyield']             = 0.0
 
         return default
+
+
+    @Variables.noUndo
+    def getChemicalFormulaFuel(self):
+        """
+        Return the chemical formula for the Fuel
+        """
+        ChemicalFormula = self.node_thermodata.xmlGetString('Fuel')
+        if ChemicalFormula == "":
+            ChemicalFormula = self.defaultSpeciesProperties()['fuel']
+            self.setChemicalFormulaFuel(ChemicalFormula)
+
+        return ChemicalFormula
+
+
+    @Variables.undoGlobal
+    def setChemicalFormulaFuel(self, chemical_formula):
+        """
+        Put the chemical formula for the Fuel
+        """
+        self.node_mode_chem = self.node_thermodata.xmlGetNode('user_mode_chem')
+        self.node_mode_chem.xmlSetData('Fuel', chemical_formula)
+
+
+    @Variables.noUndo
+    def getVolPropO2(self):
+        """
+        Return the value of VolPropO2
+        """
+        VolPropO2 = self.node_thermodata.xmlGetDouble('VolPropO2')
+        if VolPropO2 == None:
+            VolPropO2 = self.defaultSpeciesProperties()['volPropO2']
+            self.setVolPropO2(VolPropO2)
+
+        return VolPropO2
+
+
+    @Variables.undoGlobal
+    def setVolPropO2(self, value):
+        """
+        Put the value of VolPropO2
+        """
+        self.isFloat(value)
+        self.node_mode_chem = self.node_thermodata.xmlGetNode('user_mode_chem')
+        self.node_mode_chem.xmlSetData('VolPropO2', value)
+
+
+    @Variables.noUndo
+    def getVolPropN2(self):
+        """
+        Return the value of VolPropN2
+        """
+        VolPropN2 = self.node_thermodata.xmlGetDouble('VolPropN2')
+        if VolPropN2 == None:
+            VolPropN2 = self.defaultSpeciesProperties()['volPropN2']
+            self.setVolPropN2(VolPropN2)
+
+        return VolPropN2
+
+
+    @Variables.undoGlobal
+    def setVolPropN2(self, value):
+        """
+        Put the value of VolPropN2
+        """
+        self.isFloat(value)
+        self.node_mode_chem = self.node_thermodata.xmlGetNode('user_mode_chem')
+        self.node_mode_chem.xmlSetData('VolPropN2', value)
+
+
+    @Variables.noUndo
+    def getCOyield(self):
+        """
+        Return the value of COyield
+        """
+        COyield = self.node_thermodata.xmlGetDouble('COyield')
+        if COyield == None:
+            COyield = self.defaultSpeciesProperties()['COyield']
+            self.setCOyield(COyield)
+
+        return COyield
+
+
+    @Variables.undoGlobal
+    def setCOyield(self, value):
+        """
+        Put the value of COyield
+        """
+        self.isFloat(value)
+        self.node_mode_chem = self.node_thermodata.xmlGetNode('user_mode_chem')
+        self.node_mode_chem.xmlSetData('COyield', value)
+
+
+    @Variables.noUndo
+    def getCSyield(self):
+        """
+        Return the value of CSyield
+        """
+        CSyield = self.node_thermodata.xmlGetDouble('CSyield')
+        if CSyield == None:
+            CSyield = self.defaultSpeciesProperties()['CSyield']
+            self.setCSyield(CSyield)
+
+        return CSyield
+
+
+    @Variables.undoGlobal
+    def setCSyield(self, value):
+        """
+        Put the value of CSyield
+        """
+        self.isFloat(value)
+        self.node_mode_chem = self.node_thermodata.xmlGetNode('user_mode_chem')
+        self.node_mode_chem.xmlSetData('CSyield', value)
 
 
     def __defaultSpeciesLabel(self, species_name=None):
@@ -735,8 +884,10 @@ class ThermochemistryData(Model):
 
         c = self.__defaultSpeciesLabel(name)
 
+        self.node_mode_chem = self.node_thermodata.xmlGetNode('user_mode_chem')
+
         if c not in self.getSpeciesNamesList():
-            self.node_thermodata.xmlInitNode('variable', label=c, name=c)
+            self.node_mode_chem.xmlInitNode('variable', label=c, name=c)
             self.setSpeciesChemicalFormula(c, self.defaultSpeciesProperties()['chemical_formula'])
             self.setCompFuel(c, self.defaultSpeciesProperties()['fuel_composition'])
             self.setCompOxi(c, self.defaultSpeciesProperties()['oxi_composition'])
@@ -744,6 +895,24 @@ class ThermochemistryData(Model):
             self.setCoeffAbsorp(c, self.defaultSpeciesProperties()['coeff_absorption'])
 
         return c
+
+
+    @Variables.undoGlobal
+    def updateSpecies(self, data):
+        """
+        Public method.
+        Update the XML from the tableView
+        """
+        c = data[0]
+
+        self.node_mode_chem = self.node_thermodata.xmlGetNode('user_mode_chem')
+
+        self.node_mode_chem.xmlInitNode('variable', label=c, name=c)
+        self.setSpeciesChemicalFormula(c, data[1])
+        self.setCompFuel(c, data[2])
+        self.setCompOxi(c, data[3])
+        self.setCompProd(c, data[4])
+        self.setCoeffAbsorp(c, data[5])
 
 
     @Variables.undoGlobal
@@ -763,8 +932,9 @@ class ThermochemistryData(Model):
         Public method.
         Return the Species name list
         """
+        self.node_mode_chem = self.node_thermodata.xmlGetNode('user_mode_chem')
         lst = []
-        for node in self.node_thermodata.xmlGetChildNodeList('variable'):
+        for node in self.node_mode_chem.xmlGetChildNodeList('variable'):
                 lst.append(node['label'])
         return lst
 
@@ -941,11 +1111,86 @@ class ThermochemistryData(Model):
         InfoLine['NbReaction'] = "Nb de reactions mises en jeu pour les especes globales"
         InfoLine['Stoeg'] = "Stoechiometrie en nb de mole especes globales"
 
+        #Prepare the data depending from the user mode (automatic or defined by user)
+        ListOfSpecies       = []
+        CompFuelDict        = {}
+        CompOxiDict         = {}
+        CompProdDict        = {}
+        CoeffAbsorpDict     = {}
+        ChemicalFormulaDict = {}
+        Option_UserMode = self.getUserModeForChemicalReaction()
+        if Option_UserMode == 'user':
+            self.NumberOfKnownGlobalSpecies = 3
+            ListOfSpecies       = self.getSpeciesNamesList()
+            for label in ListOfSpecies:
+                CompFuelDict[label]        = self.getCompFuel(label)
+                CompOxiDict[label]         = self.getCompOxi(label)
+                CompProdDict[label]        = self.getCompProd(label)
+                CoeffAbsorpDict[label]     = self.getCoeffAbsorp(label)
+                ChemicalFormulaDict[label] = self.getSpeciesChemicalFormula(label)
+        elif Option_UserMode == 'auto':
+            self.NumberOfKnownGlobalSpecies = 2
+            #Fuel
+            ListOfSpecies.append('fuel')
+            CompFuelDict['fuel']        = 1.0
+            CompOxiDict['fuel']         = 0.0
+            CompProdDict['fuel']        = 0.0
+            CoeffAbsorpDict['fuel']     = self.defaultSpeciesProperties()['coeff_absorption']
+            ChemicalFormulaDict['fuel'] = self.getChemicalFormulaFuel()
+            #O2
+            ListOfSpecies.append('O2')
+            CompFuelDict['O2']          = 0.0
+            CompOxiDict['O2']           = 1.0
+            CompProdDict['O2']          = 0.0
+            CoeffAbsorpDict['O2']       = self.defaultSpeciesProperties()['coeff_absorption']
+            ChemicalFormulaDict['O2']   = 'O2'
+            #N2
+            if self.getVolPropN2() != 0.0:
+                ListOfSpecies.append('N2')
+                CompFuelDict['N2']          = 0.0
+                CompOxiDict['N2']           = round(self.getVolPropN2()/self.getVolPropO2(), 3)
+                CompProdDict['N2']          = 0.0
+                CoeffAbsorpDict['N2']       = self.defaultSpeciesProperties()['coeff_absorption']
+                ChemicalFormulaDict['N2']   = 'N2'
+            #CO yield
+            if self.getCOyield() != 0.0:
+                ListOfSpecies.append('CO')
+                CompFuelDict['CO']          = 0.0
+                CompOxiDict['CO']           = 0.0
+                CompProdDict['CO']          = self.getCOyield()
+                CoeffAbsorpDict['CO']       = self.defaultSpeciesProperties()['coeff_absorption']
+                ChemicalFormulaDict['CO']   = 'CO'
+            #CS yield
+            if self.getCSyield() != 0.0:
+                ListOfSpecies.append('CS')
+                CompFuelDict['CS']          = 0.0
+                CompOxiDict['CS']           = 0.0
+                CompProdDict['CS']          = self.getCSyield()
+                CoeffAbsorpDict['CS']       = self.defaultSpeciesProperties()['coeff_absorption']
+                ChemicalFormulaDict['CS']   = 'C(S)'
+            #H2O
+            ListOfSpecies.append('H2O')
+            CompFuelDict['H2O']          = 0.0
+            CompOxiDict['H2O']           = 0.0
+            CompProdDict['H2O']          = 0.0
+            CoeffAbsorpDict['H2O']       = self.defaultSpeciesProperties()['coeff_absorption']
+            ChemicalFormulaDict['H2O']   = 'H2O'
+            #CO2
+            if 'C' in self.getChemicalFormulaFuel():
+                ListOfSpecies.append('CO2')
+                CompFuelDict['CO2']          = 0.0
+                CompOxiDict['CO2']           = 0.0
+                CompProdDict['CO2']          = 0.0
+                CoeffAbsorpDict['CO2']       = self.defaultSpeciesProperties()['coeff_absorption']
+                ChemicalFormulaDict['CO2']   = 'CO2'
+
+
+
         #Open the Thermochemistry Data File
         f = open(file_path, "w")
         
         # Write the number of species, and parameters for the tabulation ENTH TEMP
-        NumberOfSpecies = len(self.getSpeciesNamesList())
+        NumberOfSpecies = len(ListOfSpecies)
         NbPointsTabu = self.getNbPointsTabu()
         MinimumTemp  = self.getMinimumTemp()
         MaximumTemp  = self.getMaximumTemp()
@@ -961,45 +1206,43 @@ class ThermochemistryData(Model):
         maxCompFuel = 0.0
         maxCompOxi  = 0.0
         maxCompProd = 0.0
-        for label in self.getSpeciesNamesList():
-            maxCompFuel = max(maxCompFuel, self.getCompFuel(label))
-            maxCompOxi = max(maxCompOxi, self.getCompOxi(label))
-            maxCompProd = max(maxCompProd, self.getCompProd(label))
+        for label in ListOfSpecies:
+            maxCompFuel = max(maxCompFuel, CompFuelDict[label])
+            maxCompOxi = max(maxCompOxi, CompOxiDict[label])
+            maxCompProd = max(maxCompProd, CompOxiDict[label])
 
         Order = []
         for i in range(NumberOfSpecies):
             Order.append(3)
 
         i = 0
-        for label in self.getSpeciesNamesList():
-            if self.getCompFuel(label) > 0.0:
-                Order[i] = 0 + self.getCompFuel(label)/maxCompFuel
-            if self.getCompOxi(label) > 0.0:
-                Order[i] = 1 + self.getCompOxi(label)/maxCompOxi
-            if self.getCompProd(label) > 0.0:
-                Order[i] = 3 + self.getCompProd(label)/maxCompProd
+        for label in ListOfSpecies:
+            if CompFuelDict[label] > 0.0:
+                Order[i] = 0 + CompFuelDict[label]/maxCompFuel
+            if CompOxiDict[label] > 0.0:
+                Order[i] = 1 + CompOxiDict[label]/maxCompOxi
+            if CompProdDict[label] > 0.0:
+                Order[i] = 3 + CompProdDict[label]/maxCompProd
             i = i + 1
       
-        getSpeciesNamesList_Sorted = self.getSpeciesNamesList()
+        getSpeciesNamesList_Sorted = ListOfSpecies
         Order, getSpeciesNamesList_Sorted = zip(*sorted(zip(Order, getSpeciesNamesList_Sorted)))
 
         # Write the chemical formula of all the species
         for label in getSpeciesNamesList_Sorted:
-            ChemicalFormula = self.getSpeciesChemicalFormula(label)
-            f.write('{:>15}'.format(str(ChemicalFormula).upper()))
+            f.write('{:>15}'.format(str(ChemicalFormulaDict[label]).upper()))
         f.write("\n")
         f.write(" "*10)
 
         # Write the absoption coefficient for all the species
         for label in getSpeciesNamesList_Sorted:
-            CoeffAbsorp = self.getCoeffAbsorp(label)
-            f.write('{:>15}'.format(str(CoeffAbsorp)))
+            f.write('{:>15}'.format(str(CoeffAbsorpDict[label])))
         f.write(" "*5+InfoLine['CoeffAbsorp']+"\n")
 
         # List of all chemical formula
         LstChemicalFormula = []
         for label in getSpeciesNamesList_Sorted:
-            LstChemicalFormula.append(str(self.getSpeciesChemicalFormula(label)))
+            LstChemicalFormula.append(str(ChemicalFormulaDict[label]))
 
         # Write the number of chemical element (CHON)
         GlobalElemCompo = {}
@@ -1013,8 +1256,7 @@ class ThermochemistryData(Model):
         # Create a dictionnary with the composition in chemical elements for each species
         Composition = {}
         for label in getSpeciesNamesList_Sorted:
-            ChemicalFormula = self.getSpeciesChemicalFormula(label)
-            Composition[label] = self.getNumberOfChemicalElem(ChemicalFormula)
+            Composition[label] = self.getNumberOfChemicalElem(ChemicalFormulaDict[label])
 
         # Write the number of chemical element (CHON) for each species
         for Elem in self.ChemicalElem:
@@ -1026,14 +1268,16 @@ class ThermochemistryData(Model):
                     f.write(" "*5+InfoLine['LineInfo-ChemElem'])
                 f.write('\n')
 
+#The following part can be intersting to keep in order to switch from ngazg = 2 and 3 automatically for the mode "user"
+#without that part ngazg is always = 2 for "auto" and 3 for "user"
         #Check if all the species have a given composition
-        CheckComp = {}
-        for label in getSpeciesNamesList_Sorted:
-            CheckComp[label] = self.getCompFuel(label)+self.getCompOxi(label)+self.getCompProd(label)
-        if 0 in CheckComp.values():
-            self.NumberOfKnownGlobalSpecies = 2
-        else:
-            self.NumberOfKnownGlobalSpecies = 3
+#        CheckComp = {}
+#        for label in getSpeciesNamesList_Sorted:
+#            CheckComp[label] = CompFuelDict[label]+CompOxiDict[label]+CompProdDict[label]
+#        if 0 in CheckComp.values():
+#            self.NumberOfKnownGlobalSpecies = 2
+#        else:
+#            self.NumberOfKnownGlobalSpecies = 3
 
         # Write the number of known global species (always 2 (Fuel and Oxy) for the moment)
         f.write('{:<15}'.format(str(self.NumberOfKnownGlobalSpecies))+" "*15*NumberOfSpecies+InfoLine['NumberOfKnownGlobalSpecies']+"\n")
@@ -1041,19 +1285,19 @@ class ThermochemistryData(Model):
 
         #Write the Fuel composition
         for label in getSpeciesNamesList_Sorted:
-            f.write('{:>15}'.format(str(self.getCompFuel(label))))
+            f.write('{:>15}'.format(str(CompFuelDict[label])))
         f.write(" "*5+InfoLine['FuelComposition']+"\n")
         f.write(" "*10)
 
         #Write the Oxidiser composition
         for label in getSpeciesNamesList_Sorted:
-            f.write('{:>15}'.format(str(self.getCompOxi(label))))
+            f.write('{:>15}'.format(str(CompOxiDict[label])))
         f.write(" "*5+InfoLine['OxiComposition']+"\n")
         f.write(" "*10)
 
         #Write the Product composition
         for label in getSpeciesNamesList_Sorted:
-            f.write('{:>15}'.format(str(self.getCompProd(label))))
+            f.write('{:>15}'.format(str(CompProdDict[label])))
         f.write(" "*5+InfoLine['ProdComposition'])
         
         #If all the species have a given composition : ngazg == 3
@@ -1075,12 +1319,12 @@ class ThermochemistryData(Model):
             global_stoeg['Prod'] = 0.0
 
             for label in getSpeciesNamesList_Sorted:
-                Prodsum['Fuel'] = Prodsum['Fuel'] + float(Composition[label]['O'])*self.getCompFuel(label)
-                Prodsum['Oxi'] = Prodsum['Oxi'] + float(Composition[label]['O'])*self.getCompOxi(label)
-                Prodsum['Prod'] = Prodsum['Prod'] + float(Composition[label]['O'])*self.getCompProd(label)
-                global_stoeg['Fuel'] = global_stoeg['Fuel'] + self.getCompFuel(label)
-                global_stoeg['Oxi'] = global_stoeg['Oxi'] + self.getCompOxi(label)
-                global_stoeg['Prod'] = global_stoeg['Prod'] + self.getCompProd(label)
+                Prodsum['Fuel'] = Prodsum['Fuel'] + float(Composition[label]['O'])*CompFuelDict[label]
+                Prodsum['Oxi'] = Prodsum['Oxi'] + float(Composition[label]['O'])*CompOxiDict[label]
+                Prodsum['Prod'] = Prodsum['Prod'] + float(Composition[label]['O'])*CompProdDict[label]
+                global_stoeg['Fuel'] = global_stoeg['Fuel'] + CompFuelDict[label]
+                global_stoeg['Oxi'] = global_stoeg['Oxi'] + CompOxiDict[label]
+                global_stoeg['Prod'] = global_stoeg['Prod'] + CompProdDict[label]
 
             nreact_oxi = (Prodsum['Prod']-Prodsum['Fuel'])/Prodsum['Oxi']
             global_stoeg['Oxi'] = -global_stoeg['Oxi']*nreact_oxi

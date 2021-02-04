@@ -139,7 +139,7 @@ class ChemicalFormulaDelegate(QItemDelegate):
     def createEditor(self, parent, option, index):
         editor = QLineEdit(parent)
         self.old_pname = ""
-        rx = "[chonsCHONS()][CHONSchons()1-9]{0," + str(LABEL_LENGTH_MAX-1) + "}"
+        rx = "[chonsCHONS()][CHONSchons()0-9]{0," + str(LABEL_LENGTH_MAX-1) + "}"
         self.regExp = QRegExp(rx)
         v = RegExpValidator(editor, self.regExp)
         editor.setValidator(v)
@@ -415,7 +415,15 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         # Set models and number of elements for combo boxes
         self.modelGasCombustionOption = ComboModel(self.comboBoxGasCombustionOption,1,1)
 
+        # Combo models to choose the mode to create the Janaf File
+
+        self.userModeForChemicalReaction   = ComboModel(self.comboBoxUserChoice, 2, 1)
+
+        self.userModeForChemicalReaction.addItem("Automatic definition", 'auto')
+        self.userModeForChemicalReaction.addItem("Defined by user", 'user')
+
         # Connections
+        self.comboBoxUserChoice.activated[str].connect(self.slotUserChoice)
         self.comboBoxGasCombustionOption.activated[str].connect(self.slotGasCombustionOption)
         self.pushButtonThermochemistryData.pressed.connect(self.__slotSearchThermochemistryData)
         self.radioButtonCreateJanafFile.clicked.connect(self.slotCreateJanafFile)
@@ -425,24 +433,51 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         self.pushButtonAddSpecies.clicked.connect(self.slotAddSpecies)
         self.pushButtonDeleteSpecies.clicked.connect(self.slotDeleteSpecies)
         self.pushButtonGenerateJanafFile.clicked.connect(self.slotGenerateJanafFile)
+        self.lineEditFuel.textChanged[str].connect(self.slotFuel)
+        self.lineEditO2.textChanged[str].connect(self.slotVolPropO2)
+        self.lineEditN2.textChanged[str].connect(self.slotVolPropN2)
+        self.lineEditCOyield.textChanged[str].connect(self.slotCOyield)
+        self.lineEditCSyield.textChanged[str].connect(self.slotCSyield)
         self.modelSpecies.dataChanged.connect(self.dataChanged)
 
         # Validators
         validatorNbPointsTabu = IntValidator(self.lineEditNbPointsTabu, min=1)
         validatorMaximumTemp  = DoubleValidator(self.lineEditMaximumTemp, min=273.0)
         validatorMinimumTemp  = DoubleValidator(self.lineEditMinimumTemp, min=273.0)
+        rx = "[choCHO][CHOcho()0-9]{0," + str(LABEL_LENGTH_MAX-1) + "}"
+        validatorFuel         = RegExpValidator(self.lineEditFuel,QRegExp(rx))
+        validatorO2  = DoubleValidator(self.lineEditO2, min=1e-12, max=1.0)
+        validatorN2  = DoubleValidator(self.lineEditN2, min=0.0, max=1.0)
+        validatorCOyield  = DoubleValidator(self.lineEditCOyield, min=0.0)
+        validatorCSyield  = DoubleValidator(self.lineEditCSyield, min=0.0)
 
         self.lineEditNbPointsTabu.setValidator(validatorNbPointsTabu)
         self.lineEditMaximumTemp.setValidator(validatorMaximumTemp)
         self.lineEditMinimumTemp.setValidator(validatorMinimumTemp)
+        self.lineEditFuel.setValidator(validatorFuel)
+        self.lineEditO2.setValidator(validatorO2)
+        self.lineEditN2.setValidator(validatorN2)
+        self.lineEditCOyield.setValidator(validatorCOyield)
+        self.lineEditCSyield.setValidator(validatorCSyield)
 
         NbPointsTabu = self.thermodata.getNbPointsTabu()
         MaximumTemp  = self.thermodata.getMaximumTemp()
         MinimumTemp  = self.thermodata.getMinimumTemp()
+        Option_UserMode = self.thermodata.getUserModeForChemicalReaction()
+        ChemicalFormulaFuel = self.thermodata.getChemicalFormulaFuel()
+        VolPropO2 = self.thermodata.getVolPropO2()
+        VolPropN2 = self.thermodata.getVolPropN2()
+        COyield = self.thermodata.getCOyield()
+        CSyield = self.thermodata.getCSyield()
 
         self.lineEditNbPointsTabu.setText(str(NbPointsTabu))
         self.lineEditMaximumTemp.setText(str(MaximumTemp))
         self.lineEditMinimumTemp.setText(str(MinimumTemp))
+        self.lineEditFuel.setText(str(ChemicalFormulaFuel))
+        self.lineEditO2.setText(str(VolPropO2))
+        self.lineEditN2.setText(str(VolPropN2))
+        self.lineEditCOyield.setText(str(COyield))
+        self.lineEditCSyield.setText(str(CSyield))
 
         # Initialize Widgets
 
@@ -483,18 +518,22 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
 
         if self.thermodata.getCreateThermoDataFile() == 'on':
             self.radioButtonCreateJanafFile.setChecked(True)
+            self.userModeForChemicalReaction.setItem(str_model= Option_UserMode)
+            for label in self.thermodata.getSpeciesNamesList():
+                self.modelSpecies.newItem(label)
         else:
             self.radioButtonCreateJanafFile.setChecked(False)
 
         # for the moment the option to create Janaf file in the GUI is only available with d3p
         if model == 'd3p':
             self.radioButtonCreateJanafFile.show()
-            self.groupBoxCreateJanafFile.show()
+            self.groupBoxTabulation.show()
+            self.groupBoxChemicalReaction.show()
+            self.groupBoxDefinedByUser.show()
+            self.groupBoxGenerateDataFile.show()
+            self.groupBoxAutomatic.show()
 
         self.slotCreateJanafFile()
-
-        for label in self.thermodata.getSpeciesNamesList():
-            self.modelSpecies.newItem(label)
 
         self.case.undoStartGlobal()
 
@@ -540,14 +579,45 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         """
         if self.radioButtonCreateJanafFile.isChecked():
             self.thermodata.setCreateThermoDataFile("on")
-            self.groupBoxCreateJanafFile.show()
+            self.groupBoxTabulation.show()
+            self.groupBoxChemicalReaction.show()
             self.lineEditNbPointsTabu.setText(str(self.thermodata.getNbPointsTabu()))
             self.lineEditMaximumTemp.setText(str(self.thermodata.getMaximumTemp()))
             self.lineEditMinimumTemp.setText(str(self.thermodata.getMinimumTemp()))
+            self.slotUserChoice()
             return
         else:
             self.thermodata.setCreateThermoDataFile("off")
-            self.groupBoxCreateJanafFile.hide()
+            self.groupBoxTabulation.hide()
+            self.groupBoxChemicalReaction.hide()
+            self.groupBoxDefinedByUser.hide()
+            self.groupBoxGenerateDataFile.hide()
+            self.groupBoxAutomatic.hide()
+
+    @pyqtSlot(str)
+    def slotUserChoice(self):
+        """
+        """
+        model = self.userModeForChemicalReaction.dicoV2M[str(self.comboBoxUserChoice.currentText())]
+        self.thermodata.setUserModeForChemicalReaction(model)
+        self.groupBoxGenerateDataFile.show()
+        if model == 'auto':
+            self.groupBoxAutomatic.show()
+            self.groupBoxDefinedByUser.hide()
+            #update of the xml from the GUI
+            self.slotFuel(self.lineEditFuel.text())
+            self.slotVolPropO2(self.lineEditO2.text())
+            self.slotVolPropN2(self.lineEditN2.text())
+            self.slotCOyield(self.lineEditCOyield.text())
+            self.slotCSyield(self.lineEditCSyield.text())
+        elif model == 'user':
+            self.groupBoxDefinedByUser.show()
+            self.groupBoxAutomatic.hide()
+            #update of the xml from the tableView
+            row_tab = self.modelSpecies.rowCount()
+            for row in range(row_tab):
+                data = self.modelSpecies.getItem(row)
+                self.thermodata.updateSpecies(data)
 
     @pyqtSlot(str)
     def slotNbPointsTabu(self, text):
@@ -575,6 +645,53 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         if self.lineEditMinimumTemp.validator().state == QValidator.Acceptable:
             MinimumTemp = from_qvariant(text, float)
             self.thermodata.setMinimumTemp(MinimumTemp)
+
+    @pyqtSlot(str)
+    def slotFuel(self, text):
+        """
+        Input the chemical formula for the Fuel
+        """
+        if self.lineEditFuel.validator().state == QValidator.Acceptable:
+            ChemicalFormula = from_qvariant(text, to_text_string)
+            self.thermodata.setChemicalFormulaFuel(ChemicalFormula)
+
+    @pyqtSlot(str)
+    def slotVolPropO2(self, text):
+        """
+        Input volume proportion for O2
+        """
+        if self.lineEditO2.validator().state == QValidator.Acceptable:
+            VolPropO2 = from_qvariant(text, float)
+            self.thermodata.setVolPropO2(VolPropO2)
+            self.lineEditN2.setText(str(round(1.0 - VolPropO2,12)))
+
+    @pyqtSlot(str)
+    def slotVolPropN2(self, text):
+        """
+        Input volume proportion for N2
+        """
+        if self.lineEditN2.validator().state == QValidator.Acceptable:
+            VolPropN2 = from_qvariant(text, float)
+            self.thermodata.setVolPropN2(VolPropN2)
+            self.lineEditO2.setText(str(round(1.0 - VolPropN2,12)))
+
+    @pyqtSlot(str)
+    def slotCOyield(self, text):
+        """
+        Input the CO yield
+        """
+        if self.lineEditCOyield.validator().state == QValidator.Acceptable:
+            COyield = from_qvariant(text, float)
+            self.thermodata.setCOyield(COyield)
+
+    @pyqtSlot(str)
+    def slotCSyield(self, text):
+        """
+        Input the CS yield
+        """
+        if self.lineEditCSyield.validator().state == QValidator.Acceptable:
+            CSyield = from_qvariant(text, float)
+            self.thermodata.setCSyield(CSyield)
 
     @pyqtSlot()
     def slotAddSpecies(self):
