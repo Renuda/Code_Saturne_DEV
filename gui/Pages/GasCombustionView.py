@@ -139,7 +139,7 @@ class ChemicalFormulaDelegate(QItemDelegate):
     def createEditor(self, parent, option, index):
         editor = QLineEdit(parent)
         self.old_pname = ""
-        rx = "[chonsCHONS()][CHONSchons()0-9]{0," + str(LABEL_LENGTH_MAX-1) + "}"
+        rx = "[chonslCHONSL()][CHONSLchonsl()0-9]{0," + str(LABEL_LENGTH_MAX-1) + "}"
         self.regExp = QRegExp(rx)
         v = RegExpValidator(editor, self.regExp)
         editor.setValidator(v)
@@ -444,7 +444,7 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
         validatorNbPointsTabu = IntValidator(self.lineEditNbPointsTabu, min=1)
         validatorMaximumTemp  = DoubleValidator(self.lineEditMaximumTemp, min=273.0)
         validatorMinimumTemp  = DoubleValidator(self.lineEditMinimumTemp, min=273.0)
-        rx = "[choCHO][CHOcho()0-9]{0," + str(LABEL_LENGTH_MAX-1) + "}"
+        rx = "[chonslCHONSL()][CHONSLchonsl()0-9]{0," + str(LABEL_LENGTH_MAX-1) + "}"
         validatorFuel         = RegExpValidator(self.lineEditFuel,QRegExp(rx))
         validatorO2  = DoubleValidator(self.lineEditO2, min=1e-12, max=1.0)
         validatorN2  = DoubleValidator(self.lineEditN2, min=0.0, max=1.0)

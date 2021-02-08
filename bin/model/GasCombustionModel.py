@@ -557,14 +557,16 @@ class ThermochemistryData(Model):
         self.node_thermodata = nModels.xmlInitNode('Thermochemistry_data')
 
         # Parameters to create the Thermochemistry Data File
-        # Available Chemical Elements
-        self.ChemicalElem = ['C', 'H', 'O', 'N']
+        # Available Chemical Elements (WARNING must be in upper case)
+        self.ChemicalElem = ['C', 'H', 'O', 'N', 'CL']
         # Molar mass for the Chemical Elements
+        # (WARNING must be in upper case)
         self.MolarMass = {}
-        self.MolarMass['C'] = 0.012
-        self.MolarMass['H'] = 0.001
-        self.MolarMass['O'] = 0.016
-        self.MolarMass['N'] = 0.014
+        self.MolarMass['C']  = 0.012
+        self.MolarMass['H']  = 0.001
+        self.MolarMass['O']  = 0.016
+        self.MolarMass['N']  = 0.014
+        self.MolarMass['CL'] = 0.0354
         # Number of known global species, (ngazg in colecd.f90)
         # = 2 -> Automatic equilibrium of the reaction
         # = 3 -> Equilibrium defined by the user
@@ -1063,24 +1065,28 @@ class ThermochemistryData(Model):
         for Elem in self.ChemicalElem:
             NumberOfChemElem[Elem] = "0"
         
-        for Elem in self.ChemicalElem :
+        ChemicalElem_sorted = sorted(self.ChemicalElem, key=len, reverse=True)
+
+        for Elem in ChemicalElem_sorted :
             ReadFirstElem = True
-            Current_Elem = ""
+            if Elem in ChemicalFormula :
+                NumberOfChemElem[Elem] = "1"
+                ReadFirstElem = True
+                position = ChemicalFormula.find(Elem)+len(Elem)
+                ChemicalFormula = ChemicalFormula.replace(str(Elem), ' ')
+                while ChemicalFormula[position:position+1].isdigit():
+                    if ReadFirstElem: 
+                        NumberOfChemElem[Elem] = ChemicalFormula[position:position+1]
+                    else :
+                        NumberOfChemElem[Elem] = NumberOfChemElem[Elem]+ChemicalFormula[position:position+1]
 
-            for char in ChemicalFormula :
+                    temp = list(ChemicalFormula)
+                    temp[position] = ' '
+                    ChemicalFormula = "".join(temp)
 
-                if char == Elem :
-                    NumberOfChemElem[Elem] = "1"
-                    ReadFirstElem = True
-
-                if char.isdigit() and Current_Elem == Elem:
-                    if ReadFirstElem : 
-                        ReadFirstElem = False
-                        NumberOfChemElem[Elem] = ""
-                    NumberOfChemElem[Elem] = NumberOfChemElem[Elem]+char
+                    ReadFirstElem = False
+                    position=position+1
                 
-                if not char.isdigit(): Current_Elem = char
-
         return NumberOfChemElem
 
     @Variables.undoGlobal
@@ -1176,13 +1182,21 @@ class ThermochemistryData(Model):
             CoeffAbsorpDict['H2O']       = self.defaultSpeciesProperties()['coeff_absorption']
             ChemicalFormulaDict['H2O']   = 'H2O'
             #CO2
-            if 'C' in self.getChemicalFormulaFuel():
+            if 'C' in str(self.getChemicalFormulaFuel()).upper():
                 ListOfSpecies.append('CO2')
                 CompFuelDict['CO2']          = 0.0
                 CompOxiDict['CO2']           = 0.0
                 CompProdDict['CO2']          = 0.0
                 CoeffAbsorpDict['CO2']       = self.defaultSpeciesProperties()['coeff_absorption']
                 ChemicalFormulaDict['CO2']   = 'CO2'
+            #HCl
+            if 'CL' in str(self.getChemicalFormulaFuel()).upper():
+                ListOfSpecies.append('HCl')
+                CompFuelDict['HCl']          = 0.0
+                CompOxiDict['HCl']           = 0.0
+                CompProdDict['HCl']          = 0.0
+                CoeffAbsorpDict['HCl']       = self.defaultSpeciesProperties()['coeff_absorption']
+                ChemicalFormulaDict['HCl']   = 'HCl'
 
 
 
@@ -1230,7 +1244,7 @@ class ThermochemistryData(Model):
 
         # Write the chemical formula of all the species
         for label in getSpeciesNamesList_Sorted:
-            f.write('{:>15}'.format(str(ChemicalFormulaDict[label]).upper()))
+            f.write('{:>15}'.format(str(ChemicalFormulaDict[label])))
         f.write("\n")
         f.write(" "*10)
 
@@ -1246,10 +1260,11 @@ class ThermochemistryData(Model):
 
         # Write the number of chemical element (CHON)
         GlobalElemCompo = {}
-        for Elem in self.ChemicalElem:
+        ChemicalElem_sorted = sorted(self.ChemicalElem, key=len, reverse=True)
+        for Elem in ChemicalElem_sorted:
             GlobalElemCompo[Elem] = False
-        for Elem in self.ChemicalElem:
-            if Elem in str(LstChemicalFormula):
+        for Elem in ChemicalElem_sorted:
+            if Elem in str(LstChemicalFormula).upper():
                 GlobalElemCompo[Elem] = True
         f.write('{:<15}'.format(str(str(GlobalElemCompo).count("True")))+" "*15*NumberOfSpecies+InfoLine['GlobalElemCompo']+"\n")
 
@@ -1271,13 +1286,13 @@ class ThermochemistryData(Model):
 #The following part can be intersting to keep in order to switch from ngazg = 2 and 3 automatically for the mode "user"
 #without that part ngazg is always = 2 for "auto" and 3 for "user"
         #Check if all the species have a given composition
-#        CheckComp = {}
-#        for label in getSpeciesNamesList_Sorted:
-#            CheckComp[label] = CompFuelDict[label]+CompOxiDict[label]+CompProdDict[label]
-#        if 0 in CheckComp.values():
-#            self.NumberOfKnownGlobalSpecies = 2
-#        else:
-#            self.NumberOfKnownGlobalSpecies = 3
+        CheckComp = {}
+        for label in getSpeciesNamesList_Sorted:
+            CheckComp[label] = CompFuelDict[label]+CompOxiDict[label]+CompProdDict[label]
+        if 0 in CheckComp.values():
+            self.NumberOfKnownGlobalSpecies = 2
+        else:
+            self.NumberOfKnownGlobalSpecies = 3
 
         # Write the number of known global species (always 2 (Fuel and Oxy) for the moment)
         f.write('{:<15}'.format(str(self.NumberOfKnownGlobalSpecies))+" "*15*NumberOfSpecies+InfoLine['NumberOfKnownGlobalSpecies']+"\n")
