@@ -266,7 +266,6 @@ cs_lagr_car(int              iprev,
     BFT_MALLOC(dissip, ncel, cs_real_t);
 
     if (extra->itytur == 2 || extra->itytur == 4 || extra->iturb == 50) {
-
       for (cs_lnum_t cell_id = 0; cell_id < ncel; cell_id++) {
         energi[cell_id] = extra->cvar_k->vals[iprev][cell_id];
         dissip[cell_id] = extra->cvar_ep->vals[iprev][cell_id];
