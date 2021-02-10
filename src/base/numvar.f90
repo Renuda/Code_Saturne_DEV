@@ -82,7 +82,7 @@ module numvar
   !> turbulent dissipation \f$ \varepsilon \f$
   integer, save :: iep
 
-  !> \anchor iep
+  !> \anchor iep_sgs
   !> SGS turbulent dissipation \f$ \varepsilon \f$
   integer, save :: iep_sgs
 
