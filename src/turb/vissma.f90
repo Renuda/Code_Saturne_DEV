@@ -70,7 +70,7 @@ implicit none
 
 ! Arguments
 
-double precision gradv(3,3,ncelet)
+double precision, intent(inout) :: gradv(3,3,ncelet)
 
 ! Local variables
 
@@ -133,7 +133,7 @@ do iel = 1, ncel
 enddo
 
 !===============================================================================
-! 3.  Calculation of (dynamic) velocity
+! 3.  Calculation of (dynamic) viscosity
 !===============================================================================
 
 coef = csmago**2 * sqrt(2.d0)
@@ -143,11 +143,6 @@ do iel = 1, ncel
   delta  = coef * delta**2
   visct(iel) = crom(iel) * delta * sqrt(visct(iel))
 enddo
-
-!----
-! Format
-!----
-
 
 !----
 ! End

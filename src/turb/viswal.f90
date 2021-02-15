@@ -65,7 +65,7 @@ implicit none
 
 ! Arguments
 
-double precision gradv(3,3,ncelet)
+double precision, intent(inout) :: gradv(3,3,ncelet)
 
 ! Local variables
 
@@ -162,8 +162,7 @@ do iel = 1, ncel
       !        - 1/3 Dij dUk/dXl dUl/dXk
 
       sijd = 0.5d0*(g2(i,j)+g2(j,i))-third*kdelta(i,j)*trace_g2
-
-      sd = sd + sijd**2
+      sd   = sd + sijd**2
     enddo
   enddo
 
@@ -187,10 +186,6 @@ do iel = 1, ncel
   visct(iel) = crom(iel) * delta * con
 
 enddo
-
-!-------
-! Format
-!-------
 
 !----
 ! End

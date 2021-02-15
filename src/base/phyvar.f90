@@ -121,6 +121,7 @@ double precision, dimension(:), pointer :: cvar_voidf
 double precision, dimension(:), pointer :: cpro_var, cpro_beta, cpro_visma_s
 double precision, allocatable, dimension(:,:) :: grad
 double precision, dimension(:,:,:), allocatable :: gradv
+double precision, parameter :: four_thirds = 4.0/3.0
 
 integer          ipass
 data             ipass /0/
@@ -738,10 +739,11 @@ if (itytur.eq.4 .and. iilagr.gt.0) then
     s22 = gradv(2, 2, iel)
     s33 = gradv(3, 3, iel)
     delta = xlesfl* (ales*volume(iel))**bles
+    delta = csmago * csmago * delta * delta
     s = sqrt(s11 * s11 + s22 * s22 + s33 * s33)
-    c_k = c_epsilon * (csmago**(4./3.))
-    cvar_ep(iel) = (s**3) * (csmago * delta)**2
-    cvar_k(iel) = c_k * (csmago * delta)**2
+    c_k = c_epsilon * csmago**four_thirds
+    cvar_ep(iel) = delta * s * s * s
+    cvar_k(iel) = c_k * delta
   enddo
 
   deallocate (gradv)

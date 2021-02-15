@@ -100,7 +100,7 @@ integer          icetsm(ncesmp), itypsm(ncesmp,nvar)
 
 double precision dt(ncelet)
 double precision ckupdc(6,ncepdp), smacel(ncesmp,nvar)
-double precision gradv(3,3,ncelet)
+double precision, intent(inout) :: gradv(3,3,ncelet)
 
 ! Local variables
 
