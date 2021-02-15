@@ -401,7 +401,7 @@ do iel = 1, ncel
 enddo
 
 !===============================================================================
-! 3.  Calculation of (dynamic) velocity
+! 3.  Calculation of (dynamic) viscosity
 !===============================================================================
 
 ! Clipping in (mu + mu_t)>0 in phyvar
