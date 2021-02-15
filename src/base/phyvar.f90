@@ -108,6 +108,7 @@ double precision varmn(4), varmx(4), tt, ttmin, ttke, viscto, visls_0
 double precision xttkmg, xttdrb, c_k, c_epsilon
 double precision trrij, rottke
 double precision alpha3, xrnn
+double precision dudy, dudz, dvdx, dvdz, dwdx, dwdy
 double precision, dimension(:), pointer :: brom, crom
 double precision, dimension(:), pointer :: cvar_k, cvar_ep, cvar_phi, cvar_nusa
 double precision, dimension(:), pointer :: cvar_al
@@ -735,15 +736,31 @@ if (itytur.eq.4 .and. iilagr.gt.0) then
   c_epsilon = 1.0
 
   do iel = 1, ncel
-    s11 = gradv(1, 1, iel)
-    s22 = gradv(2, 2, iel)
-    s33 = gradv(3, 3, iel)
-    delta = xlesfl* (ales*volume(iel))**bles
+
+    s11  = gradv(1, 1, iel)
+    s22  = gradv(2, 2, iel)
+    s33  = gradv(3, 3, iel)
+    
+    dudy = gradv(2, 1, iel)
+    dvdx = gradv(1, 2, iel)
+    dudz = gradv(3, 1, iel)
+    dwdx = gradv(1, 3, iel)
+    dvdz = gradv(3, 2, iel)
+    dwdy = gradv(2, 3, iel)
+
+    s = s11**2 + s22**2 + s33**2         &
+        + 0.5d0 * ((dudy + dvdx)**2      &
+        +          (dudz + dwdx)**2      &
+        +          (dvdz + dwdy)**2)
+    s = sqrt(2.0d0 * s)
+
+    delta = xlesfl * (ales*volume(iel))**bles
     delta = csmago * csmago * delta * delta
-    s = sqrt(s11 * s11 + s22 * s22 + s33 * s33)
-    c_k = c_epsilon * csmago**four_thirds
+    c_k   = c_epsilon * csmago**four_thirds
+
     cvar_ep(iel) = delta * s * s * s
     cvar_k(iel) = c_k * delta
+
   enddo
 
   deallocate (gradv)
