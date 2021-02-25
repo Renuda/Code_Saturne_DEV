@@ -512,6 +512,8 @@ cs_restart_lagrangian_checkpoint_read(void)
             sprintf(car8, "k-omega");
           if (extra->itytur == 2)
             sprintf(kar8, "k-eps");
+          if (extra->itytur == 4)
+            sprintf(kar8, "k-eps");
           if (extra->itytur == 3)
             sprintf(kar8, "Rij-eps");
           if (extra->iturb == 50)
@@ -578,7 +580,8 @@ cs_restart_lagrangian_checkpoint_read(void)
           sprintf(nomtsl[cs_glob_lagr_source_terms->itsli],
                   "terme_source_vitesse_implicite");
 
-          if (extra->itytur == 2 || extra->iturb == 50 || extra->iturb == 60)
+          if (extra->itytur == 2 || extra->itytur == 4 || 
+              extra->iturb == 50 || extra->iturb == 60)
             sprintf(nomtsl[cs_glob_lagr_source_terms->itske],
                     "terme_source_turbulence_keps");
 
@@ -1366,7 +1369,8 @@ cs_restart_lagrangian_checkpoint_write(void)
       if (cs_glob_lagr_source_terms->ltsdyn == 1) {
         sprintf(nomtsl[cs_glob_lagr_source_terms->itsli],
                 "terme_source_vitesse_implicite");
-        if (extra->itytur == 2 || extra->iturb == 50 || extra->iturb == 60) {
+        if (extra->itytur == 2 || extra->itytur == 4 ||
+            extra->iturb == 50 || extra->iturb == 60) {
           sprintf(nomtsl[cs_glob_lagr_source_terms->itske],
                   "terme_source_turbulence_keps");
         }

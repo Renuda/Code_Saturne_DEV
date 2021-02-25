@@ -906,6 +906,7 @@ cs_lagr_options_definition(int         isuite,
     cs_glob_lagr_source_terms->itsli = ++irf;
 
     if (   extra->itytur == 2
+        || extra->itytur == 4
         || extra->iturb == 50
         || extra->iturb == 60) {
 
@@ -927,7 +928,7 @@ cs_lagr_options_definition(int         isuite,
          _("in Lagrangian module"),
          _("The return coupling is not implemented fo the current "
            "turbulence model (%d).\n"
-           "It is compatible with k-epsilon, Rij-epsilon,\n"
+           "It is compatible with k-epsilon, LES, Rij-epsilon,\n"
            "v2f, and k-omega."),
          extra->iturb);
 

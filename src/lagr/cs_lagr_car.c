@@ -429,7 +429,7 @@ cs_lagr_car(int              iprev,
             }
 
           }
-          else if (   extra->itytur == 2
+          else if (   extra->itytur == 2 || extra->itytur == 4
                    || extra->iturb == 50 || extra->iturb == 60) {
             ktil = energi[cell_id];          
           }
