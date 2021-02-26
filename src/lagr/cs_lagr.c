@@ -364,6 +364,8 @@ static cs_lagr_extra_module_t _lagr_extra_module
      .x_m = NULL,
      .cvar_k = NULL,
      .cvar_ep = NULL,
+     .cvar_k_sgs = NULL,
+     .cvar_ep_sgs = NULL,
      .cvar_omg = NULL,
      .cvar_r11 = NULL,
      .cvar_r22 = NULL,

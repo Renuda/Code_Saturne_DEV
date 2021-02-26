@@ -648,6 +648,7 @@ cs_lagr_new_particle_init(const cs_lnum_t  particle_range[2],
   cs_lagr_extra_module_t  *extra = cs_get_lagr_extra_module();
 
   cs_lnum_t n_cells = cs_glob_mesh->n_cells;
+  
   /* Map field arrays */
 
   const cs_real_3_t  *vel = NULL;
@@ -689,7 +690,7 @@ cs_lagr_new_particle_init(const cs_lnum_t  particle_range[2],
            "  cs_glob_lagr_model->idistu = %d\n"
            "And the turbulence model is iturb = %d\n\n"
            "The only turbulence models compatible with the Lagrangian model's\n"
-           "turbulent dispersion are k-epsilon, Rij-epsilon, v2f, and k-omega."),
+           "turbulent dispersion are k-epsilon, LES, Rij-epsilon, v2f, and k-omega."),
          cs_glob_lagr_model->idistu,
          extra->iturb);
     }

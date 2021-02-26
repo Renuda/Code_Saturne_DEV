@@ -78,6 +78,14 @@ module numvar
   !> turbulent dissipation \f$ \varepsilon \f$
   integer, save :: iep
 
+  !> \anchor ik_sgs
+  !> SGS turbulent kinetic energy \f$ k \f$
+  integer, save :: ik_sgs
+
+  !> \anchor iep_sgs
+  !> SGS turbulent dissipation \f$ \varepsilon \f$
+  integer, save :: iep_sgs
+
   !> \anchor ir11
   !> Reynolds stress component \f$ R_{xx} \f$
   integer, save :: ir11

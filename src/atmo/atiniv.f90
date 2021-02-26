@@ -54,6 +54,7 @@ use mesh
 use atchem
 use sshaerosol
 use field
+use lagran
 use cs_c_bindings
 
 !===============================================================================
@@ -98,7 +99,7 @@ call field_get_key_struct_var_cal_opt(ivarfl(ipr), vcopt_p)
 
 d2s3 = 2.d0/3.d0
 
-if (itytur.eq.2) then
+if (itytur.eq.2 .or. (itytur.eq.4 .and. iilagr.gt.0)) then
   call field_get_val_s(ivarfl(ik), cvar_k)
   call field_get_val_s(ivarfl(iep), cvar_ep)
 elseif (itytur.eq.3) then

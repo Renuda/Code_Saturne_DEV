@@ -969,7 +969,6 @@ typedef struct {
   cs_field_t *cvar_k;
   cs_field_t *cvar_k_sgs;
 
-
   /* Turbulent dissipation */
   cs_field_t *cvar_ep;
   cs_field_t *cvar_ep_sgs;

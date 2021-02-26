@@ -70,6 +70,9 @@ typedef enum {
   CS_ENUMF_(k),            /*!< turbulent kinetic energy \f$ k \f$ */
   CS_ENUMF_(eps),          /*!< turbulent dissipation \f$ \varepsilon \f$ */
 
+  CS_ENUMF_(k_sgs),        /*!< SGS turbulent kinetic energy \f$ k \f$ */
+  CS_ENUMF_(eps_sgs),      /*!< SGS turbulent dissipation \f$ \varepsilon \f$ */
+
   CS_ENUMF_(r11),          /*!< Reynolds stress component \f$ R_{xx} \f$ */
   CS_ENUMF_(r22),          /*!< Reynolds stress component \f$ R_{yy} \f$ */
   CS_ENUMF_(r33),          /*!< Reynolds stress component \f$ R_{zz} \f$ */
