@@ -77,6 +77,7 @@ typedef struct {
   cs_real_t       *rhs1;
 
   cs_lnum_t        x2_size;        /* scatter view */
+  cs_lnum_t        max_x2_size;    /* max(x2_size, n_m22_cols) */
   cs_real_t       *rhs2;
 
   cs_real_t       *m21_unassembled;
@@ -87,8 +88,8 @@ typedef struct {
 
   /* Structure used for synchronisation (parallel or periodic). Enable to
      switch from a scatter view (the mesh view) to a gather view (the algebraic
-     view) */
-  cs_range_set_t  *rset;
+     view). This structure is shared. */
+  const cs_range_set_t  *rset;
 
 } cs_saddle_system_t;
 
@@ -176,6 +177,33 @@ cs_saddle_minres(cs_saddle_system_t          *ssys,
                  cs_real_t                   *x1,
                  cs_real_t                   *x2,
                  cs_iter_algo_info_t         *info);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Apply the GCR algorithm to a saddle point problem (the system is
+ *        stored in a hybrid way). Please refer to cs_saddle_system_t structure
+ *        definition.
+ *        The stride is equal to 1 for the matrix (db_size[3] = 1) and the
+ *        vector.
+ *        This algorithm is taken from 2010 Notay's paper:
+ *        "An aggregation-based algebraic multigrid method" ETNA (vol. 37)
+ *
+ * \param[in]      restart  number of iterations before restarting
+ * \param[in]      ssys     pointer to a cs_saddle_system_t structure
+ * \param[in]      sbp      block-preconditioner for the Saddle-point problem
+ * \param[in, out] x1       array for the first part
+ * \param[in, out] x2       array for the second part
+ * \param[in, out] info     pointer to a cs_iter_algo_info_t structure
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_saddle_gcr(int                          restart,
+              cs_saddle_system_t          *ssys,
+              cs_saddle_block_precond_t   *sbp,
+              cs_real_t                   *x1,
+              cs_real_t                   *x2,
+              cs_iter_algo_info_t         *info);
 
 /*----------------------------------------------------------------------------*/
 /*!

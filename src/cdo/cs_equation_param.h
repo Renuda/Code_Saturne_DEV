@@ -988,6 +988,8 @@ typedef struct {
  * - "bicg"          --> Bi-CG algorithm (for non-symmetric linear systems)
  * - "bicgstab2"     --> BiCG-Stab2 algorithm (for non-symmetric linear
  *                       systems)
+ * - "gcr"           --> robust and flexible iterative solver. Not the best
+ *                       choice if the system is easy to solve
  * - "gmres"         --> robust iterative solver. Not the best choice if the
  *                       system is easy to solve
  * - "fgmres"        --> Flexible gmres (only with PETSc installation up to
@@ -1009,6 +1011,8 @@ typedef struct {
  *                          recommended choice when used inside a preconditioner
  * - "mumps_ldlt"    --> Direct solver (very robust but memory consumming)
  *                       LDLT factorization (through PETSc or MUMPS).
+ * - "user"          --> User-defined iterative solver (rely on the function
+ *                       cs_user_sles_it_solver())
  * - "none"          --> No solver.
  *
  * \var CS_EQKEY_ITSOL_EPS
@@ -1032,6 +1036,13 @@ typedef struct {
  * "rhs"
  * "weighted_rhs" or "weighted"
  * "filtered_rhs" or "filtered_rhs"
+ *
+ * \var CS_EQKEY_ITSOL_RESTART
+ * Maximum number of iterations before restarting a Krylov solver
+ * Only useful with GMRES, flexible GMRES or GCR solvers.
+ * This value has an impact on the memory footprint since one has to store a
+ * buffer of double with a size equal to restart*sizeof(solution array)
+ * - Example: "20"
  *
  * \var CS_EQKEY_OMP_ASSEMBLY_STRATEGY
  * Choice of the way to perform the assembly when OpenMP is active
@@ -1116,6 +1127,7 @@ typedef enum {
   CS_EQKEY_ITSOL_EPS,
   CS_EQKEY_ITSOL_MAX_ITER,
   CS_EQKEY_ITSOL_RESNORM_TYPE,
+  CS_EQKEY_ITSOL_RESTART,
   CS_EQKEY_OMP_ASSEMBLY_STRATEGY,
   CS_EQKEY_PRECOND,
   CS_EQKEY_SLES_VERBOSITY,

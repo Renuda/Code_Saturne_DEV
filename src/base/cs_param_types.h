@@ -547,42 +547,34 @@ typedef enum {
  *  | B   0  |
  *
  *  \var CS_PARAM_SCHUR_NONE
- *  Associated keyword: "none"
  *  There is no schur complement approximation.
  *
  *  \var CS_PARAM_SCHUR_DIAG_INVERSE
- *  Associated keyword: "diag_schur"
  *  The schur complement approximation is defined as B.diag(A)^-1.B^t
  *
  *  \var CS_PARAM_SCHUR_ELMAN
- *  Associated keyword: "elman_schur"
  *  The inverse of the schur complement matrix is approximated by
  *  (BBt)^-1 B.A.B^t (B.Bt)^-1
  *  This formulation is detailed in Elman'99, SIAM J. SCI. COMPUT.
  *
  *  \var CS_PARAM_SCHUR_IDENTITY
- *  Associated keyword: "identity"
  *  The schur complement approximation is simply the identity matrix
  *
  *  \var CS_PARAM_SCHUR_LUMPED_INVERSE
- *  Associated keyword: +"lumped_schur"
  *  The schur complement approximation is defined as B.lumped(A^-1).B^t where
  *  x=lumped(A^-1) results from A.x = 1 (1 is the array fills with 1 in each
  *  entry)
  *
  *  \var CS_PARAM_SCHUR_MASS_SCALED
- *  Associated keyword: "scaled_mass"
  *  The schur complement approximation is simply a scaled diagonal mass matrix
  *  related to the 22 block
  *
  *  \var CS_PARAM_SCHUR_MASS_SCALED_DIAG_INVERSE
- *  Associated keyword: "n3s_schur" or "mass_scaled_diag_schur"
  *  The schur complement approximation is defined as
  *  S \approx alpha.M22 + 1/dt*B.diag(A)^-1.B^t
  *  where M22 is the mass matrix related to the (2,2) block
  *
  *  \var CS_PARAM_SCHUR_MASS_SCALED_LUMPED_INVERSE
- *  Associated keyword: +"lumped_schur"
  *  The schur complement approximation is defined as
  *  S \approx alpha.M22 + 1/dt*B.lumped(A^-1).B^t
  *  where M22 is the mass matrix related to the (2,2) block and where
@@ -616,12 +608,31 @@ typedef enum {
  * \var CS_PARAM_PRECOND_BLOCK_DIAG
  * Only the diagonal blocks are considered in the preconditioner
  *
+ * \var CS_PARAM_PRECOND_BLOCK_LOWER_TRIANGULAR
+ * The diagonal blocks and the lower blocks are considered in the
+ * preconditioner
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_SYM_GAUSS_SEIDEL
+ * A symmetric Gauss-Seidel block preconditioning is considered
+ * (cf. Y. Notay, "A new analysis of block preconditioners for saddle-point
+ * problems" (2014), SIAM J. Matrix. Anal. Appl.)
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_UPPER_TRIANGULAR
+ * The diagonal blocks and the upper blocks are considered in the
+ * preconditioner
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_UZAWA
+ * One iteration of block Uzawa is performed as preconditioner
  */
 
 typedef enum {
 
   CS_PARAM_PRECOND_BLOCK_NONE,
   CS_PARAM_PRECOND_BLOCK_DIAG,
+  CS_PARAM_PRECOND_BLOCK_LOWER_TRIANGULAR,
+  CS_PARAM_PRECOND_BLOCK_SYM_GAUSS_SEIDEL,
+  CS_PARAM_PRECOND_BLOCK_UPPER_TRIANGULAR,
+  CS_PARAM_PRECOND_BLOCK_UZAWA,
 
   CS_PARAM_N_PCD_BLOCK_TYPES
 
@@ -744,6 +755,10 @@ typedef enum {
  * \var CS_PARAM_ITSOL_GAUSS_SEIDEL
  * Gauss-Seidel
  *
+ * \var CS_PARAM_ITSOL_GCR
+ * Generalized conjugate residual (flexible iterative solver for symmetric or
+ * non-symmetric system)
+ *
  * \var CS_PARAM_ITSOL_GKB_CG
  * Golub-Kahan Bidiagonalization algorithm. Useful for solving saddle-point
  * systems. The inner solver is a (flexible) CG solver.
@@ -780,6 +795,10 @@ typedef enum {
  * \var CS_PARAM_ITSOL_SYM_GAUSS_SEIDEL
  * Symmetric Gauss-Seidel
  *
+ * \var CS_PARAM_ITSOL_USER_DEFINED
+ * User-defined iterative solver. It relies on the implementation of the
+ * the function cs_user_sles_it_solver()
+ *
  */
 
 typedef enum {
@@ -794,6 +813,7 @@ typedef enum {
   CS_PARAM_ITSOL_FCG,
   CS_PARAM_ITSOL_FGMRES,           /*!< Only with PETsc */
   CS_PARAM_ITSOL_GAUSS_SEIDEL,
+  CS_PARAM_ITSOL_GCR,
   CS_PARAM_ITSOL_GKB_CG,
   CS_PARAM_ITSOL_GKB_GMRES,
   CS_PARAM_ITSOL_GMRES,            /*!< Only with PETsc */
@@ -804,6 +824,7 @@ typedef enum {
   CS_PARAM_ITSOL_MUMPS_FLOAT_LDLT, /*!< Only with MUMPS */
   CS_PARAM_ITSOL_MUMPS_LDLT,       /*!< Only with PETsc/MUMPS */
   CS_PARAM_ITSOL_SYM_GAUSS_SEIDEL,
+  CS_PARAM_ITSOL_USER_DEFINED,
 
   CS_PARAM_N_ITSOL_TYPES
 

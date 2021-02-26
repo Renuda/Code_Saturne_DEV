@@ -73,6 +73,7 @@ use cpincl
 use cs_fuel_incl
 use ppincl
 use ppcpfu
+use lagran
 use mesh
 use field
 

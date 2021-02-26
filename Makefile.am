@@ -39,11 +39,7 @@ if HAVE_INTERNAL_PLE
 PLE = libple
 endif
 
-if HAVE_SALOME
-SALOME = salome
-endif
-
-SUBDIRS = . $(PLE) $(PREPRO) src $(SALOME) $(DOCS) $(GUI) $(TSTS) $(NEPTUNE_CFD)
+SUBDIRS = . $(PLE) $(PREPRO) src $(DOCS) $(GUI) $(TSTS) $(NEPTUNE_CFD)
 
 AUX_DIST =
 
@@ -145,9 +141,7 @@ edit_package = sed \
 	-e 's|@PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g' \
 	-e 's|@PACKAGE_STRING[@]|$(PACKAGE_STRING)|g' \
 	-e 's|@PACKAGE_BUGREPORT[@]|$(PACKAGE_BUGREPORT)|g' \
-	-e 's|@PACKAGE_URL[@]|$(PACKAGE_URL)|g' \
-	-e 's|@SALOME_KERNEL[@]|$(SALOME_KERNEL)|g' \
-	-e 's|@SALOMEENVCMD[@]|$(SALOMEENVCMD)|g'
+	-e 's|@PACKAGE_URL[@]|$(PACKAGE_URL)|g'
 
 edit_cfg = sed \
 	-e 's|@cfg_prefix[@]|$(prefix)|g' \
@@ -172,9 +166,7 @@ edit_cfg = sed \
 	-e 's|@PACKAGE_VERSION[@]|$(PACKAGE_VERSION)|g' \
 	-e 's|@PACKAGE_STRING[@]|$(PACKAGE_STRING)|g' \
 	-e 's|@PACKAGE_BUGREPORT[@]|$(PACKAGE_BUGREPORT)|g' \
-	-e 's|@PACKAGE_URL[@]|$(PACKAGE_URL)|g' \
-	-e 's|@SALOME_KERNEL[@]|$(SALOME_KERNEL)|g' \
-	-e 's|@SALOMEENVCMD[@]|$(SALOMEENVCMD)|g'
+	-e 's|@PACKAGE_URL[@]|$(PACKAGE_URL)|g'
 
 edit_shell = sed \
 	-e 's|@SHELL[@]|$(SHELL)|g' \
@@ -271,6 +263,7 @@ bin/cs_compile.py \
 bin/cs_control.py \
 bin/cs_create.py \
 bin/cs_debug_wrapper.py \
+bin/cs_debug_symbol.py \
 bin/cs_exec_environment.py \
 bin/cs_parametric_study.py \
 bin/cs_studymanager_gui.py \
@@ -296,8 +289,7 @@ bin/studymanager/cs_studymanager_parser.py \
 bin/studymanager/cs_studymanager_study.py \
 bin/studymanager/cs_studymanager_texmaker.py \
 bin/studymanager/cs_studymanager_pathes_model.py \
-bin/studymanager/cs_studymanager_xml_init.py \
-bin/studymanager/cs_studymanager_graph.py
+bin/studymanager/cs_studymanager_xml_init.py
 
 modeldir = $(pkgpythondir)/model
 model_PYTHON = \
@@ -330,6 +322,7 @@ bin/model/HeadLossesModel.py \
 bin/model/IdentityAndPathesModel.py \
 bin/model/ImmersedBoundariesModel.py \
 bin/model/InitializationModel.py \
+bin/model/InternalCouplingModel.py \
 bin/model/__init__.py \
 bin/model/InterfacialAreaModel.py \
 bin/model/InterfacialEnthalpyModel.py \
@@ -344,6 +337,7 @@ bin/model/MainFieldsInitializationModel.py \
 bin/model/MainFieldsSourceTermsModel.py \
 bin/model/MainFieldsModel.py \
 bin/model/MobileMeshModel.py \
+bin/model/NeptuneWallTransferModel.py \
 bin/model/NonCondensableModel.py \
 bin/model/NotebookModel.py \
 bin/model/NucleateBoilingModel.py \
@@ -382,8 +376,6 @@ bin/model/XMLmodel.py \
 bin/model/XMLvariables.py
 
 # Install user scripts
-
-salomesysconfdir = ${sysconfdir}/salome
 
 dist_pkgdata_DATA = \
 COPYING

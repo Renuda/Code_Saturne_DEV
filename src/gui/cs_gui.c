@@ -231,13 +231,13 @@ _thermal_table_option(const char *name)
 }
 
 /*----------------------------------------------------------------------------
+ * Return the tree node associated to a given property and zone.
  *----------------------------------------------------------------------------*/
 
-static const cs_tree_node_t *
+static cs_tree_node_t *
 _get_property_node(const char *property_name,
                    const char *zone_name)
 {
-
   cs_tree_node_t *tn = cs_tree_find_node(cs_glob_tree, "property");
   while (tn != NULL) {
     const char *name = cs_tree_node_get_child_value_str(tn, "name");
@@ -252,13 +252,27 @@ _get_property_node(const char *property_name,
    */
   if (zone_name != NULL) {
     if (strcmp(zone_name, "all_cells")) {
-      tn = cs_tree_node_get_child(tn, "zone");
-      tn = cs_tree_node_get_sibling_with_tag(tn, "name", zone_name);
+      /* Get zone_id from xml */
+      cs_tree_node_t *id_n =
+        cs_tree_get_node(cs_glob_tree,
+                         "solution_domain/volumic_conditions/zone");
+      const char *id_s = NULL;
+      while (id_n != NULL) {
+        const char *zname = cs_tree_node_get_tag(id_n, "label");
+        if (cs_gui_strcmp(zname, zone_name)) {
+          id_s = cs_tree_node_get_tag(id_n, "id");
+          break;
+        }
+        id_n = cs_tree_node_get_next_of_name(id_n);
+      }
+      if (id_s != NULL) {
+        tn = cs_tree_node_get_child(tn, "zone");
+        tn = cs_tree_node_get_sibling_with_tag(tn, "id", id_s);
+      }
     }
   }
 
   return tn;
-
 }
 
 /*----------------------------------------------------------------------------
@@ -284,13 +298,13 @@ _properties_choice(const char *property_name,
 }
 
 /*----------------------------------------------------------------------------
+ * Return the formula associated to a given property and zone.
  *----------------------------------------------------------------------------*/
 
 static const char*
 _property_formula(const char *property_name,
                   const char *zone_name)
 {
-
   const char *law = NULL;
 
   cs_tree_node_t *node = _get_property_node(property_name, zone_name);
@@ -300,7 +314,6 @@ _property_formula(const char *property_name,
   law = cs_tree_node_get_value_str(node);
 
   return law;
-
 }
 
 /*----------------------------------------------------------------------------
@@ -331,7 +344,7 @@ _physical_property(cs_field_t          *c_prop,
                    const cs_zone_t     *z)
 {
   int user_law = 0;
-  const char *prop_choice = _properties_choice(c_prop->name, z->name);
+  const char *prop_choice = _properties_choice(c_prop->name, NULL);
 
   if (cs_gui_strcmp(prop_choice, "user_law"))
     user_law = 1;
@@ -346,7 +359,8 @@ _physical_property(cs_field_t          *c_prop,
     }
 
   }
-  else if (cs_gui_strcmp(prop_choice, "thermal_law")) {
+  else if (cs_gui_strcmp(prop_choice, "thermal_law") &&
+           cs_gui_strcmp(z->name, "all_cells")) {
     cs_phys_prop_type_t property = -1;
 
     if (cs_gui_strcmp(c_prop->name, "density"))
@@ -406,7 +420,6 @@ _physical_property(cs_field_t          *c_prop,
                          thermodynamic_pressure,
                          _thermal_f_val,
                          c_prop->val);
-
   }
 }
 
@@ -1686,7 +1699,7 @@ void CS_PROCF (csisui, CSISUI) (int *ntsuit,
     (tn, "restart_with_auxiliary",
      &(cs_glob_restart_auxiliary->read_auxiliary));
 
-  cs_gui_node_get_child_status_int(tn, "frozen_field",           iccvfg);
+  cs_gui_node_get_child_status_int(tn, "frozen_field", iccvfg);
 
 #if _XML_DEBUG_
   bft_printf("==> %s\n", __func__);
@@ -1756,7 +1769,9 @@ void CS_PROCF (cstime, CSTIME) (void)
     }
   }
 
-  cs_gui_node_get_child_status_int(tn, "thermal_time_step", &(time_opt->iptlro));
+  cs_gui_node_get_child_status_int(tn,
+                                   "thermal_time_step",
+                                   &(time_opt->iptlro));
 
 #if _XML_DEBUG_
   bft_printf("==> %s\n", __func__);
@@ -1878,7 +1893,8 @@ void CS_PROCF (csnum2, CSNUM2)(double  *relaxp,
 
   cs_ext_neighborhood_type_t enh_type = cs_ext_neighborhood_get_type();
 
-  choice = cs_tree_node_get_tag(cs_tree_get_node(tn_n, "gradient_reconstruction"),
+  choice = cs_tree_node_get_tag(cs_tree_get_node(tn_n,
+                                                 "gradient_reconstruction"),
                                 "choice");
   if (cs_gui_strcmp(choice, "green_iter"))
     _imrgra = 0;
@@ -1890,7 +1906,8 @@ void CS_PROCF (csnum2, CSNUM2)(double  *relaxp,
     _imrgra = 7;
 
   if (_imrgra != 0 && _imrgra != 7) {
-    choice = cs_tree_node_get_tag(cs_tree_get_node(tn_n, "extended_neighborhood"),
+    choice = cs_tree_node_get_tag(cs_tree_get_node(tn_n,
+                                                   "extended_neighborhood"),
                                   "choice");
     if (cs_gui_strcmp(choice, "none")) {
       enh_type = CS_EXT_NEIGHBORHOOD_NONE;
@@ -2217,8 +2234,9 @@ void CS_PROCF (cssca3, CSSCA3) (void)
             result = 0.028966;
             cs_gui_fluid_properties_value("reference_molar_mass", &result);
             if (result <= 0)
-              bft_error(__FILE__, __LINE__, 0,
-                        _("mass molar value is zero or not found in the xml file.\n"));
+              bft_error
+                (__FILE__, __LINE__, 0,
+                 _("mass molar value is zero or not found in the xml file.\n"));
             density = cs_glob_fluid_properties->p0 *
                       result / (8.31446 *(cs_glob_fluid_properties->t0));
           }
@@ -2271,7 +2289,8 @@ void CS_PROCF(uiporo, UIPORO)(void)
   }
 
   cs_tree_node_t *tn_p
-    = cs_tree_get_node(cs_glob_tree, "thermophysical_models/porosities/porosity");
+    = cs_tree_get_node(cs_glob_tree,
+                       "thermophysical_models/porosities/porosity");
 
   for (int z_id = 0; z_id < n_zones; z_id++) {
     const cs_zone_t *z = cs_volume_zone_by_id(z_id);
@@ -2856,12 +2875,14 @@ void CS_PROCF(uiiniv, UIINIV)(const int          *isuite,
 
           const cs_field_t  *f = cs_field_by_id(f_id);
 
-          if (f->type & CS_FIELD_USER && f->location_id == CS_MESH_LOCATION_CELLS) {
+          if (   f->type & CS_FIELD_USER
+              && f->location_id == CS_MESH_LOCATION_CELLS) {
 
             const char *formula_sca    = NULL;
 
             cs_tree_node_t *tn_sca = NULL;
-            tn_sca = cs_tree_get_node(cs_glob_tree, "additional_scalars/variable");
+            tn_sca = cs_tree_get_node(cs_glob_tree,
+                                      "additional_scalars/variable");
             tn_sca = cs_tree_node_get_sibling_with_tag(tn_sca, "name", f->name);
             tn_sca = cs_tree_get_node(tn_sca, "formula");
             tn_sca = _add_zone_id_test_attribute(tn_sca, z->id);
@@ -2962,8 +2983,6 @@ void CS_PROCF(uiiniv, UIINIV)(const int          *isuite,
 
             tn_combustion2 = cs_tree_get_node(tn_combustion2, "formula");
             tn_combustion2 = _add_zone_id_test_attribute(tn_combustion2, z->id);
-            const char *zone_id
-              = cs_tree_node_get_child_value_str(tn_combustion2, "zone_id");
 
             cs_field_t *c_comb = cs_field_by_name_try(name);
 
@@ -2996,7 +3015,8 @@ void CS_PROCF(uiiniv, UIINIV)(const int          *isuite,
             if (j < 3) {
               tn = cs_tree_find_node(cs_glob_tree, "variable");
               while (tn != NULL) {
-                const char *name_tn = cs_tree_node_get_child_value_str(tn, "name");
+                const char *name_tn
+                  = cs_tree_node_get_child_value_str(tn, "name");
                 if (cs_gui_strcmp(name_tn, name[j]))
                   break;
                 else
@@ -3006,7 +3026,8 @@ void CS_PROCF(uiiniv, UIINIV)(const int          *isuite,
             else {
               tn = cs_tree_find_node(cs_glob_tree, "property");
               while (tn != NULL) {
-                const char *name_tn = cs_tree_node_get_child_value_str(tn, "name");
+                const char *name_tn
+                  = cs_tree_node_get_child_value_str(tn, "name");
                 if (cs_gui_strcmp(name_tn, name[j]))
                   break;
                 else
@@ -3065,8 +3086,6 @@ void CS_PROCF(uiiniv, UIINIV)(const int          *isuite,
 
 void CS_PROCF(uiphyv, UIPHYV)(const int       *iviscv)
 {
-  const cs_lnum_t n_cells = cs_glob_mesh->n_cells;
-  const char *law = NULL;
   double time0 = cs_timer_wtime();
 
   int n_zones_pp =
@@ -3162,8 +3181,6 @@ void CS_PROCF(uiphyv, UIPHYV)(const int       *iviscv)
     if (   (f->type & CS_FIELD_VARIABLE)
         && (f->type & CS_FIELD_USER)) {
       user_id++;
-
-      int user_law = 0;
 
       if (   cs_field_get_key_int(f, kscavr) < 0
           && cs_field_get_key_int(f, kivisl) >= 0) {
@@ -3434,8 +3451,9 @@ void CS_PROCF (uidapp, UIDAPP) (const int       *permeability,
       int n_fields = cs_field_n_fields();
 
 
-      /* get diffusivity and Kd for each scalar defined by the user on current zone
-         (and kplus and kminus only for scalars with kinetic model) */
+      /* get diffusivity and Kd for each scalar defined by the user on
+         current zone (and kplus and kminus only for scalars
+         with kinetic model) */
       for (int f_id = 0; f_id < n_fields; f_id++) {
 
         cs_field_t *f = cs_field_by_id(f_id);
@@ -3511,7 +3529,8 @@ void CS_PROCF (uidapp, UIDAPP) (const int       *permeability,
         cs_real_t long_diffus;
         double trans_diffus;
 
-        cs_tree_node_t *tn = cs_tree_node_get_child(tn_zl, "diffusion_coefficient");
+        cs_tree_node_t *tn
+          = cs_tree_node_get_child(tn_zl, "diffusion_coefficient");
         cs_gui_node_get_child_real(tn, "longitudinal", &long_diffus);
         cs_gui_node_get_child_real(tn, "transverse", &trans_diffus);
 
@@ -3666,7 +3685,7 @@ cs_gui_finalize(void)
  * cku11, cku22, cku33, cku12, cku13, cku23.
  *
  * \param[in]       zone       pointer to zone structure
- * \param[in]       cvara_vel  pointer to the velocity values of the previous time step
+ * \param[in]       cvara_vel  velocity values at the  previous time step
  * \param[in, out]  cku        head loss coefficients
  */
 /*----------------------------------------------------------------------------*/
@@ -4572,13 +4591,19 @@ cs_gui_user_arrays(void)
       cs_parameters_add_property(name, array_dim, CS_MESH_LOCATION_CELLS);
 
     else if (strcmp(location_name, "internal") == 0)
-      cs_parameters_add_property(name, array_dim, CS_MESH_LOCATION_INTERIOR_FACES);
+      cs_parameters_add_property(name,
+                                 array_dim,
+                                 CS_MESH_LOCATION_INTERIOR_FACES);
 
     else if (strcmp(location_name, "boundary") == 0)
-      cs_parameters_add_property(name, array_dim, CS_MESH_LOCATION_BOUNDARY_FACES);
+      cs_parameters_add_property(name,
+                                 array_dim,
+                                 CS_MESH_LOCATION_BOUNDARY_FACES);
 
     else if (strcmp(location_name, "vertices") == 0)
-      cs_parameters_add_property(name, array_dim, CS_MESH_LOCATION_VERTICES);
+      cs_parameters_add_property(name,
+                                 array_dim,
+                                 CS_MESH_LOCATION_VERTICES);
 
   }
 }

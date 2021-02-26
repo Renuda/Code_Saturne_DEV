@@ -314,6 +314,7 @@ _navsto_param_sles_create(cs_navsto_param_model_t         model,
   nslesp->il_algo_atol = 1e-08;
   nslesp->il_algo_dtol = 1e3;
   nslesp->il_algo_verbosity = 0;
+  nslesp->il_algo_restart = 10;
 
   switch (algo_coupling) {
 
@@ -402,22 +403,31 @@ _navsto_param_sles_log(const cs_navsto_param_sles_t    *nslesp)
   cs_log_printf(CS_LOG_SETUP, "%s SLES strategy: ", navsto);
   switch (nslesp->strategy) {
 
-  case CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK:
-    cs_log_printf(CS_LOG_SETUP, "Handle the full system as it is.\n");
+  case CS_NAVSTO_SLES_ADDITIVE_GMRES_BY_BLOCK:
+    cs_log_printf(CS_LOG_SETUP, "Additive block preconditioner + GMRES\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Restart threshold: %d\n", navsto,
+                  nslesp->il_algo_restart);
     break;
   case CS_NAVSTO_SLES_BLOCK_MULTIGRID_CG:
     cs_log_printf(CS_LOG_SETUP, "Block AMG + CG\n");
     break;
-  case CS_NAVSTO_SLES_ADDITIVE_GMRES_BY_BLOCK:
-    cs_log_printf(CS_LOG_SETUP, "Additive block preconditioner + GMRES\n");
+  case CS_NAVSTO_SLES_BY_BLOCKS:
+    cs_log_printf(CS_LOG_SETUP,
+                  "Blocks for velocity and pressure (deprecated)\n");
     break;
-  case CS_NAVSTO_SLES_MULTIPLICATIVE_GMRES_BY_BLOCK:
-    cs_log_printf(CS_LOG_SETUP, "Multiplicative block preconditioner"
-                  " + GMRES\n");
+  case CS_NAVSTO_SLES_DIAG_SCHUR_GCR:
+    cs_log_printf(CS_LOG_SETUP, "Diag. block preconditioner with Schur approx."
+                  " + (in-house) GCR\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Restart threshold: %d\n", navsto,
+                  nslesp->il_algo_restart);
+    cs_log_printf(CS_LOG_SETUP, "%s Schur approximation: %s\n", navsto,
+                  cs_param_get_schur_approx_name(nslesp->schur_approximation));
     break;
   case CS_NAVSTO_SLES_DIAG_SCHUR_GMRES:
     cs_log_printf(CS_LOG_SETUP, "Diag. block preconditioner with Schur approx."
                   " + GMRES\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Restart threshold: %d\n", navsto,
+                  nslesp->il_algo_restart);
     break;
   case CS_NAVSTO_SLES_DIAG_SCHUR_MINRES:
     cs_log_printf(CS_LOG_SETUP, "Diag. block preconditioner with Schur approx."
@@ -425,30 +435,81 @@ _navsto_param_sles_log(const cs_navsto_param_sles_t    *nslesp)
     cs_log_printf(CS_LOG_SETUP, "%s Schur approximation: %s\n", navsto,
                   cs_param_get_schur_approx_name(nslesp->schur_approximation));
     break;
-  case CS_NAVSTO_SLES_UPPER_SCHUR_GMRES:
-    cs_log_printf(CS_LOG_SETUP, "Upper block preconditioner with Schur approx."
-                  " + GMRES\n");
+  case CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK:
+    cs_log_printf(CS_LOG_SETUP, "Handle the full system as it is.\n");
+    break;
+  case CS_NAVSTO_SLES_GCR:
+    cs_log_printf(CS_LOG_SETUP, "in-house GCR\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Restart threshold: %d\n", navsto,
+                  nslesp->il_algo_restart);
     break;
   case CS_NAVSTO_SLES_GKB_PETSC:
     cs_log_printf(CS_LOG_SETUP, "GKB algorithm (through PETSc)\n");
     break;
   case CS_NAVSTO_SLES_GKB_GMRES:
     cs_log_printf(CS_LOG_SETUP, "GMRES with a GKB preconditioner\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Restart threshold: %d\n", navsto,
+                  nslesp->il_algo_restart);
     break;
   case CS_NAVSTO_SLES_GKB_SATURNE:
-    cs_log_printf(CS_LOG_SETUP, "GKB algorithm (In-House)\n");
+    cs_log_printf(CS_LOG_SETUP, "in-house GKB algorithm\n");
+    break;
+  case CS_NAVSTO_SLES_LOWER_SCHUR_GCR:
+    cs_log_printf(CS_LOG_SETUP, "Lower block preconditioner with Schur approx."
+                  " + (in-house) GCR\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Restart threshold: %d\n", navsto,
+                  nslesp->il_algo_restart);
+    cs_log_printf(CS_LOG_SETUP, "%s Schur approximation: %s\n", navsto,
+                  cs_param_get_schur_approx_name(nslesp->schur_approximation));
     break;
   case CS_NAVSTO_SLES_MINRES:
     cs_log_printf(CS_LOG_SETUP, "in-house MINRES\n");
     break;
+  case CS_NAVSTO_SLES_MULTIPLICATIVE_GMRES_BY_BLOCK:+
+    cs_log_printf(CS_LOG_SETUP, "Multiplicative block preconditioner"
+                  " + GMRES\n");
+    break;
   case CS_NAVSTO_SLES_MUMPS:
     cs_log_printf(CS_LOG_SETUP, "LU factorization with MUMPS\n");
+    break;
+  case CS_NAVSTO_SLES_SGS_SCHUR_GCR:
+    cs_log_printf(CS_LOG_SETUP, "Symmetric Gauss-Seidel block preconditioner"
+                  " with Schur approx. + (in-house) GCR\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Restart threshold: %d\n", navsto,
+                  nslesp->il_algo_restart);
+    cs_log_printf(CS_LOG_SETUP, "%s Schur approximation: %s\n", navsto,
+                  cs_param_get_schur_approx_name(nslesp->schur_approximation));
+    break;
+  case CS_NAVSTO_SLES_UPPER_SCHUR_GMRES:
+    cs_log_printf(CS_LOG_SETUP, "Upper block preconditioner with Schur approx."
+                  " + GMRES\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Restart threshold: %d\n", navsto,
+                  nslesp->il_algo_restart);
+    break;
+  case CS_NAVSTO_SLES_UPPER_SCHUR_GCR:
+    cs_log_printf(CS_LOG_SETUP, "Upper block preconditioner with Schur approx."
+                  " + (in-house) GCR\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Restart threshold: %d\n", navsto,
+                  nslesp->il_algo_restart);
+    cs_log_printf(CS_LOG_SETUP, "%s Schur approximation: %s\n", navsto,
+                  cs_param_get_schur_approx_name(nslesp->schur_approximation));
+    break;
+  case CS_NAVSTO_SLES_USER:
+    cs_log_printf(CS_LOG_SETUP, "User-defined\n");
     break;
   case CS_NAVSTO_SLES_UZAWA_AL:
     cs_log_printf(CS_LOG_SETUP, "Augmented Lagrangian-Uzawa\n");
     break;
   case CS_NAVSTO_SLES_UZAWA_CG:
     cs_log_printf(CS_LOG_SETUP, "Uzawa accelerated with Conjugate Gradient\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Schur approximation: %s\n", navsto,
+                  cs_param_get_schur_approx_name(nslesp->schur_approximation));
+    break;
+  case CS_NAVSTO_SLES_UZAWA_SCHUR_GCR:
+    cs_log_printf(CS_LOG_SETUP, "Uzawa block preconditioner with Schur approx."
+                  " + (in-house) GCR\n");
+    cs_log_printf(CS_LOG_SETUP, "%s Restart threshold: %d\n", navsto,
+                  nslesp->il_algo_restart);
     cs_log_printf(CS_LOG_SETUP, "%s Schur approximation: %s\n", navsto,
                   cs_param_get_schur_approx_name(nslesp->schur_approximation));
     break;
@@ -464,8 +525,13 @@ _navsto_param_sles_log(const cs_navsto_param_sles_t    *nslesp)
                 nslesp->il_algo_dtol, nslesp->il_algo_verbosity);
 
   /* Additional settings for the Schur complement solver */
-  if (nslesp->strategy == CS_NAVSTO_SLES_UZAWA_CG ||
-      nslesp->strategy == CS_NAVSTO_SLES_DIAG_SCHUR_MINRES)
+  if (nslesp->strategy == CS_NAVSTO_SLES_UZAWA_CG          ||
+      nslesp->strategy == CS_NAVSTO_SLES_DIAG_SCHUR_MINRES ||
+      nslesp->strategy == CS_NAVSTO_SLES_DIAG_SCHUR_GCR    ||
+      nslesp->strategy == CS_NAVSTO_SLES_LOWER_SCHUR_GCR   ||
+      nslesp->strategy == CS_NAVSTO_SLES_SGS_SCHUR_GCR     ||
+      nslesp->strategy == CS_NAVSTO_SLES_UPPER_SCHUR_GCR   ||
+      nslesp->strategy == CS_NAVSTO_SLES_UZAWA_SCHUR_GCR)
     cs_param_sles_log(nslesp->schur_sles_param);
 
 }
@@ -888,6 +954,10 @@ cs_navsto_param_set(cs_navsto_param_t    *nsp,
                 " %s: Invalid value for the residual tolerance\n", __func__);
     break;
 
+  case CS_NSKEY_IL_ALGO_RESTART:
+    nsp->sles_param->il_algo_restart = atoi(val);
+    break;
+
   case CS_NSKEY_IL_ALGO_VERBOSITY:
     nsp->sles_param->il_algo_verbosity = atoi(val);
     break;
@@ -996,22 +1066,34 @@ cs_navsto_param_set(cs_navsto_param_t    *nsp,
     /* In-house strategies. Do not need a third-part library. */
     /* ------------------------------------------------------ */
 
-    if (strcmp(val, "diag_schur_minres") == 0 ||
-        strcmp(val, "schur_diag_minres") == 0)
-      nsp->sles_param->strategy = CS_NAVSTO_SLES_DIAG_SCHUR_MINRES;
-    else if (strcmp(val, "no_block") == 0)
-      nsp->sles_param->strategy = CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK;
-    else if (strcmp(val, "minres") == 0)
-      nsp->sles_param->strategy = CS_NAVSTO_SLES_MINRES;
-    else if (strcmp(val, "block_amg_cg") == 0)
+    if (strcmp(val, "block_amg_cg") == 0)
       nsp->sles_param->strategy = CS_NAVSTO_SLES_BLOCK_MULTIGRID_CG;
+    else if (strcmp(val, "diag_schur_gcr") == 0)
+      nsp->sles_param->strategy = CS_NAVSTO_SLES_DIAG_SCHUR_GCR;
+    else if (strcmp(val, "diag_schur_minres") == 0)
+      nsp->sles_param->strategy = CS_NAVSTO_SLES_DIAG_SCHUR_MINRES;
+    else if (strcmp(val, "gcr") == 0)
+      nsp->sles_param->strategy = CS_NAVSTO_SLES_GCR;
     else if (strcmp(val, "gkb_saturne") == 0 ||
              strcmp(val, "gkb") == 0)
       nsp->sles_param->strategy = CS_NAVSTO_SLES_GKB_SATURNE;
+    else if (strcmp(val, "lower_schur_gcr") == 0)
+      nsp->sles_param->strategy = CS_NAVSTO_SLES_LOWER_SCHUR_GCR;
+    else if (strcmp(val, "minres") == 0)
+      nsp->sles_param->strategy = CS_NAVSTO_SLES_MINRES;
+    else if (strcmp(val, "no_block") == 0)
+      nsp->sles_param->strategy = CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK;
+    else if (strcmp(val, "sgs_schur_gcr") == 0)
+      nsp->sles_param->strategy = CS_NAVSTO_SLES_SGS_SCHUR_GCR;
+    else if (strcmp(val, "upper_schur_gcr") == 0)
+      nsp->sles_param->strategy = CS_NAVSTO_SLES_UPPER_SCHUR_GCR;
     else if (strcmp(val, "uzawa_al") == 0 || strcmp(val, "alu") == 0)
       nsp->sles_param->strategy = CS_NAVSTO_SLES_UZAWA_AL;
     else if (strcmp(val, "uzawa_cg") == 0 || strcmp(val, "uzapcg") == 0)
       nsp->sles_param->strategy = CS_NAVSTO_SLES_UZAWA_CG;
+    else if (strcmp(val, "uza_schur_gcr") == 0 ||
+             strcmp(val, "uzawa_schur_gcr") == 0)
+      nsp->sles_param->strategy = CS_NAVSTO_SLES_UZAWA_SCHUR_GCR;
 
     /* All the following options need either PETSC or MUMPS */
     /* ---------------------------------------------------- */

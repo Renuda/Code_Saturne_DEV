@@ -197,11 +197,12 @@ typedef enum {
  * Associated keyword: "additive_gmres"
  *
  * Available choice when a monolithic approach is used (i.e. with the parameter
- * CS_NAVSTO_COUPLING_MONOLITHIC is set as coupling algorithm) The Navier-Stokes
- * system of equations is solved an additive preconditioner (block diagonal
- * matrix where the block 00 is A_{00}) and the block 11 is set to the identity.
- * Preconditioner/solver for the block 00 is set using the momentum equation.
- * This option is only available with the support to the PETSc library up to now.
+ * CS_NAVSTO_COUPLING_MONOLITHIC is set as coupling algorithm) The
+ * Navier-Stokes system of equations is solved an additive preconditioner
+ * (block diagonal matrix where the block 00 is A_{00}) and the block 11 is set
+ * to the identity.  Preconditioner/solver for the block 00 is set using the
+ * momentum equation.  This option is only available with the support to the
+ * PETSc library up to now.
  *
  *
  * \var CS_NAVSTO_SLES_BLOCK_MULTIGRID_CG
@@ -230,11 +231,22 @@ typedef enum {
  * library up to now.
  *
  *
+ * \var CS_NAVSTO_SLES_DIAG_SCHUR_GCR
+ * Associated keyword: "diag_schur_gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm with a
+ * block diagonal preconditioner using a Schur approximation for the pressure
+ * block (the block 22). The system is stored using a hybrid
+ * assembled/unassembled blocks. The velocity block is assembled (with
+ * potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
+ *
+ *
  * \var CS_NAVSTO_SLES_DIAG_SCHUR_MINRES
  * Associated keyword: "diag_schur_minres"
  *
  * The Stokes or Navier-Stokes system with an explicit advection is solved
- * using a MINRES algorithm with a block diagonal preconditioner using an Schur
+ * using a MINRES algorithm with a block diagonal preconditioner using a Schur
  * approximation for the pressure block (the block 22). The system is stored
  * using a hybrid assembled/unassembled blocks. The velocity block is assembled
  * (with potentially sub-blocks for each component) and the velocity
@@ -249,6 +261,16 @@ typedef enum {
  * options for solving a linear system such as the choice of the iterative
  * solver or the choice of the preconditioner or the type of residual
  * normalization
+ *
+ *
+ * \var CS_NAVSTO_SLES_GCR
+ * Associated keyword: "gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm without
+ * preconditioning. The system is stored using a hybrid assembled/unassembled
+ * blocks. The velocity block is assembled (with potentially sub-blocks for
+ * each component) and the velocity divergence/pressure gradient operators are
+ * unassembled.
  *
  *
  * \var CS_NAVSTO_SLES_GKB_PETSC
@@ -290,6 +312,17 @@ typedef enum {
  * The residual is computed in the energy norm.
  *
  *
+ * \var CS_NAVSTO_SLES_LOWER_SCHUR_GCR
+ * Associated keyword: "lower_schur_gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm with an
+ * lower triangular block preconditioner using a Schur approximation for the
+ * pressure block (the block 22). The system is stored using a hybrid
+ * assembled/unassembled blocks. The velocity block is assembled (with
+ * potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
+ *
+ *
  * \var CS_NAVSTO_SLES_MINRES
  * Associated keyword: "minres"
  *
@@ -318,6 +351,28 @@ typedef enum {
  * Direct solver to solve systems arising from the discretization of the
  * Navier-Stokes equations
  *
+ * \var CS_NAVSTO_SLES_SGS_SCHUR_GCR
+ * Associated keyword: "sgs_schur_gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm with a
+ * symmetric Gauss-Seidel block preconditioner using a Schur approximation for
+ * the pressure block (the block 22). The system is stored using a hybrid
+ * assembled/unassembled blocks. The velocity block is assembled (with
+ * potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
+ *
+ *
+ * \var CS_NAVSTO_SLES_UPPER_SCHUR_GCR
+ * Associated keyword: "upper_schur_gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm with an
+ * upper triangular block preconditioner using a Schur approximation for the
+ * pressure block (the block 22). The system is stored using a hybrid
+ * assembled/unassembled blocks. The velocity block is assembled (with
+ * potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
+ *
+ *
  * \var CS_NAVSTO_SLES_UPPER_SCHUR_GMRES
  * Associated keyword: "upper_schur_gmres"
  *
@@ -329,6 +384,12 @@ typedef enum {
  * preconditioned with a minres. The main iterative solver is a flexible
  * GMRES. This option is only available with the support to the PETSc
  * library up to now.
+ *
+ * \var CS_NAVSTO_SLES_USER
+ * Associated keyword: "user"
+ *
+ * Resolution using a user-defined function. This function fulfills a
+ * pre-defined prototype
  *
  * \var CS_NAVSTO_SLES_UZAWA_AL
  * Associated keyword: "uzawa_al"
@@ -342,6 +403,16 @@ typedef enum {
  * reformulation. Two systems are solved at each iteration (one related to the
  * velocity block, one related to the Schur complement approximation - size of
  * the pressure space).
+ *
+ * \var CS_NAVSTO_SLES_UZAWA_SCHUR_GCR
+ * Associated keyword: "uza_schur_gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm with an
+ * Uzawa algorithm tuned for block preconditioning and using a Schur
+ * approximation for the pressure block (the block 22). The system is stored
+ * using a hybrid assembled/unassembled blocks. The velocity block is assembled
+ * (with potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
  */
 
 typedef enum {
@@ -349,16 +420,23 @@ typedef enum {
   CS_NAVSTO_SLES_ADDITIVE_GMRES_BY_BLOCK,
   CS_NAVSTO_SLES_BLOCK_MULTIGRID_CG,
   CS_NAVSTO_SLES_BY_BLOCKS,     /* deprecated */
+  CS_NAVSTO_SLES_DIAG_SCHUR_GCR,
   CS_NAVSTO_SLES_DIAG_SCHUR_GMRES,
   CS_NAVSTO_SLES_DIAG_SCHUR_MINRES,
   CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK,
+  CS_NAVSTO_SLES_GCR,
   CS_NAVSTO_SLES_GKB_PETSC,
   CS_NAVSTO_SLES_GKB_GMRES,
   CS_NAVSTO_SLES_GKB_SATURNE,
+  CS_NAVSTO_SLES_LOWER_SCHUR_GCR,
   CS_NAVSTO_SLES_MINRES,
   CS_NAVSTO_SLES_MULTIPLICATIVE_GMRES_BY_BLOCK,
   CS_NAVSTO_SLES_MUMPS,
+  CS_NAVSTO_SLES_SGS_SCHUR_GCR,
+  CS_NAVSTO_SLES_UPPER_SCHUR_GCR,
   CS_NAVSTO_SLES_UPPER_SCHUR_GMRES,
+  CS_NAVSTO_SLES_USER,
+  CS_NAVSTO_SLES_UZAWA_SCHUR_GCR,
   CS_NAVSTO_SLES_UZAWA_AL,
   CS_NAVSTO_SLES_UZAWA_CG,
 
@@ -426,6 +504,12 @@ typedef struct {
    *  factor. (default 1e3)
    */
   cs_real_t                     il_algo_dtol;
+
+  /*! \var il_algo_restart
+   *  Number of iterations before restarting the iterative solver associated to
+   *  the inner linear system
+   */
+  int                           il_algo_restart;
 
   /*! \var n_max_il_algo_iter
    *  Maximal number of iterations to solve the inner linear system
@@ -851,6 +935,10 @@ typedef struct {
  * Navier-Stokes system since one has to handle the non-linearity in addition as
  * an outer process.
  *
+ * \var CS_NSKEY_IL_ALGO_RESTART
+ * Number of iterations before restarting a Krylov solver as the main solver
+ * (useful if the strategy implied a GMRES, flexible GMRES or GCR)
+ *
  * \var CS_NSKEY_IL_ALGO_VERBOSITY
  * Level of verbosity related to the inner linear algorithm (cf. \ref
  * CS_NSKEY_SLES_STRATEGY)
@@ -929,6 +1017,7 @@ typedef enum {
   CS_NSKEY_IL_ALGO_ATOL,
   CS_NSKEY_IL_ALGO_DTOL,
   CS_NSKEY_IL_ALGO_RTOL,
+  CS_NSKEY_IL_ALGO_RESTART,
   CS_NSKEY_IL_ALGO_VERBOSITY,
   CS_NSKEY_MAX_IL_ALGO_ITER,
   CS_NSKEY_MAX_NL_ALGO_ITER,

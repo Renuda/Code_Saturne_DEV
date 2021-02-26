@@ -30,7 +30,6 @@
 #-------------------------------------------------------------------------------
 
 Makefile.in
-.gitignore
 
 # /
 /ABOUT-NLS
@@ -217,7 +216,8 @@ Makefile.in
 /patches/*.patch
 /src/TAGS
 
-/.vscode/
-/build*/
-vsc-*.sh
+.vscode/
+build-*/
+vsc-config*
+vsc-make*
 *.*~

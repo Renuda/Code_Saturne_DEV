@@ -384,6 +384,8 @@ _set_key(cs_equation_param_t   *eqp,
       eqp->sles_param->solver = CS_PARAM_ITSOL_GAUSS_SEIDEL;
       eqp->sles_param->precond = CS_PARAM_PRECOND_NONE;
     }
+    else if (strcmp(keyval, "gcr") == 0)
+      eqp->sles_param->solver = CS_PARAM_ITSOL_GCR;
     else if (strcmp(keyval, "gmres") == 0)
       eqp->sles_param->solver = CS_PARAM_ITSOL_GMRES;
     else if (strcmp(keyval, "fgmres") == 0)
@@ -443,6 +445,10 @@ _set_key(cs_equation_param_t   *eqp,
         eqp->sles_param->solver = CS_PARAM_ITSOL_MUMPS_LDLT;
 
     }
+    else if (strcmp(keyval, "user") == 0) {
+      eqp->sles_param->solver = CS_PARAM_ITSOL_USER_DEFINED;
+      eqp->sles_param->solver_class = CS_PARAM_SLES_CLASS_CS;
+    }
     else if (strcmp(keyval, "none") == 0)
       eqp->sles_param->solver = CS_PARAM_ITSOL_NONE;
 
@@ -478,6 +484,10 @@ _set_key(cs_equation_param_t   *eqp,
       bft_error(__FILE__, __LINE__, 0,
                 emsg, __func__, eqname, _val, "CS_EQKEY_ITSOL_RESNORM_TYPE");
     }
+    break;
+
+  case CS_EQKEY_ITSOL_RESTART:
+    eqp->sles_param->restart = atoi(keyval);
     break;
 
   case CS_EQKEY_OMP_ASSEMBLY_STRATEGY:

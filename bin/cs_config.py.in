@@ -151,10 +151,6 @@ class config:
         self.env_modules = "@cs_env_modules@"
         self.env_modulecmd = "@MODULECMD@"
 
-        # SALOME-related information
-
-        self.salome_env = "@SALOMEENVCMD@"
-
         # Setup the optionnal features
 
         self.features['debug'] = "@debug@"
@@ -269,6 +265,7 @@ class config:
             prerequisite("EOS",
                          have = "@cs_have_eos@",
                          prefix="@eos_prefix@",
+                         dynamic_load = @cs_py_have_plugins@,
                          flags = {'cppflags': "@EOS_CPPFLAGS@",
                                   'ldflags': "@EOS_LDFLAGS@",
                                   'libs': "@EOS_LIBS@"})
@@ -285,6 +282,7 @@ class config:
             prerequisite("COOLPROP",
                          have = "@cs_have_coolprop@",
                          prefix="@coolprop_prefix@",
+                         dynamic_load = @cs_py_have_plugins@,
                          flags = {'cppflags': "@COOLPROP_CPPFLAGS@",
                                   'ldflags': "@COOLPROP_LDFLAGS@",
                                   'libs': "@COOLPROP_LIBS@",

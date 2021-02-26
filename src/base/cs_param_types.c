@@ -153,7 +153,11 @@ cs_param_bc_enforcement_name[CS_PARAM_N_BC_ENFORCEMENTS][CS_BASE_STRING_LEN] =
 static const char
 cs_param_precond_block_name[CS_PARAM_N_PCD_BLOCK_TYPES][CS_BASE_STRING_LEN] =
   { N_("No block preconditioner"),
-    N_("Diagonal block preconditioner") };
+    N_("Diagonal block preconditioner"),
+    N_("Lower triangular block preconditioner"),
+    N_("Symmetric Gauss-Seidel block preconditioner"),
+    N_("Upper triangular block preconditioner"),
+    N_("Uzawa block preconditioner") };
 
 static const char
 cs_param_schur_approx_name[CS_PARAM_N_SCHUR_APPROX][CS_BASE_STRING_LEN] =
@@ -455,6 +459,9 @@ cs_param_get_solver_name(cs_param_itsol_type_t  solver)
   case CS_PARAM_ITSOL_GAUSS_SEIDEL:
     return "Gauss.Seidel";
     break;
+  case CS_PARAM_ITSOL_GCR:
+    return "Generalized Conjugate Residual";
+    break;
   case CS_PARAM_ITSOL_GKB_CG:
     return "Golub-Kahan.BiOrthogonalization.with.CG.(inner.solver)";
     break;
@@ -484,6 +491,9 @@ cs_param_get_solver_name(cs_param_itsol_type_t  solver)
     break;
   case CS_PARAM_ITSOL_SYM_GAUSS_SEIDEL:
     return "Symmetric.Gauss.Seidel";
+    break;
+  case CS_PARAM_ITSOL_USER_DEFINED:
+    return "User-defined iterative solver";
     break;
 
   default:
@@ -574,6 +584,10 @@ cs_param_get_precond_block_name(cs_param_precond_block_t   type)
   switch (type) {
   case CS_PARAM_PRECOND_BLOCK_NONE:
   case CS_PARAM_PRECOND_BLOCK_DIAG:
+  case CS_PARAM_PRECOND_BLOCK_LOWER_TRIANGULAR:
+  case CS_PARAM_PRECOND_BLOCK_SYM_GAUSS_SEIDEL:
+  case CS_PARAM_PRECOND_BLOCK_UPPER_TRIANGULAR:
+  case CS_PARAM_PRECOND_BLOCK_UZAWA:
     return cs_param_precond_block_name[type];
 
   default:

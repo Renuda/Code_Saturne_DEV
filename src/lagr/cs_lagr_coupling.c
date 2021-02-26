@@ -271,7 +271,7 @@ cs_lagr_coupling(const cs_real_t  taup[],
   /* Turbulence source terms
      ======================= */
 
-    if (extra->itytur == 2 || extra->itytur == 4 || 
+    if (extra->itytur == 2 || extra->itytur == 4 ||
         extra->iturb == 50 || extra->iturb == 60) {
 
       /* In v2f (ITURB=50) the Lagrangian STs only influence k and epsilon

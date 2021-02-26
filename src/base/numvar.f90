@@ -82,7 +82,7 @@ module numvar
   !> SGS turbulent kinetic energy \f$ k \f$
   integer, save :: ik_sgs
 
-  !> \anchor iep_sgs
+  !> \anchor iep
   !> SGS turbulent dissipation \f$ \varepsilon \f$
   integer, save :: iep_sgs
 

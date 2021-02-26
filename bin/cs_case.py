@@ -814,7 +814,7 @@ class case:
             app_id += 1
 
         for d in self.domains:
-            s_args = d.solver_command(app_id=app_id)
+            s_args = d.solver_command()
             if len(cmd) > 0:
                 cmd += ' : '
             cmd += '-n ' + str(d.n_procs) \
@@ -923,7 +923,7 @@ class case:
                 + ' to the executable files.\n\n')
 
         e.write('MPI_RANK=`'
-                + self.package.pkgdatadir_script('runcase_mpi_rank')
+                + self.package.get_pkgdatadir_script('runcase_mpi_rank')
                 + ' $@`\n')
 
         app_id = 0
@@ -944,7 +944,7 @@ class case:
         for d in self.domains:
             nr += d.n_procs
             e.write(test_pf + str(nr) + test_sf)
-            s_args = d.solver_command(app_id=app_id)
+            s_args = d.solver_command()
             e.write('  cd ' + s_args[0] + '\n')
             e.write('  ' + s_args[1] + s_args[2] + ' $@\n')
             if app_id == 0:
@@ -1428,9 +1428,9 @@ class case:
                 if need_compile == False: # Print banner on first pass
                     need_compile = True
                     msg = \
-                        " ****************************************\n" \
-                        "  Compiling user subroutines and linking\n" \
-                        " ****************************************\n\n"
+                        " *********************************************\n" \
+                        "  Compiling and linking user-defined functions\n" \
+                        " *********************************************\n\n"
                     sys.stdout.write(msg)
                     sys.stdout.flush()
                 d.compile_and_link()

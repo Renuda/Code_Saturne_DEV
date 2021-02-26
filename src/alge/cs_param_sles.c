@@ -441,11 +441,12 @@ _petsc_set_krylov_solver(cs_param_sles_t    *slesp,
   switch (slesp->solver) {
 
   case CS_PARAM_ITSOL_GMRES: /* Preconditioned GMRES */
-    {
-      const int  n_max_restart = 40;
+  case CS_PARAM_ITSOL_FGMRES: /* Flexible GMRES */
+    KSPGMRESSetRestart(ksp, slesp->restart);
+    break;
 
-      KSPGMRESSetRestart(ksp, n_max_restart);
-    }
+  case CS_PARAM_ITSOL_GCR: /* Preconditioned GCR */
+    KSPGCRSetRestart(ksp, slesp->restart);
     break;
 
 #if defined(PETSC_HAVE_MUMPS)
@@ -1057,6 +1058,14 @@ _set_saturne_sles(bool                 use_field_id,
                            slesp->n_max_iter);
     break;
 
+  case CS_PARAM_ITSOL_GCR:
+    it = cs_sles_it_define(slesp->field_id,
+                           sles_name,
+                           CS_SLES_GCR,
+                           poly_degree,
+                           slesp->n_max_iter);
+    break;
+
   case CS_PARAM_ITSOL_GKB_CG:
     it = cs_sles_it_define(slesp->field_id,
                            sles_name,
@@ -1094,6 +1103,14 @@ _set_saturne_sles(bool                 use_field_id,
                            sles_name,
                            CS_SLES_P_SYM_GAUSS_SEIDEL,
                            -1, /* Not useful to apply a preconditioner */
+                           slesp->n_max_iter);
+    break;
+
+  case CS_PARAM_ITSOL_USER_DEFINED:
+    it = cs_sles_it_define(slesp->field_id,
+                           sles_name,
+                           CS_SLES_USER_DEFINED,
+                           poly_degree,
                            slesp->n_max_iter);
     break;
 
@@ -1292,15 +1309,21 @@ cs_param_sles_create(int          field_id,
   BFT_MALLOC(slesp, 1, cs_param_sles_t);
 
   slesp->verbosity = 0;                         /* SLES verbosity */
+
   slesp->field_id = field_id;                   /* associated field id */
+
   slesp->solver_class = CS_PARAM_SLES_CLASS_CS; /* solver family */
+
   slesp->precond = CS_PARAM_PRECOND_DIAG;       /* preconditioner */
   slesp->solver = CS_PARAM_ITSOL_GMRES;         /* iterative solver */
   slesp->amg_type = CS_PARAM_AMG_NONE;          /* no predefined AMG type */
   slesp->pcd_block_type = CS_PARAM_PRECOND_BLOCK_NONE; /* no block by default */
-  slesp->n_max_iter = 10000;                    /* max. number of iterations */
-  slesp->eps = 1e-8;                            /* relative tolerance to stop
-                                                   an iterative solver */
+
+  slesp->restart = 15;                       /* max. iter. before restarting */
+  slesp->n_max_iter = 10000;                 /* max. number of iterations */
+  slesp->eps = 1e-8;                         /* relative tolerance to stop
+                                                an iterative solver */
+
   slesp->resnorm_type = CS_PARAM_RESNORM_NONE;
   slesp->setup_done = false;
 
@@ -1369,8 +1392,6 @@ cs_param_sles_log(cs_param_sles_t   *slesp)
                 slesp->name, slesp->verbosity);
   cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Field id:           %d\n",
                 slesp->name, slesp->field_id);
-  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.MaxIter:     %d\n",
-                slesp->name, slesp->n_max_iter);
 
   cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.Name:        %s\n",
                 slesp->name, cs_param_get_solver_name(slesp->solver));
@@ -1386,6 +1407,14 @@ cs_param_sles_log(cs_param_sles_t   *slesp)
   cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Block.Precond:      %s\n",
                 slesp->name,
                 cs_param_get_precond_block_name(slesp->pcd_block_type));
+
+  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.MaxIter:     %d\n",
+                slesp->name, slesp->n_max_iter);
+  if (slesp->solver == CS_PARAM_ITSOL_GMRES ||
+      slesp->solver == CS_PARAM_ITSOL_FGMRES ||
+      slesp->solver == CS_PARAM_ITSOL_GCR)
+    cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.Restart:     %d\n",
+                  slesp->name, slesp->restart);
 
   cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.Eps:        % -10.6e\n",
                 slesp->name, slesp->eps);

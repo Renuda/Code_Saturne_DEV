@@ -163,8 +163,11 @@ def process_cmd_line(argv, pkg):
                       dest="create_xml", default=False,
                       help="create xml from study (current directory has to be a study)")
 
-    parser.add_option("--create-graph", action="store_true", dest="create_graph", default=False,
-                      help="create a dependency graph based on all cases from all studies")
+    parser.add_option("--filter-level", dest="filter_level",
+                      type="int", help="filter on the dependency graph based on the level of cases")
+
+    parser.add_option("--filter-n-procs", dest="filter_n_procs",
+                      type="int", help="filter on the dependency graph based on the number of procs used per cases")
 
     if len(argv)==0:
         parser.print_help(sys.stderr)
@@ -330,6 +333,10 @@ def run_studymanager(pkg, options):
     studies.reporting(" Ext. subprocesses logs: " + doc)
     studies.reporting("\n")
 
+    # Create dependency graph based on studies and all cases
+
+    studies.dump_graph()
+
     # Update repository if needed
 
     if options.update:
@@ -358,11 +365,6 @@ def run_studymanager(pkg, options):
 
     if options.compare or options.post or options.runcase:
         studies.create_studies()
-
-    # Create dependency graph based on studies and all cases
-
-    if options.create_graph:
-        studies.create_graph()
 
     # Preprocessing and run all cases
     if options.debug:

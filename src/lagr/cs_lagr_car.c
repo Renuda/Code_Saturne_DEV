@@ -268,15 +268,16 @@ cs_lagr_car(int              iprev,
     BFT_MALLOC(dissip, ncel, cs_real_t);
 
     if (extra->itytur == 2 || extra->itytur == 4 || extra->iturb == 50) {
+
       for (cs_lnum_t cell_id = 0; cell_id < ncel; cell_id++) {
         energi[cell_id] = extra->cvar_k->vals[iprev][cell_id];
         dissip[cell_id] = extra->cvar_ep->vals[iprev][cell_id];
       }
+
     }
     else if (extra->itytur == 3) {
 
       if (extra->cvar_rij == NULL) {
-
         /* Deprecated irijco = 0 */
         for (cs_lnum_t cell_id = 0; cell_id < ncel; cell_id++) {
 
@@ -288,7 +289,6 @@ cs_lagr_car(int              iprev,
         }
       }
       else {
-
         /* irijco = 1 */
         for (cs_lnum_t cell_id = 0; cell_id < ncel; cell_id++) {
 
@@ -297,7 +297,6 @@ cs_lagr_car(int              iprev,
                                   + extra->cvar_rij->vals[iprev][6*cell_id + 2]
                                   );
           dissip[cell_id] = extra->cvar_ep->vals[iprev][cell_id];
-
         }
       }
     }
@@ -322,6 +321,7 @@ cs_lagr_car(int              iprev,
            " V2f or k-omega are handled."),
          (int)cs_glob_lagr_model->idistu,
          (int)extra->iturb);
+
     }
 
     /* -> Calculation of TL and BX     */
@@ -333,7 +333,6 @@ cs_lagr_car(int              iprev,
           tlag[ip][id]      = cs_math_epzero;
           bx[ip][id][nor-1] = 0.0;
         }
-
       }
 
       unsigned char *particle = p_set->p_buffer + p_am->extents * ip;

@@ -64,6 +64,7 @@
 #include "cs_iter_algo.h"
 #include "cs_matrix_default.h"
 #include "cs_navsto_coupling.h"
+#include "cs_navsto_sles.h"
 #include "cs_parall.h"
 #include "cs_saddle_itsol.h"
 #include "cs_sles.h"
@@ -346,75 +347,6 @@ _face_gdot(cs_lnum_t    size,
                        y);
 
   return result;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief  Perform a matrix-vector multiplication (matvec is not allocated
- *         when given as input parameter)
- *
- * \param[in]      mat        matrix
- * \param[in]      rset       pointer to a cs_range_set_t structure
- * \param[in]      vec_len    size of the vector length
- * \param[in, out] vec        vector
- * \param[out]     p_matvec   resulting vector for the matrix-vector product
- */
-/*----------------------------------------------------------------------------*/
-
-static void
-_matrix_vector_multiply(const cs_matrix_t         *mat,
-                        const cs_range_set_t      *rset,
-                        cs_lnum_t                  vec_len,
-                        cs_real_t                 *vec,
-                        cs_real_t                **p_matvec)
-{
-  if (mat == NULL || vec == NULL)
-    return;
-
-  const cs_lnum_t  n_cols = cs_matrix_get_n_columns(mat);
-
-  /* Handle the input array
-   * n_rows = n_gather_elts <= n_scatter_elts = n_dofs (mesh view) <= n_cols
-   */
-  cs_real_t  *vecx = NULL;
-  if (n_cols > vec_len) {
-    BFT_MALLOC(vecx, n_cols, cs_real_t);
-    memcpy(vecx, vec, sizeof(cs_real_t)*vec_len);
-  }
-  else
-    vecx = vec;
-
-  /* scatter view to gather view */
-  if (rset != NULL)
-    cs_range_set_gather(rset,
-                        CS_REAL_TYPE,  /* type */
-                        1,             /* stride */
-                        vecx,          /* in:  size=n_sles_scatter_elts */
-                        vecx);         /* out: size=n_sles_gather_elts */
-
-  /* Handle the output array */
-  cs_real_t  *matvec = NULL;
-  BFT_MALLOC(matvec, n_cols, cs_real_t);
-  memset(matvec, 0, sizeof(cs_real_t)*n_cols);
-
-  cs_matrix_vector_multiply(CS_HALO_ROTATION_IGNORE, mat, vecx, matvec);
-
-  /* gather to scatter view (i.e. algebraic to mesh view) */
-  cs_range_set_scatter(rset,
-                       CS_REAL_TYPE, 1, /* type and stride */
-                       vecx, vec);
-  cs_range_set_scatter(rset,
-                       CS_REAL_TYPE, 1, /* type and stride */
-                       matvec, matvec);
-
-  /* Free allocated memory if needed */
-  if (vecx != vec) {
-    assert(n_cols > vec_len);
-    BFT_FREE(vecx);
-  }
-
-  /* return the resulting array */
-  *p_matvec = matvec;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -780,28 +712,21 @@ _diag_schur_sbp(const cs_navsto_param_t       *nsp,
   const cs_lnum_t  b11_size = ssys->x1_size;
 
   /* Synchronize the diagonal values for the block m11 */
-  cs_matrix_t  *m11 = ssys->m11_matrices[0];
-  const cs_real_t  *diag_m11 = NULL;
-  cs_real_t  *_diag_m11 = NULL;
+  const cs_matrix_t  *m11 = ssys->m11_matrices[0];
+  const cs_lnum_t  n_rows = cs_matrix_get_n_rows(m11);
+  const cs_real_t  *diag_m11 = cs_matrix_get_diagonal(m11);
 
-  if (cs_shared_range_set != NULL) {
+  cs_real_t  *inv_diag = NULL;
+  BFT_MALLOC(inv_diag, CS_MAX(b11_size, n_rows), cs_real_t);
 
-    BFT_MALLOC(_diag_m11, b11_size, cs_real_t);
-    cs_range_set_scatter(cs_shared_range_set,
-                         CS_REAL_TYPE,
-                         1,     /* treated as scalar-valued up to now */
-                         cs_matrix_get_diagonal(m11), /* gathered view */
-                         _diag_m11);
+  /*  Operation in gather view (the default view for a matrix */
+  for (cs_lnum_t i1 = 0; i1 < n_rows; i1++)
+    inv_diag[i1] = 1./diag_m11[i1];
 
-    diag_m11 = _diag_m11; /* scatter view (synchronized)*/
-
-  }
-  else {
-
-    diag_m11 = cs_matrix_get_diagonal(m11);
-    assert(m->periodicity == NULL && cs_glob_n_ranks == 1);
-
-  }
+  cs_range_set_scatter(cs_shared_range_set,
+                       CS_REAL_TYPE, 1, /* treated as scalar-valued up to now */
+                       inv_diag,        /* gathered view */
+                       inv_diag);       /* scatter view */
 
   /* Native format for the Schur approximation matrix */
   cs_real_t   *diagK = NULL;
@@ -816,12 +741,12 @@ _diag_schur_sbp(const cs_navsto_param_t       *nsp,
   /* Add diagonal and extra-diagonal contributions from interior faces */
   for (cs_lnum_t f_id = 0; f_id < n_i_faces; f_id++) {
 
-    const cs_real_t  *a_ff = diag_m11 + 3*f_id;
+    const cs_real_t  *ia_ff = inv_diag + 3*f_id;
     const cs_nvec3_t  nvf = cs_quant_set_face_nvec(f_id, quant);
 
     double  contrib = 0;
     for (int k = 0; k < 3; k++)
-      contrib += 1./a_ff[k]*nvf.unitv[k]*nvf.unitv[k];
+      contrib += ia_ff[k]*nvf.unitv[k]*nvf.unitv[k];
     contrib *= -nvf.meas*nvf.meas;
 
     /* Extra-diagonal contribution. This is scanned by the i_face_cells mesh
@@ -839,17 +764,17 @@ _diag_schur_sbp(const cs_navsto_param_t       *nsp,
   } /* Loop on interior faces */
 
   /* Add diagonal contributions from border faces*/
-  const cs_real_t  *diag_shift = diag_m11 + 3*n_i_faces;
+  const cs_real_t  *diag_shift = inv_diag + 3*n_i_faces;
   for (cs_lnum_t f_id = 0; f_id < n_b_faces; f_id++) {
 
-    const cs_real_t  *a_ff = diag_shift + 3*f_id;
+    const cs_real_t  *ia_ff = diag_shift + 3*f_id;
 
     cs_nvec3_t  nvf;
     cs_nvec3(quant->b_face_normal + 3*f_id, &nvf);
 
     double  contrib = 0;
     for (int k = 0; k < 3; k++)
-      contrib += 1./a_ff[k]*nvf.unitv[k]*nvf.unitv[k];
+      contrib += ia_ff[k]*nvf.unitv[k]*nvf.unitv[k];
     contrib *= nvf.meas*nvf.meas;
 
     /* Diagonal contributions */
@@ -875,8 +800,7 @@ _diag_schur_sbp(const cs_navsto_param_t       *nsp,
   /* Return arrays (to be freed when the algorithm is converged) */
   sbp->schur_diag = diagK;
   sbp->schur_xtra = xtraK;
-
-  BFT_FREE(_diag_m11);
+  sbp->m11_inv_diag = inv_diag;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -895,6 +819,9 @@ _scaled_mass_sbp(const cs_navsto_param_t       *nsp,
                  const cs_saddle_system_t      *ssys,
                  cs_saddle_block_precond_t     *sbp)
 {
+  CS_UNUSED(sbp);
+  CS_UNUSED(ssys);
+
   const cs_cdo_quantities_t  *quant = cs_shared_quant;
   const cs_time_step_t  *ts = cs_glob_time_step;
   const cs_mesh_t  *m = cs_glob_mesh;
@@ -945,6 +872,9 @@ _elman_schur_sbp(const cs_navsto_param_t       *nsp,
                  const cs_saddle_system_t      *ssys,
                  cs_saddle_block_precond_t     *sbp)
 {
+  CS_UNUSED(ssys);
+  CS_UNUSED(nsp);
+
   const cs_cdo_quantities_t  *quant = cs_shared_quant;
   const cs_mesh_t  *m = cs_glob_mesh;
   const cs_lnum_t  n_cells_ext = m->n_cells_with_ghosts;
@@ -954,9 +884,6 @@ _elman_schur_sbp(const cs_navsto_param_t       *nsp,
     = (const cs_lnum_2_t *restrict)m->i_face_cells;
   const cs_lnum_t *restrict b_face_cells
     = (const cs_lnum_t *restrict)m->b_face_cells;
-
-  const cs_lnum_t  b11_size = ssys->x1_size;
-  const cs_lnum_t  schur_size = ssys->x2_size;
 
   /* Native format for the Schur approximation matrix */
   cs_real_t   *diagK = NULL;
@@ -1165,6 +1092,66 @@ _invlumped_schur_sbp(const cs_navsto_param_t       *nsp,
   sbp->m11_inv_diag = inv_lumped;
 }
 
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Define the matrix for an approximation of the Schur complement based
+ *        on the inverse of the sum of the absolute values of the velocity
+ *        block
+ *
+ * \param[in]      nsp         pointer to a cs_navsto_param_t structure
+ * \param[in]      ssys        pointer to a saddle-point system structure
+ * \param[in]      schur_sles  sles structure dedicated to the Schur complement
+ * \param[in, out] sbp         pointer to a cs_saddle_block_precond_t structure
+ */
+/*----------------------------------------------------------------------------*/
+
+static void
+_schur_approximation(const cs_navsto_param_t       *nsp,
+                     const cs_saddle_system_t      *ssys,
+                     cs_sles_t                     *schur_sles,
+                     cs_saddle_block_precond_t     *sbp)
+{
+  const cs_navsto_param_sles_t  *nslesp = nsp->sles_param;
+
+  cs_param_sles_t  *schur_slesp = nslesp->schur_sles_param;
+
+  sbp->schur_slesp = schur_slesp;
+  if (schur_sles == NULL)
+    /* This sles structure should have been defined by name */
+    sbp->schur_sles = cs_sles_find_or_add(-1, schur_slesp->name);
+
+  /* Compute the schur approximation matrix */
+  switch (nslesp->schur_approximation) {
+
+  case CS_PARAM_SCHUR_DIAG_INVERSE:
+    _diag_schur_sbp(nsp, ssys, sbp);
+    break;
+  case CS_PARAM_SCHUR_ELMAN:
+    _elman_schur_sbp(nsp, ssys, sbp);
+    break;
+  case CS_PARAM_SCHUR_IDENTITY:
+    break; /* Nothing to do */
+  case CS_PARAM_SCHUR_LUMPED_INVERSE:
+    _invlumped_schur_sbp(nsp, ssys, sbp);
+    break;
+  case CS_PARAM_SCHUR_MASS_SCALED:
+    _scaled_mass_sbp(nsp, ssys, sbp);
+    break; /* Nothing to do */
+  case CS_PARAM_SCHUR_MASS_SCALED_DIAG_INVERSE:
+    _scaled_mass_sbp(nsp, ssys, sbp);
+    _diag_schur_sbp(nsp, ssys, sbp);
+    break;
+  case CS_PARAM_SCHUR_MASS_SCALED_LUMPED_INVERSE:
+    _scaled_mass_sbp(nsp, ssys, sbp);
+    _invlumped_schur_sbp(nsp, ssys, sbp);
+    break;
+
+  default:
+    bft_error(__FILE__, __LINE__, 0,
+              "%s: Invalid Schur approximation.", __func__);
+  }
+}
+
 #if defined(HAVE_PETSC)
 /*----------------------------------------------------------------------------*/
 /*!
@@ -1188,10 +1175,9 @@ _set_petsc_main_solver(const cs_navsto_param_model_t   model,
 
   else { /* Advection is present, so one needs a more genric iterative solver */
 
-    const int  n_max_restart = 30;
-
+    /* Flexible GMRES */
     KSPSetType(ksp, KSPFGMRES);
-    KSPGMRESSetRestart(ksp, n_max_restart);
+    KSPGMRESSetRestart(ksp, nslesp->il_algo_restart);
 
   }
 
@@ -2999,11 +2985,11 @@ cs_cdofb_monolithic_sles_clean(cs_cdofb_monolithic_sles_t   *msles)
   if (msles == NULL)
     return;
 
-  for (int i = 0; i < msles->n_row_blocks*msles->n_row_blocks; i++)
-    cs_matrix_destroy(&(msles->block_matrices[i]));
-
   cs_sles_free(msles->sles);
   cs_sles_free(msles->schur_sles);
+
+  for (int i = 0; i < msles->n_row_blocks*msles->n_row_blocks; i++)
+    cs_matrix_destroy(&(msles->block_matrices[i]));
 
   /* b_f and b_c are stored consecutively */
   BFT_FREE(msles->b_f);
@@ -3103,10 +3089,16 @@ cs_cdofb_monolithic_set_sles(cs_navsto_param_t    *nsp,
     break;
 
   case CS_NAVSTO_SLES_MINRES:
+  case CS_NAVSTO_SLES_GCR:
     cs_equation_param_set_sles(mom_eqp);
     break;
 
   case CS_NAVSTO_SLES_DIAG_SCHUR_MINRES:
+  case CS_NAVSTO_SLES_DIAG_SCHUR_GCR:
+  case CS_NAVSTO_SLES_LOWER_SCHUR_GCR:
+  case CS_NAVSTO_SLES_SGS_SCHUR_GCR:
+  case CS_NAVSTO_SLES_UPPER_SCHUR_GCR:
+  case CS_NAVSTO_SLES_UZAWA_SCHUR_GCR:
     {
       cs_equation_param_set_sles(mom_eqp);
 
@@ -3473,6 +3465,7 @@ cs_cdofb_monolithic_krylov_block_precond(const cs_navsto_param_t       *nsp,
   ssys->rhs1 = msles->b_f;
 
   ssys->x2_size = msles->n_cells;
+  ssys->max_x2_size = cs_glob_mesh->n_cells_with_ghosts;
   ssys->rhs2 = msles->b_c;
 
   ssys->m21_stride = 3;
@@ -3488,7 +3481,43 @@ cs_cdofb_monolithic_krylov_block_precond(const cs_navsto_param_t       *nsp,
   BFT_MALLOC(xu, ssys->max_x1_size, cs_real_t);
   memcpy(xu, msles->u_f, ssys->x1_size*sizeof(cs_real_t));
 
-  switch (nsp->sles_param->strategy) {
+  switch (nslesp->strategy) {
+
+  case CS_NAVSTO_SLES_DIAG_SCHUR_GCR:
+  case CS_NAVSTO_SLES_LOWER_SCHUR_GCR:
+  case CS_NAVSTO_SLES_SGS_SCHUR_GCR:
+  case CS_NAVSTO_SLES_UPPER_SCHUR_GCR:
+  case CS_NAVSTO_SLES_UZAWA_SCHUR_GCR:
+    {
+      /* Default */
+      cs_param_precond_block_t
+        block_type = CS_PARAM_PRECOND_BLOCK_UPPER_TRIANGULAR;
+      if (nslesp->strategy == CS_NAVSTO_SLES_DIAG_SCHUR_GCR)
+        block_type = CS_PARAM_PRECOND_BLOCK_DIAG;
+      else if (nslesp->strategy == CS_NAVSTO_SLES_LOWER_SCHUR_GCR)
+        block_type = CS_PARAM_PRECOND_BLOCK_LOWER_TRIANGULAR;
+      else if (nslesp->strategy == CS_NAVSTO_SLES_SGS_SCHUR_GCR)
+        block_type = CS_PARAM_PRECOND_BLOCK_SYM_GAUSS_SEIDEL;
+      else if (nslesp->strategy == CS_NAVSTO_SLES_UZAWA_SCHUR_GCR)
+        block_type = CS_PARAM_PRECOND_BLOCK_UZAWA;
+
+      /* Define block preconditionning */
+      cs_saddle_block_precond_t  *sbp =
+        cs_saddle_block_precond_create(block_type,
+                                       nslesp->schur_approximation,
+                                       eqp->sles_param,
+                                       msles->sles);
+
+      /* Define an approximation of the Schur complement */
+      _schur_approximation(nsp, ssys, msles->schur_sles, sbp);
+
+      /* Call the inner linear algorithm */
+      cs_saddle_gcr(nslesp->il_algo_restart, ssys, sbp,
+                    xu, msles->p_c, saddle_info);
+
+      cs_saddle_block_precond_free(&sbp);
+    }
+    break;
 
   case CS_NAVSTO_SLES_DIAG_SCHUR_MINRES:
     {
@@ -3499,44 +3528,8 @@ cs_cdofb_monolithic_krylov_block_precond(const cs_navsto_param_t       *nsp,
                                        eqp->sles_param,
                                        msles->sles);
 
-      /* Schur preconditionning */
-      cs_param_sles_t  *schur_slesp = nslesp->schur_sles_param;
-
-      sbp->schur_slesp = schur_slesp;
-      if (msles->schur_sles == NULL)
-        /* This sles structure should have been defined by name */
-        sbp->schur_sles = cs_sles_find_or_add(-1, schur_slesp->name);
-
-      /* Compute the schur approximation matrix */
-      switch (nslesp->schur_approximation) {
-
-      case CS_PARAM_SCHUR_DIAG_INVERSE:
-        _diag_schur_sbp(nsp, ssys, sbp);
-        break;
-      case CS_PARAM_SCHUR_ELMAN:
-        _elman_schur_sbp(nsp, ssys, sbp);
-        break;
-      case CS_PARAM_SCHUR_IDENTITY:
-        break; /* Nothing to do */
-      case CS_PARAM_SCHUR_LUMPED_INVERSE:
-        _invlumped_schur_sbp(nsp, ssys, sbp);
-        break;
-      case CS_PARAM_SCHUR_MASS_SCALED:
-        _scaled_mass_sbp(nsp, ssys, sbp);
-        break; /* Nothing to do */
-      case CS_PARAM_SCHUR_MASS_SCALED_DIAG_INVERSE:
-        _scaled_mass_sbp(nsp, ssys, sbp);
-        _diag_schur_sbp(nsp, ssys, sbp);
-        break;
-      case CS_PARAM_SCHUR_MASS_SCALED_LUMPED_INVERSE:
-        _scaled_mass_sbp(nsp, ssys, sbp);
-        _invlumped_schur_sbp(nsp, ssys, sbp);
-        break;
-
-      default:
-        bft_error(__FILE__, __LINE__, 0,
-                  "%s: Invalid Schur approximation.", __func__);
-      }
+      /* Define an approximation of the Schur complement */
+      _schur_approximation(nsp, ssys, msles->schur_sles, sbp);
 
       /* Call the inner linear algorithm */
       cs_saddle_minres(ssys, sbp, xu, msles->p_c, saddle_info);
@@ -3545,8 +3538,28 @@ cs_cdofb_monolithic_krylov_block_precond(const cs_navsto_param_t       *nsp,
     }
     break;
 
+  case CS_NAVSTO_SLES_GCR:   /* No block preconditioning */
+    cs_saddle_gcr(nslesp->il_algo_restart, ssys, NULL,
+                  xu, msles->p_c, saddle_info);
+    break;
+
   case CS_NAVSTO_SLES_MINRES:   /* No block preconditioning */
     cs_saddle_minres(ssys, NULL, xu, msles->p_c, saddle_info);
+    break;
+
+  case CS_NAVSTO_SLES_USER:     /* User-defined strategy */
+    {
+      /* Define block preconditionning by default */
+      cs_saddle_block_precond_t  *sbp =
+        cs_saddle_block_precond_create(CS_PARAM_PRECOND_BLOCK_DIAG,
+                                       nslesp->schur_approximation,
+                                       eqp->sles_param,
+                                       msles->sles);
+
+      cs_user_navsto_sles_solve(nslesp, ssys, sbp, xu, msles->p_c, saddle_info);
+
+      cs_saddle_block_precond_free(&sbp);
+    }
     break;
 
   default:
@@ -4634,7 +4647,7 @@ cs_cdofb_monolithic_uzawa_al_incr_solve(const cs_navsto_param_t       *nsp,
     /* Update p_c = p_c - gamma * (D.u_f - b_c). Recall that B = -div
      * Prepare the computation of the RHS for the Uzawa system:
      * rhs = -gamma*B^T.W^-1.(B.u - g) */
-# pragma omp parallel for if (uza->n_p_dofs > CS_THR_MIN)
+#   pragma omp parallel for if (uza->n_p_dofs > CS_THR_MIN)
     for (cs_lnum_t ip = 0; ip < uza->n_p_dofs; ip++) {
       uza->d__v[ip] -= b_c[ip];
       uza->res_p[ip] = uza->inv_mp[ip] * uza->d__v[ip];

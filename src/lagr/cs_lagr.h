@@ -967,10 +967,14 @@ typedef struct {
   /* Turbulence */
   /* Turbulent intensity */
   cs_field_t *cvar_k;
-  cs_field_t *cvar_k_sgs;
 
   /* Turbulent dissipation */
   cs_field_t *cvar_ep;
+
+  /* SGS Turbulent intensity */
+  cs_field_t *cvar_k_sgs;
+
+  /* SGS Turbulent dissipation */
   cs_field_t *cvar_ep_sgs;
 
   /* Omega from k-omega SST model*/
