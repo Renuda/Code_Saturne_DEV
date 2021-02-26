@@ -555,8 +555,8 @@ endif
 ! --- Physical quantities
 call field_get_val_s(icrom, crom)
 
-if (itytur.eq.2 .or. itytur.eq.5 .or. (itytur.eq.4 .and. iilagr.gt.0)  &
-    .or. iturb.eq.60 .or. iturb.eq.50 .or. iturb.eq.51) then
+if (itytur.eq.2 .or. itytur.eq.5 .or. iturb.eq.60 .or. &
+    iturb.eq.50 .or. iturb.eq.51) then
   call field_get_val_s(ivarfl(ik), cvar_k)
 endif
 
@@ -797,8 +797,7 @@ do ifac = 1, nfabor
     yplus = distbf/rough_d
 
     ! Compute turbulent velocity scale
-    if (itytur.eq.2 .or. (itytur.eq.4 .and. iilagr.gt.0) .or. &
-        itytur.eq.5 .or. iturb.eq.60) then
+    if (itytur.eq.2 .or. iturb.eq.60) then
       ek = cvar_k(iel)
     else if(itytur.eq.3) then
       if (irijco.eq.1) then
