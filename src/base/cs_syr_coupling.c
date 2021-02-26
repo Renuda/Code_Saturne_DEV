@@ -784,39 +784,15 @@ cs_syr_coupling_recv_boundary(int        nvar,
 
       }
 
-      /* Possible temperature -> enthalpy conversion */
+      /* Require temperature -> enthalpy conversion */
 
       if (cs_glob_thermal_model->itherm == CS_THERMAL_MODEL_ENTHALPY) {
 
         if (f == cs_thermal_model_field()) {
-
-          cs_real_t *h_b;
-          BFT_MALLOC(h_b, n_cpl_faces, cs_real_t);
-
-          for (cs_lnum_t i = 0; i < n_cpl_faces; i++)
-            h_b[i] = 0;
-
           for (cs_lnum_t i = 0; i < n_cpl_faces; i++) {
             cs_lnum_t face_id = f_ids[i];
-            h_b[face_id] = t_solid[i];
+            _icodcl[face_id] *= -1;
           }
-
-          for (cs_lnum_t i = 0; i < n_cpl_faces; i++)
-            f_ids[i] += 1;
-
-          int _n_cpl_faces = n_cpl_faces;
-          CS_PROCF(b_t_to_h, B_T_TO_H)(&_n_cpl_faces, f_ids, h_b, h_b);
-
-          for (cs_lnum_t i = 0; i < n_cpl_faces; i++)
-            f_ids[i] -= 1;
-
-          for (cs_lnum_t i = 0; i < n_cpl_faces; i++) {
-            cs_lnum_t face_id = f_ids[i];
-            _rcodcl1[face_id] = h_b[face_id];
-          }
-
-          BFT_FREE(h_b);
-
         }
 
       } /* End case for enthalpy */
@@ -833,14 +809,14 @@ cs_syr_coupling_recv_boundary(int        nvar,
 /*!
  * \brief  Send field/variable values relative to a SYRTHES coupling.
  *
- * \param[in]  h_wall  wall thermal exchange coefficient
- * \param[in]  t_wall  wall thermal variable
+ * \param[in]  h_wall   wall thermal exchange coefficient
+ * \param[in]  v_fluid  near-wall fluid thermal variable
  */
 /*----------------------------------------------------------------------------*/
 
 void
 cs_syr_coupling_send_boundary(const cs_real_t  h_wall[],
-                              cs_real_t        t_wall[])
+                              cs_real_t        v_fluid[])
 {
   const cs_lnum_t n_cells = cs_glob_mesh->n_cells;
   const cs_lnum_t n_b_faces = cs_glob_mesh->n_b_faces;
@@ -878,7 +854,7 @@ cs_syr_coupling_send_boundary(const cs_real_t  h_wall[],
   cs_real_t  *wa = NULL;
   if (cs_glob_thermal_model->itherm == CS_THERMAL_MODEL_ENTHALPY) {
     BFT_MALLOC(wa, n_b_faces, cs_real_t);
-    CS_PROCF(b_h_to_t, B_H_TO_T)(t_wall, wa);
+    CS_PROCF(b_h_to_t, B_H_TO_T)(v_fluid, wa);
   }
   else if (cs_glob_thermal_model->itherm == CS_THERMAL_MODEL_TOTAL_ENERGY) {
     /* Epsilon sup for perfect gas at cells */
@@ -909,7 +885,7 @@ cs_syr_coupling_send_boundary(const cs_real_t  h_wall[],
           cs_lnum_t face_id = f_ids[i];
 
           /* Saved fluid temperatures and exchange coefficients */
-          t_fluid[i] = t_wall[face_id];
+          t_fluid[i] = v_fluid[face_id];
           h_cpl[i] = h_wall[face_id];
         }
       }

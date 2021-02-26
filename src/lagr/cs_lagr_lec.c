@@ -484,7 +484,7 @@ cs_restart_lagrangian_checkpoint_read(void)
 
       }
 
-      /* From here on we assume the restart contains volum statistics */
+      /* From here on we assume the restart contains volume statistics */
       else {
 
         {
@@ -580,8 +580,8 @@ cs_restart_lagrangian_checkpoint_read(void)
           sprintf(nomtsl[cs_glob_lagr_source_terms->itsli],
                   "terme_source_vitesse_implicite");
 
-          if (extra->itytur == 2 || extra->itytur == 4 || 
-              extra->iturb == 50 || extra->iturb == 60)
+           if (extra->itytur == 2 || extra->itytur == 4 || 
+               extra->iturb == 50 || extra->iturb == 60)
             sprintf(nomtsl[cs_glob_lagr_source_terms->itske],
                     "terme_source_turbulence_keps");
 
@@ -707,6 +707,9 @@ cs_lagr_restart_read_p(void)
   int  mvls, jphyla, jtpvar, jdpvar, jmpvar;
 
   cs_lagr_particle_counter_t *pc = cs_lagr_get_particle_counter();
+
+  if (cs_restart_present() < 1)
+    cs_glob_lagr_time_scheme->isuila == 0;
 
   if (cs_glob_lagr_time_scheme->isuila == 0)
     return;

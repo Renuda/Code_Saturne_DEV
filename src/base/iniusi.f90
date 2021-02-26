@@ -159,6 +159,9 @@ call usipph(1, iturb, itherm, iale)
 ! Flow and other models selection through user C function
 call cs_user_model
 
+! Set type and order of the turbulence model
+call cs_set_type_order_turbulence_model()
+
 ! Activate CDO for ALE
 if (iale.eq.2) then
   call cs_ale_activate
@@ -290,7 +293,7 @@ call cs_gui_turb_ref_values
 call cs_f_turb_complete_constants
 
 ! Scamin, scamax, turbulent flux model
-call cssca2(iturt)
+call cssca2()
 
 ! Diffusivities
 call cssca3()
@@ -351,6 +354,7 @@ if (icdo.lt.2) then
   call varpos
 endif
 ! --- Internal coupling
+call cs_gui_internal_coupling
 call cs_user_internal_coupling
 
 call cs_internal_coupling_setup

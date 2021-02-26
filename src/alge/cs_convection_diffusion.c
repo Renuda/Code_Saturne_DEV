@@ -50,9 +50,12 @@
 #include "bft_printf.h"
 
 #include "cs_blas.h"
+#include "cs_bad_cells_regularisation.h"
+#include "cs_boundary_conditions.h"
 #include "cs_halo.h"
 #include "cs_halo_perio.h"
 #include "cs_log.h"
+#include "cs_internal_coupling.h"
 #include "cs_math.h"
 #include "cs_mesh.h"
 #include "cs_field.h"
@@ -67,10 +70,7 @@
 #include "cs_porous_model.h"
 #include "cs_prototypes.h"
 #include "cs_timer.h"
-#include "cs_stokes_model.h"
-#include "cs_boundary_conditions.h"
-#include "cs_internal_coupling.h"
-#include "cs_bad_cells_regularisation.h"
+#include "cs_velocity_pressure.h"
 
 /*----------------------------------------------------------------------------
  *  Header for the current file
@@ -107,6 +107,33 @@ BEGIN_C_DECLS
 /*============================================================================
  * Private function definitions
  *============================================================================*/
+
+/*----------------------------------------------------------------------------
+ * Return the equivalent heat transfer coefficient. If both terms are
+ * below a given tolerance, 0. is returned.
+ *
+ * parameters:
+ *   h1     <-- first exchange coefficient
+ *   h2     <-- second exchange coefficient
+ *
+ * return:
+ *   value of equivalent exchange coefficient
+ *----------------------------------------------------------------------------*/
+
+static inline cs_real_t
+_calc_heq(cs_real_t h1,
+          cs_real_t h2)
+{
+
+  const cs_real_t h_eps = 1.e-6;
+
+  cs_real_t heq = 0.;
+  if (h1 > h_eps && h2 > h_eps)
+    heq = h1 * h2 / (h1 + h2);
+
+  return heq;
+
+}
 
 /*----------------------------------------------------------------------------
  * Return the denominator to build the beta blending coefficient of the
@@ -1701,7 +1728,6 @@ cs_convection_diffusion_scalar(int                       idtvar,
   cs_real_t *pvar_local = NULL;
   cs_real_t *pvar_distant = NULL;
   cs_real_t *df_limiter_local = NULL;
-  cs_real_t hint, hext, heq;
   cs_lnum_t *faces_local = NULL;
   cs_lnum_t n_local;
   cs_lnum_t n_distant;
@@ -1729,7 +1755,7 @@ cs_convection_diffusion_scalar(int                       idtvar,
 
   if (pvar != NULL)
     cs_sync_scalar_halo(m, tr_dim, pvar);
-  else if (pvara == NULL)
+  if (pvara == NULL)
     pvara = (const cs_real_t *restrict)pvar;
 
   const cs_real_t  *restrict _pvar = (pvar != NULL) ? pvar : pvara;
@@ -2688,9 +2714,9 @@ cs_convection_diffusion_scalar(int                       idtvar,
 
           pjpr = pvar_local[ii];
 
-          hint = hintp[face_id];
-          hext = hextp[face_id];
-          heq = hint * hext / (hint + hext);
+          cs_real_t hint = hintp[face_id];
+          cs_real_t hext = hextp[face_id];
+          cs_real_t heq = _calc_heq(hint, hext);
 
           cs_b_diff_flux_coupling(idiffp,
                                   pipr,
@@ -2826,9 +2852,9 @@ cs_convection_diffusion_scalar(int                       idtvar,
 
           pjp = pvar_local[ii];
 
-          hint = hintp[face_id];
-          hext = hextp[face_id];
-          heq = hint * hext / (hint + hext);
+          cs_real_t hint = hintp[face_id];
+          cs_real_t hext = hextp[face_id];
+          cs_real_t heq = _calc_heq(hint, hext);
 
           cs_b_diff_flux_coupling(idiffp,
                                   pip,
@@ -3156,7 +3182,7 @@ cs_face_convection_scalar(int                       idtvar,
 
   if (pvar != NULL)
     cs_sync_scalar_halo(m, tr_dim, pvar);
-  else if (pvara == NULL)
+  if (pvara == NULL)
     pvara = (const cs_real_t *restrict)pvar;
 
   const cs_real_t  *restrict _pvar = (pvar != NULL) ? pvar : pvara;
@@ -4274,7 +4300,6 @@ cs_convection_diffusion_vector(int                         idtvar,
   cs_real_3_t *pvar_local = NULL;
   cs_real_3_t *pvar_distant = NULL;
   cs_real_t *df_limiter_local = NULL;
-  cs_real_t hint, hext, heq;
   cs_lnum_t *faces_local = NULL;
   cs_lnum_t n_local;
   cs_lnum_t n_distant;
@@ -4308,7 +4333,7 @@ cs_convection_diffusion_vector(int                         idtvar,
     if (cs_glob_mesh->n_init_perio > 0)
       cs_halo_perio_sync_var_vect(halo, halo_type, (cs_real_t *)pvar, 3);
   }
-  else if (pvara == NULL)
+  if (pvara == NULL)
     pvara = (const cs_real_3_t *restrict)pvar;
 
   const cs_real_3_t  *restrict _pvar
@@ -5299,9 +5324,9 @@ cs_convection_diffusion_vector(int                         idtvar,
           for (cs_lnum_t k = 0; k < 3; k++)
             pjpr[k] = pvar_local[ii][k];
 
-          hint = hintp[face_id];
-          hext = hextp[face_id];
-          heq = hint * hext / (hint + hext);
+          cs_real_t hint = hintp[face_id];
+          cs_real_t hext = hextp[face_id];
+          cs_real_t heq = _calc_heq(hint, hext);
 
           cs_b_diff_flux_coupling_vector(idiffp,
                                          pipr,
@@ -5487,9 +5512,9 @@ cs_convection_diffusion_vector(int                         idtvar,
           for (int k = 0; k < 3; k++)
             pjp[k] = pvar_local[ii][k];
 
-          hint = hintp[face_id];
-          hext = hextp[face_id];
-          heq = hint * hext / (hint + hext);
+          cs_real_t hint = hintp[face_id];
+          cs_real_t hext = hextp[face_id];
+          cs_real_t heq = _calc_heq(hint, hext);
 
           cs_b_diff_flux_coupling_vector(idiffp,
                                          pip,
@@ -5950,7 +5975,7 @@ cs_convection_diffusion_tensor(int                         idtvar,
     if (cs_glob_mesh->n_init_perio > 0)
       cs_halo_perio_sync_var_sym_tens(m->halo, halo_type, (cs_real_t *)pvar);
   }
-  else if (pvara == NULL)
+  if (pvara == NULL)
     pvara = (const cs_real_6_t *restrict)pvar;
 
   const cs_real_6_t  *restrict _pvar
@@ -6906,7 +6931,6 @@ cs_convection_diffusion_thermal(int                       idtvar,
   cs_real_t *pvar_local = NULL;
   cs_real_t *pvar_distant = NULL;
   cs_real_t *df_limiter_local = NULL;
-  cs_real_t hint, hext, heq;
   cs_lnum_t *faces_local = NULL;
   cs_lnum_t n_local;
   cs_lnum_t n_distant;
@@ -6935,7 +6959,7 @@ cs_convection_diffusion_thermal(int                       idtvar,
 
   if (pvar != NULL)
     cs_sync_scalar_halo(m, tr_dim, pvar);
-  else if (pvara == NULL)
+  if (pvara == NULL)
     pvara = (const cs_real_t *restrict)pvar;
 
   const cs_real_t  *restrict _pvar = (pvar != NULL) ? pvar : pvara;
@@ -7922,9 +7946,9 @@ cs_convection_diffusion_thermal(int                       idtvar,
 
         pjpr = pvar_local[ii];
 
-        hint = hintp[face_id];
-        hext = hextp[face_id];
-        heq = hint * hext / (hint + hext);
+        cs_real_t hint = hintp[face_id];
+        cs_real_t hext = hextp[face_id];
+        cs_real_t heq = _calc_heq(hint, hext);
 
         cs_b_diff_flux_coupling(idiffp,
                                 pipr,
@@ -8061,9 +8085,9 @@ cs_convection_diffusion_thermal(int                       idtvar,
 
         pjp = pvar_local[ii];
 
-        hint = hintp[face_id];
-        hext = hextp[face_id];
-        heq = hint * hext / (hint + hext);
+        cs_real_t hint = hintp[face_id];
+        cs_real_t hext = hextp[face_id];
+        cs_real_t heq = _calc_heq(hint, hext);
 
         cs_b_diff_flux_coupling(idiffp,
                                 pip,
@@ -8251,7 +8275,7 @@ cs_anisotropic_diffusion_scalar(int                       idtvar,
 
   if (pvar != NULL)
     cs_sync_scalar_halo(m, tr_dim, pvar);
-  else if (pvara == NULL)
+  if (pvara == NULL)
     pvara = (const cs_real_t *restrict)pvar;
 
   const cs_real_t  *restrict _pvar = (pvar != NULL) ? pvar : pvara;
@@ -8999,7 +9023,7 @@ cs_anisotropic_left_diffusion_vector(int                         idtvar,
     if (cs_glob_mesh->n_init_perio > 0)
       cs_halo_perio_sync_var_vect(halo, halo_type, (cs_real_t *)pvar, 3);
   }
-  else if (pvara == NULL)
+  if (pvara == NULL)
     pvara = (const cs_real_3_t *restrict)pvar;
 
   const cs_real_3_t  *restrict _pvar
@@ -9550,7 +9574,7 @@ cs_anisotropic_right_diffusion_vector(int                         idtvar,
     if (cs_glob_mesh->n_init_perio > 0)
       cs_halo_perio_sync_var_vect(halo, halo_type, (cs_real_t *)pvar, 3);
   }
-  else if (pvara == NULL)
+  if (pvara == NULL)
     pvara = (const cs_real_3_t *restrict)pvar;
 
   const cs_real_3_t  *restrict _pvar
@@ -10250,7 +10274,7 @@ cs_anisotropic_diffusion_tensor(int                         idtvar,
     if (cs_glob_mesh->n_init_perio > 0)
       cs_halo_perio_sync_var_sym_tens(m->halo, halo_type, (cs_real_t *)pvar);
   }
-  else if (pvara == NULL)
+  if (pvara == NULL)
     pvara = (const cs_real_6_t *restrict)pvar;
 
   const cs_real_6_t  *restrict _pvar
@@ -11667,7 +11691,7 @@ cs_diffusion_potential(const int                 f_id,
 
   char var_name[64];
   int tr_dim = 0;
-  int mass_flux_rec_type = cs_glob_stokes_model->irecmf;
+  int mass_flux_rec_type = cs_glob_velocity_pressure_param->irecmf;
   int w_stride = 1;
 
   bool recompute_cocg = (iccocg) ? true : false;

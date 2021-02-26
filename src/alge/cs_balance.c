@@ -58,6 +58,7 @@
 #include "cs_log.h"
 #include "cs_math.h"
 #include "cs_mesh.h"
+#include "cs_convection_diffusion.h"
 #include "cs_field.h"
 #include "cs_field_operator.h"
 #include "cs_field_pointer.h"
@@ -69,8 +70,7 @@
 #include "cs_parameters.h"
 #include "cs_prototypes.h"
 #include "cs_timer.h"
-#include "cs_stokes_model.h"
-#include "cs_convection_diffusion.h"
+#include "cs_velocity_pressure.h"
 
 /*----------------------------------------------------------------------------
  *  Header for the current file
@@ -113,7 +113,8 @@ BEGIN_C_DECLS
  * \f]
  *
  * Warning:
- * - \f$ Rhs \f$ has already been initialized before calling bilsca!
+ * - \f$ Rhs \f$ has already been initialized
+ *   before calling cs_balance_scalar!
  * - mind the minus sign
  *
  * Options for the convective scheme:
@@ -376,7 +377,8 @@ cs_balance_scalar(int                idtvar,
  * the secondary viscosity, i.e. usually \f$ -\frac{2}{3} \mu \f$.
  *
  * Warning:
- * - \f$ \vect{Rhs} \f$ has already been initialized before calling bilscv!
+ * - \f$ \vect{Rhs} \f$ has already been initialized
+ *   before calling cs_balance_vector!
  * - mind the sign minus
  *
  * Options for the convective scheme:

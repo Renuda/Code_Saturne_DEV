@@ -315,7 +315,8 @@ typedef struct {
    *
    * \var isstpc
    * Indicate whether a slope test should be used to switch from a second-order
-   * to an upwind convective scheme under certain conditions, to ensure stability.
+   * to an upwind convective scheme under certain conditions, to ensure
+   * stability.
    * - 0: slope test activated
    * - 1: slope test deactivated
    * - 2: continuous limiter ensuring boundedness (beta limiter)
@@ -329,9 +330,14 @@ typedef struct {
    * \var nswrsm
    * Iteration limit for the reconstruction of the right-hand sides of the
    * equations with a first-order scheme in time (standard case), the default
-   * values are 2 for pressure and 1 for the other variables. With a second-order
-   * scheme in time (\ref optcal::ischtp "ischtp" = 2) or LES, the default values
-   * are 5 for pressure and 10 for the other variables.
+   * values are 2 for pressure and 1 for the other variables. With a
+   * second-order scheme in time (\ref optcal::ischtp "ischtp" = 2) or LES, the
+   * default values are 5 for pressure and 10 for the other variables.
+   *
+   * \var imvisf
+   * Face viscosity field interpolation
+   * - 0: aritmetic (default)
+   * - 1: harmonic
    *
    * \var imrgra
    * Type of gradient reconstruction
@@ -463,6 +469,7 @@ typedef struct {
   int isstpc;
   int nswrgr;
   int nswrsm;
+  int imvisf;
   int imrgra;
   int imligr;
   int ircflu;
@@ -965,29 +972,44 @@ typedef struct {
  * \var CS_EQKEY_ITSOL
  * Specify the iterative solver for solving the linear system related to an
  * equation. Avalaible choices are:
- * - "jacobi"           --> simpliest iterative solver
- * - "gauss_seidel"     --> Gauss-Seidel algorithm
- * - "sym_gauss_seidel" --> Symmetric version of Gauss-Seidel algorithm;
- *                          one backward and forward sweep
- * - "cg"               --> conjuguate gradient algorithm
- * - "fcg"              --> flexible version of the conjuguate gradient
- *                          algorithm used when the preconditioner can change
- *                          iteration by iteration
- * - "bicg"             --> Bi-CG algorithm (for non-symmetric linear systems)
- * - "bicgstab2"        --> BiCG-Stab2 algorithm (for non-symmetric linear
- *                          systems)
- * - "cr3"              --> a 3-layer conjugate residual solver (when "cs" is
- *                          chosen as the solver family)
- * - "gmres"            --> robust iterative solver. Not the best choice if the
- *                          system is easy to solve
- * - "amg"              --> algebraic multigrid iterative solver. Good choice
- *                          for a scalable solver related to symmetric positive
- *                          definite system.
- * - "minres"           --> Solver of choice for symmetric indefinite systems
- * - "mumps"            --> Direct solver (very robust but memory consumming)
- *                          via PETSc only. LU factorization.
- * - "mumps_ldlt"       --> Direct solver (very robust but memory consumming)
- *                          via PETSc only. LDLT factorization.
+
+ * - "amg"                         --> Algebraic MultiGrid iterative solver.
+ *                                     Good choice for a scalable solver
+ *                                     related to symmetric positive definite
+ *                                     system.
+ * - "jacobi","diag" or "diagonal" --> simpliest iterative solver
+ * - "gauss_seidel" or "gs"        --> Gauss-Seidel algorithm
+ * - "cg"            --> conjuguate gradient algorithm
+ * - "cr3"           --> a 3-layer conjugate residual solver (when "cs" is
+ *                       chosen as the solver family)
+ * - "fcg"           --> flexible version of the conjuguate gradient
+ *                       algorithm used when the preconditioner can change
+ *                       iteration by iteration
+ * - "bicg"          --> Bi-CG algorithm (for non-symmetric linear systems)
+ * - "bicgstab2"     --> BiCG-Stab2 algorithm (for non-symmetric linear
+ *                       systems)
+ * - "gmres"         --> robust iterative solver. Not the best choice if the
+ *                       system is easy to solve
+ * - "fgmres"        --> Flexible gmres (only with PETSc installation up to
+ *                       now). An evolutive preconditioner can be used with
+ *                       this solver. This is a very robust iterative solver.
+ *                       Not the best choice if the system is easy to solve
+ * - "minres"        --> Solver of choice for symmetric indefinite systems
+ * - "mumps"         --> Direct solver (very robust but memory consumming)
+ *                       LU factorization (through PETSc or MUMPS)
+ * - "mumps_float"   --> Direct solver (very robust but memory consumming)
+ *                       LU factorization (through PETSc or MUMPS).
+ *                       Reduction of the memory consumption thanks to the usage
+ *                       of float instead of double. This is a recommended
+ *                       choice when used inside a preconditioner
+ * - "mumps_float_ldlt" --> Direct solver (very robust but memory consumming)
+ *                          LDLT factorization (through PETSc or MUMPS).
+ *                          Reduction of the memory consumption thanks to the
+ *                          usage of float instead of double. This is a
+ *                          recommended choice when used inside a preconditioner
+ * - "mumps_ldlt"    --> Direct solver (very robust but memory consumming)
+ *                       LDLT factorization (through PETSc or MUMPS).
+ * - "none"          --> No solver.
  *
  * \var CS_EQKEY_ITSOL_EPS
  * Tolerance factor for stopping the iterative processus for solving the
@@ -1009,7 +1031,7 @@ typedef struct {
  * "false" or "none" (default)
  * "rhs"
  * "weighted_rhs" or "weighted"
- * "filtered_rhs" or "fieltered_rhs"
+ * "filtered_rhs" or "filtered_rhs"
  *
  * \var CS_EQKEY_OMP_ASSEMBLY_STRATEGY
  * Choice of the way to perform the assembly when OpenMP is active
@@ -1398,7 +1420,7 @@ cs_equation_create_param(const char            *name,
 /*----------------------------------------------------------------------------*/
 
 void
-cs_equation_param_copy_from(const cs_equation_param_t   *ref,
+cs_equation_copy_param_from(const cs_equation_param_t   *ref,
                             cs_equation_param_t         *dst,
                             bool                         copy_fid);
 
@@ -1417,7 +1439,7 @@ cs_equation_param_copy_from(const cs_equation_param_t   *ref,
 /*----------------------------------------------------------------------------*/
 
 void
-cs_equation_param_clear(cs_equation_param_t   *eqp);
+cs_equation_clear_param(cs_equation_param_t   *eqp);
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -1475,14 +1497,14 @@ cs_equation_param_last_stage(cs_equation_param_t   *eqp);
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief  Summary of a \ref cs_equation_param_t structure
+ * \brief  Print the detail of a \ref cs_equation_param_t structure
  *
  * \param[in]  eqp      pointer to a \ref cs_equation_param_t structure
  */
 /*----------------------------------------------------------------------------*/
 
 void
-cs_equation_summary_param(const cs_equation_param_t  *eqp);
+cs_equation_param_log(const cs_equation_param_t  *eqp);
 
 /*----------------------------------------------------------------------------*/
 /*!

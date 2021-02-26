@@ -257,7 +257,6 @@ _set_scheme_flags(cs_domain_t    *domain)
       quant_flag |= CS_CDO_QUANTITIES_FB_SCHEME;
       cc->fb_scheme_flag |= CS_FLAG_SCHEME_NAVSTO;
       if (nsp->sles_param->strategy == CS_NAVSTO_SLES_BY_BLOCKS)
-          //          nsp->sles_param->strategy == CS_NAVSTO_SLES_UZAWA_CG)
         cc->fb_scheme_flag |= CS_FLAG_SCHEME_SCALAR;
       break;
 
@@ -719,16 +718,12 @@ cs_domain_finalize_module_setup(cs_domain_t         *domain)
     bft_error(__FILE__, __LINE__, 0, _err_empty_cdo_context);
 
   /* Last stage for the settings for each predefined set of equations:
-     - wall distance computation
      - thermal module
      - groundwater flow module
      - Maxwell equations
      - Navier-Stokes system
      - ALE equation
    */
-
-  if (cs_walldistance_is_activated())
-    cs_walldistance_finalize_setup(domain->connect, domain->cdo_quantities);
 
   if (cs_thermal_system_is_activated())
     cs_thermal_system_finalize_setup(domain->connect,

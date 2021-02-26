@@ -50,19 +50,16 @@
 
 #include "bft_mem.h"
 
-#include "cs_mesh.h"
-#include "cs_parameters.h"
-
-#include "cs_physical_constants.h"
-#include "cs_stokes_model.h"
-#include "cs_turbulence_model.h"
 #include "cs_field_operator.h"
-
-#include "cs_physical_model.h"
-
 #include "cs_lagr.h"
 #include "cs_lagr_tracking.h"
 #include "cs_lagr_stat.h"
+#include "cs_mesh.h"
+#include "cs_parameters.h"
+#include "cs_physical_constants.h"
+#include "cs_physical_model.h"
+#include "cs_turbulence_model.h"
+#include "cs_velocity_pressure.h"
 
 /*----------------------------------------------------------------------------
  *  Header for the current file
@@ -109,13 +106,13 @@ cs_lagr_gradients(int            time_id,
 
   cs_lagr_extra_module_t *extra = cs_glob_lagr_extra_module;
 
-  cs_real_t   ro0 = cs_glob_fluid_properties->ro0;
-  cs_real_3_t grav    = {cs_glob_physical_constants->gravity[0],
-                         cs_glob_physical_constants->gravity[1],
-                         cs_glob_physical_constants->gravity[2]};
+  cs_real_t ro0 = cs_glob_fluid_properties->ro0;
+  const cs_real_t *grav  = cs_glob_physical_constants->gravity;
 
   bool turb_disp_model = false;
-  if (   cs_glob_lagr_model->modcpl == 1)
+  if (   cs_glob_lagr_model->modcpl > 0
+      && cs_glob_time_step->nt_cur > cs_glob_lagr_model->modcpl
+      && cs_glob_time_step->nt_cur > cs_glob_lagr_stat_options->idstnt)
     turb_disp_model = true;
 
   /* Use pressure gradient of NEPTUNE_CFD if needed */
@@ -147,7 +144,7 @@ cs_lagr_gradients(int            time_id,
   cs_real_t *wpres = NULL;
 
   /* Hydrostatic pressure algorithm? */
-  int hyd_p_flag = cs_glob_stokes_model->iphydr;
+  int hyd_p_flag = cs_glob_velocity_pressure_param->iphydr;
 
   cs_real_3_t *f_ext = NULL;
   if (hyd_p_flag == 1)
@@ -263,7 +260,7 @@ cs_lagr_gradients(int            time_id,
   /* Compute velocity gradient
      ========================= */
 
-  if (turb_disp_model || cs_glob_lagr_model->shape > 0 ) {
+  if (turb_disp_model || cs_glob_lagr_model->shape > 0) {
     cs_field_gradient_vector(extra->vel,
                              time_id,
                              inc,

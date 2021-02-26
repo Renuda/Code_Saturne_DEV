@@ -152,9 +152,9 @@ integer          ivarsc
 integer          iiscav, iscacp
 integer          ifcvsl, iflmas, iflmab, f_oi_id
 integer          nswrgp, imligp, iwarnp
-integer          iconvp, idiffp, ndircp
-integer          imrgrp, nswrsp, ircflp, ischcp, isstpp, iescap
-integer          imucpp, idftnp, iswdyp
+integer          iconvp, imvisp
+integer          imrgrp, iescap
+integer          imucpp
 integer          iflid , f_id, st_prv_id, st_id,  keydri, iscdri
 integer          f_id_al
 integer          icvflb, f_dim, iflwgr
@@ -165,11 +165,12 @@ integer          key_t_ext_id
 integer          iviext
 integer          key_turb_schmidt
 integer          t_scd_id
+integer          kturt, variance_turb_flux_model, scalar_turb_flux_model
+integer          scalar_turb_flux_model_type, variance_turb_flux_model_type
 
 integer          ivoid(1)
 
-double precision epsrgp, climgp, relaxp, blencp, epsilp
-double precision epsrsp
+double precision epsrgp, climgp
 double precision rhovst, xk    , xe    , sclnor
 double precision thetv , thets , thetap, thetp1
 double precision smbexp, dvar, cprovol, prod
@@ -222,9 +223,13 @@ double precision, dimension(:), pointer :: cproa_delay, cproa_sat
 ! Radiat arrays
 double precision, dimension(:), pointer :: cpro_tsre1, cpro_tsre, cpro_tsri1
 character(len=80) :: f_name
+character(len=len_trim(nomva0)+1, kind=c_char) :: c_name
 
 type(var_cal_opt) :: vcopt, vcopt_varsc
+type(var_cal_opt), target :: vcopt_loc
 type(gwf_soilwater_partition) :: sorption_scal
+type(var_cal_opt), pointer :: p_k_value
+type(c_ptr) :: c_k_value
 
 !===============================================================================
 ! Interfaces
@@ -317,6 +322,17 @@ if (iiscav.gt.0.and.iiscav.le.nscal) then
 else
   ivarsc = 0
 endif
+
+!  Get the turbulent flux model for the scalar and its variance
+call field_get_key_id('turbulent_flux_model', kturt)
+
+call field_get_key_int(ivarfl(isca(iscal)) , kturt, scalar_turb_flux_model)
+if (ivarsc > 0) then
+  call field_get_key_int(ivarfl(ivarsc), kturt, variance_turb_flux_model)
+  variance_turb_flux_model_type = variance_turb_flux_model / 10
+endif
+
+scalar_turb_flux_model_type = scalar_turb_flux_model / 10
 
 ! --- Numero des grandeurs physiques
 call field_get_key_int (iflid, kromsl, icrom_scal)
@@ -807,7 +823,7 @@ if (itspdv.eq.1) then
 
       ! iscal is the variance of the scalar iiscav
       ! with modelized turbulent fluxes GGDH or AFM or DFM
-      if (ityturt(iiscav).ge.1) then
+      if (variance_turb_flux_model_type.ge.1) then
 
         ! Name of the scalar iiscav associated to the variance iscal
         call field_get_name(ivarfl(ivarsc), fname)
@@ -851,7 +867,7 @@ if (itspdv.eq.1) then
 
       ! iscal is the variance of the scalar iiscav
       ! with modelized turbulent fluxes GGDH or AFM or DFM
-      if (ityturt(iiscav).ge.1) then
+      if (variance_turb_flux_model_type.ge.1) then
 
         ! Name of the scalar ivarsc associated to the variance iscal
         call field_get_name(ivarfl(ivarsc), fname)
@@ -943,7 +959,9 @@ if (itspdv.eq.1) then
         call field_get_val_prev_s(ivarfl(ir33), cvara_r33)
       endif
       ! EB- AFM or EB-DFM or EB-GGDH
-      if (iturt(iiscav).eq.11 .or. iturt(iiscav).eq.21 .or. iturt(iiscav).eq.31) then
+      if (variance_turb_flux_model.eq.11 .or. &
+          variance_turb_flux_model.eq.21 .or. &
+          variance_turb_flux_model.eq.31      ) then
         ! Name of the scalar corresponding to the current variance
         call field_get_name(ivarfl(ivarsc), fname)
         ! Index of the corresponding alpha
@@ -978,7 +996,9 @@ if (itspdv.eq.1) then
       ! Rh = (1-alpha_T) * Pr + R * alpha_T
       ! with - R = 0.5
       !      - alpha_T = 1.0 for GGDH/DFM/AFM
-      if(iturt(iiscav).eq.11.or.iturt(iiscav).eq.21.or.iturt(iiscav).eq.31) then
+      if (variance_turb_flux_model.eq.11 .or. &
+          variance_turb_flux_model.eq.21 .or. &
+          variance_turb_flux_model.eq.31      ) then
         alpha_theta = cvar_al(iel)
       else
         alpha_theta = 1.d0
@@ -1042,10 +1062,12 @@ if (vcopt%idiff.ge.1) then
 
   ! AFM model or DFM models: add div(Cp*rho*T'u') to smbrs
   ! Compute T'u' for GGDH
-  if (ityturt(iscal).ge.1) then
+  if (scalar_turb_flux_model_type.ge.1) then
 
     ! EB-GGDH/AFM/DFM: solving alpha for the scalar
-    if (iturt(iscal).eq.11.or.iturt(iscal).eq.21.or.iturt(iscal).eq.31) then
+    if (scalar_turb_flux_model.eq.11 .or. &
+        scalar_turb_flux_model.eq.21 .or. &
+        scalar_turb_flux_model.eq.31      ) then
       ! Name of the scalar
       call field_get_name(iflid, fname)
 
@@ -1070,7 +1092,7 @@ if (vcopt%idiff.ge.1) then
   if (iand(vcopt%idften, ISOTROPIC_DIFFUSION).ne.0) then
 
     idifftp = vcopt%idifft
-    if (ityturt(iscal).eq.3) then
+    if (scalar_turb_flux_model_type.eq.3) then
       idifftp = 0
     endif
 
@@ -1109,9 +1131,11 @@ if (vcopt%idiff.ge.1) then
       endif
     endif
 
+    imvisp = vcopt%imvisf
+
     call viscfa &
     !==========
-   ( imvisf ,                      &
+   ( imvisp ,                      &
      w1     ,                      &
      viscf  , viscb  )
 
@@ -1129,7 +1153,9 @@ if (vcopt%idiff.ge.1) then
       call field_get_val_v(ivstes, visten)
     endif
 
-    if (iturt(iscal).eq.11.or.iturt(iscal).eq.20.or.iturt(iscal).eq.21) then
+    if (scalar_turb_flux_model.eq.11 .or. &
+        scalar_turb_flux_model.eq.21 .or. &
+        scalar_turb_flux_model.eq.31      ) then
       if (ifcvsl.lt.0) then
         do iel = 1, ncel
 
@@ -1282,7 +1308,8 @@ endif
 ! Darcy:
 ! This step is necessary because the divergence of the
 ! hydraulic head (or pressure), which is taken into account as the
-! 'aggregation term' via codits -> bilsca -> bilsc2,
+! 'aggregation term' via
+! cs_equation_iterative_solve_scalar -> cs_balance_scalar,
 ! is not exactly equal to the loss of mass of water in the unsteady case
 ! (just as far as the precision of the Newton scheme is good),
 ! and does not take into account the sorption of the tracer
@@ -1320,49 +1347,40 @@ else
   call field_get_val_s(ivarfl(ivar), cvark_var)
 endif
 
-iconvp = vcopt%iconv
-idiffp = vcopt%idiff
-idftnp = vcopt%idften
-ndircp = vcopt%ndircl
-nswrsp = vcopt%nswrsm
-imrgrp = vcopt%imrgra
-nswrgp = vcopt%nswrgr
-imligp = vcopt%imligr
-ircflp = vcopt%ircflu
-ischcp = vcopt%ischcv
-isstpp = vcopt%isstpc
 iescap = 0
-iswdyp = vcopt%iswdyn
-iwarnp = vcopt%iwarni
-blencp = vcopt%blencv
-epsilp = vcopt%epsilo
-epsrsp = vcopt%epsrsm
-epsrgp = vcopt%epsrgr
-climgp = vcopt%climgr
-relaxp = vcopt%relaxv
 ! all boundary convective flux with upwind
 icvflb = 0
 normp = -1.d0
+
+c_name = trim(nomva0)//c_null_char
+
+vcopt_loc = vcopt
+
+vcopt_loc%istat  = -1
+vcopt_loc%icoupl = -1
+vcopt_loc%idifft = -1
+vcopt_loc%iwgrec = 0 ! Warning, may be overwritten if a field
+vcopt_loc%blend_st = 0 ! Warning, may be overwritten if a field
+
+p_k_value => vcopt_loc
+c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
 
 call field_get_coefa_s(ivarfl(ivar), coefap)
 call field_get_coefb_s(ivarfl(ivar), coefbp)
 call field_get_coefaf_s(ivarfl(ivar), cofafp)
 call field_get_coefbf_s(ivarfl(ivar), cofbfp)
 
-call codits &
- ( idtvar , iterns , ivarfl(ivar)    , iconvp , idiffp , ndircp , &
-   imrgrp , nswrsp , nswrgp , imligp , ircflp ,                   &
-   ischcp , isstpp , iescap , imucpp , idftnp , iswdyp ,          &
-   iwarnp , normp  ,                                              &
-   blencp , epsilp , epsrsp , epsrgp , climgp ,                   &
-   relaxp , thetv  ,                                              &
-   cvara_var       , cvark_var       ,                            &
-   coefap , coefbp , cofafp , cofbfp ,                            &
-   imasfl , bmasfl ,                                              &
-   viscf  , viscb  , viscf  , viscb  , viscce ,                   &
-   weighf , weighb ,                                              &
-   icvflb , ivoid  ,                                              &
-   rovsdt , smbrs  , cvar_var        , dpvar  ,                   &
+call cs_equation_iterative_solve_scalar          &
+ ( idtvar , iterns ,                             &
+   ivarfl(ivar)    , c_name,                     &
+   iescap , imucpp , normp  , c_k_value       ,  &
+   cvara_var       , cvark_var       ,           &
+   coefap , coefbp , cofafp , cofbfp ,           &
+   imasfl , bmasfl ,                             &
+   viscf  , viscb  , viscf  , viscb  ,           &
+   viscce , weighf , weighb ,                    &
+   icvflb , ivoid  ,                             &
+   rovsdt , smbrs  , cvar_var        , dpvar  ,  &
    xcpp   , rvoid  )
 
 !===============================================================================

@@ -31,7 +31,6 @@ subroutine initi1
 ! Module files
 !===============================================================================
 
-use numvar
 use paramx
 use optcal
 use entsor
@@ -54,7 +53,7 @@ implicit none
 
 ! Local variables
 
-integer          iok, ipp, nmodpp, have_thermal_model, f_vis
+integer          iok, ipp, nmodpp, have_thermal_model
 
 double precision ttsuit, wtsuit
 
@@ -129,11 +128,6 @@ if (iscalt.ge.1) then
   have_thermal_model = 1
 endif
 call cs_lagr_options_definition(isuite, have_thermal_model, dtref, iccvfg)
-
-if (itytur.eq.4 .and. iilagr.gt.0) then
-  call add_variable_field('k_sgs', 'SGS Turb Kinetic Energy', 1, ik_sgs)
-  call add_variable_field('epsilon_sgs', 'SGS Turb Dissipation', 1, iep_sgs)
-endif
 
 ! Additional fields if not in CDO mode only
 

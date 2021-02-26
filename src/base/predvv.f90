@@ -59,7 +59,7 @@
 !> \param[in]     vel           velocity
 !> \param[in]     vela          velocity at the previous time step
 !> \param[in]     velk          velocity at the previous sub iteration (or vela)
-!> \param[in,out] da_u          diagonal part of velocity matrix
+!> \param[in,out] da_uu         velocity matrix
 !> \param[in]     tslagr        coupling term for the Lagrangian module
 !> \param[in]     coefav        boundary condition array for the variable
 !>                               (explicit part)
@@ -95,7 +95,7 @@ subroutine predvv &
    nvar   , nscal  , iterns ,                                     &
    ncepdp , ncesmp ,                                              &
    icepdc , icetsm , itypsm ,                                     &
-   dt     , vel    , vela   , velk   , da_u   ,                   &
+   dt     , vel    , vela   , velk   , da_uu  ,                   &
    tslagr , coefav , coefbv , cofafv , cofbfv ,                   &
    ckupdc , smacel , frcxt  ,                                     &
    trava  ,                   dfrcxt , tpucou , trav   ,          &
@@ -165,16 +165,16 @@ double precision cofbfv(3,3,nfabor)
 double precision vel   (3, ncelet)
 double precision velk  (3, ncelet)
 double precision vela  (3, ncelet)
-double precision da_u  (ncelet)
+double precision da_uu (6, ncelet)
 
 ! Local variables
 
 integer          f_id  , iel   , ielpdc, ifac  , isou  , itypfl, n_fans
 integer          iccocg, inc   , iprev , init  , ii    , jj
 integer          imrgrp, nswrgp, imligp, iwarnp
-integer          iswdyp, idftnp
-integer          iconvp, idiffp, ndircp, nswrsp
-integer          ircflp, ischcp, isstpp, iescap
+integer          idftnp
+integer          nswrsp, imvisp
+integer          iescap
 integer          iflmb0
 integer          idtva0, icvflb, f_oi_id
 integer          jsou  , ivisep, imasac
@@ -184,14 +184,12 @@ integer          ivoid(1)
 
 double precision rnorm , vitnor
 double precision romvom, drom  , rom
-double precision epsrgp, climgp, extrap, relaxp, blencp, epsilp
-double precision epsrsp
+double precision epsrgp, climgp
 double precision vit1  , vit2  , vit3, xkb, pip, pfac
 double precision cpdc11, cpdc22, cpdc33, cpdc12, cpdc13, cpdc23
 double precision d2s3  , thetap, thetp1, thets
 double precision diipbx, diipby, diipbz
 double precision dvol
-double precision eigen_vals(3)
 double precision tensor(6)
 
 double precision rvoid(1)
@@ -240,6 +238,11 @@ double precision, dimension(:), allocatable, target :: cpro_rho_tc
 double precision, dimension(:), pointer :: cpro_rho_mass
 
 type(var_cal_opt) :: vcopt_p, vcopt_u, vcopt
+type(var_cal_opt), target :: vcopt_loc
+type(var_cal_opt), pointer :: p_k_value
+type(c_ptr) :: c_k_value
+
+character(len=len_trim(nomva0)+1, kind=c_char) :: c_name
 
 !===============================================================================
 
@@ -355,6 +358,7 @@ if (vcopt_u%thetav .lt. 1.d0 .and. iappel.eq.1 .and. iterns.gt.1) then
 endif
 
 idftnp = vcopt_u%idften
+imvisp = vcopt_u%imvisf
 
 if (iand(idftnp, ANISOTROPIC_LEFT_DIFFUSION).ne.0) allocate(viscce(6,ncelet))
 
@@ -820,7 +824,7 @@ endif
 !-------------------------------------------------------------------------------
 ! ---> Transpose of velocity gradient in the diffusion term
 
-!     These terms are taken into account in bilscv.
+!     These terms are taken into account in cs_balance_vector.
 !     We only compute here the secondary viscosity.
 
 if (ivisse.eq.1) then
@@ -838,7 +842,7 @@ if ((ncepdp.gt.0).and.(iphydr.ne.1)) then
 
   ! Les termes diagonaux sont places dans TRAV ou TRAVA,
   !   La prise en compte de velk a partir de la seconde iteration
-  !   est faite directement dans coditv.
+  !   est faite directement dans cs_equation_iterative_solve_vector.
   if (iterns.eq.1) then
 
     allocate(hl_exp(3, ncepdp))
@@ -1181,7 +1185,7 @@ if (vcopt_u%idiff.ge. 1) then
   if (iand(idftnp, ISOTROPIC_DIFFUSION).ne.0) then
 
     call viscfa &
-   ( imvisf ,                                                       &
+   ( imvisp ,                                                       &
      w1     ,                                                       &
      viscf  , viscb  )
 
@@ -1194,7 +1198,7 @@ if (vcopt_u%idiff.ge. 1) then
       enddo
 
       call viscfa &
-   ( imvisf ,                                                       &
+   ( imvisp ,                                                       &
      w1     ,                                                       &
      viscfi , viscbi )
     endif
@@ -1212,7 +1216,7 @@ if (vcopt_u%idiff.ge. 1) then
     enddo
 
     call vistnv &
-     ( imvisf ,                                                       &
+     ( imvisp ,                                                       &
        viscce ,                                                       &
        viscf  , viscb  )
 
@@ -1234,7 +1238,7 @@ if (vcopt_u%idiff.ge. 1) then
       enddo
 
       call vistnv &
-       ( imvisf ,                                                       &
+       ( imvisp ,                                                       &
          viscce ,                                                       &
          viscfi , viscbi )
 
@@ -1622,26 +1626,6 @@ if (ippmod(ielarc).ge.1) then
 endif
 
 ! Solver parameters
-iconvp = vcopt_u%iconv
-idiffp = vcopt_u%idiff
-ndircp = vcopt_u%ndircl
-nswrsp = vcopt_u%nswrsm
-nswrgp = vcopt_u%nswrgr
-imrgrp = vcopt_u%imrgra
-imligp = vcopt_u%imligr
-ircflp = vcopt_u%ircflu
-ischcp = vcopt_u%ischcv
-isstpp = vcopt_u%isstpc
-iswdyp = vcopt_u%iswdyn
-iwarnp = vcopt_u%iwarni
-blencp = vcopt_u%blencv
-epsilp = vcopt_u%epsilo
-epsrsp = vcopt_u%epsrsm
-epsrgp = vcopt_u%epsrgr
-climgp = vcopt_u%climgr
-extrap = vcopt_u%extrag
-relaxp = vcopt_u%relaxv
-thetap = vcopt_u%thetav
 
 if (ippmod(icompf).ge.0) then
   ! impose boundary convective flux at some faces (face indicator icvfli)
@@ -1651,8 +1635,19 @@ else
   icvflb = 0
 endif
 
+if (staggered.eq.1) then
+  do iel = 1, ncel
+    if (cell_is_1d(iel).eq.1) then
+      smbr(1,iel) = 0
+      smbr(2,iel) = 0
+      smbr(3,iel) = 0
+    endif
+  enddo
+endif
+
 if (iappel.eq.1) then
 
+  ! Store fimp as the velocity matrix is stored in it in codtiv call
   do iel = 1, ncel
     do isou = 1, 3
       do jsou = 1, 3
@@ -1663,52 +1658,63 @@ if (iappel.eq.1) then
 
   iescap = iescal(iespre)
 
+  c_name = trim(nomva0)//c_null_char
+
+  vcopt_loc = vcopt_u
+
+  vcopt_loc%istat  = -1
+  vcopt_loc%idifft = -1
+  vcopt_loc%iwgrec = 0
+  vcopt_loc%blend_st = 0 ! Warning, may be overwritten if a field
+  vcopt_loc%extrag = 0
+
+  p_k_value => vcopt_loc
+  c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
+
   ! Warning: in case of convergence estimators, eswork give the estimator
   ! of the predicted velocity
-  call coditv &
- ( idtvar , iterns , ivarfl(iu)      , iconvp , idiffp , ndircp , &
-   imrgrp , nswrsp , nswrgp , imligp , ircflp , ivisse ,          &
-   ischcp , isstpp , iescap , idftnp , iswdyp ,                   &
-   iwarnp ,                                                       &
-   blencp , epsilp , epsrsp , epsrgp , climgp ,                   &
-   relaxp , thetap ,                                              &
-   vela   , velk   ,                                              &
-   coefav , coefbv , cofafv , cofbfv ,                            &
-   imasfl , bmasfl ,                                              &
-   viscfi , viscbi , viscf  , viscb  , secvif , secvib ,          &
-   rvoid  , rvoid  , rvoid  ,                                     &
-   icvflb , icvfli ,                                              &
-   fimp   ,                                                       &
-   smbr   ,                                                       &
-   vel    ,                                                       &
-   eswork )
+  call cs_equation_iterative_solve_vector                     &
+   ( idtvar , iterns ,                                        &
+     ivarfl(iu)      , c_name ,                               &
+     ivisse , iescap , c_k_value       ,                      &
+     vela   , velk   ,                                        &
+     coefav , coefbv , cofafv , cofbfv ,                      &
+     imasfl , bmasfl , viscfi ,                               &
+     viscbi , viscf  , viscb  , secvif ,                      &
+     secvib , rvoid  , rvoid  , rvoid  ,                      &
+     icvflb , icvfli ,                                        &
+     fimp   , smbr   , vel    , eswork )
 
-  ! Store inverse of the diagonal velocity matrix for the
-  ! correction step if needed (otherwise dt is used)
-  if (rcfact.eq.0) then
+  ! Store inverse of the velocity matrix for the correction step
+  !  if needed (otherwise vitenp is used in resopv)
+  if (rcfact.eq.1) then
+
     do iel = 1, ncel
-      da_u(iel) = dt(iel)
+
+      tensor(1) = fimp(1,1,iel)/crom(iel)
+      tensor(2) = fimp(2,2,iel)/crom(iel)
+      tensor(3) = fimp(3,3,iel)/crom(iel)
+      tensor(4) = fimp(1,2,iel)/crom(iel)
+      tensor(5) = fimp(2,3,iel)/crom(iel)
+      tensor(6) = fimp(1,3,iel)/crom(iel)
+
+      call symmetric_matrix_inverse(tensor, da_uu(:, iel))
+
+      do ii = 1, 6
+        da_uu(ii,iel) = cell_f_vol(iel)*da_uu(ii,iel)
+      enddo
+
     enddo
 
-  else
-    do iel = 1, ncel
-      tensor(1) = fimp(1,1,iel)
-      tensor(2) = fimp(2,2,iel)
-      tensor(3) = fimp(3,3,iel)
-      tensor(4) = fimp(1,2,iel)
-      tensor(5) = fimp(2,3,iel)
-      tensor(6) = fimp(1,3,iel)
-      call calc_symtens_eigvals(tensor,eigen_vals)
-      da_u(iel) = crom(iel)*cell_f_vol(iel)                         &
-                  / minval(eigen_vals(1:3))
-    enddo
+    call syntis(da_uu)
+
   endif
 
-  call synsca(da_u)
 
   ! Velocity-pression coupling: compute the vector T, stored in tpucou,
-  !  coditv is called, only one sweep is done, and tpucou is initialized
-  !  by 0. so that the advection/diffusion added by bilscv is 0.
+  ! cs_equation_iterative_solve_vector is called, only one sweep is done,
+  ! and tpucou is initialized by 0, so that the advection/diffusion added
+  ! by cs_balance_vector is 0.
   !  nswrsp = -1 indicated that only one sweep is required and inc=0
   !  for boundary contitions on the weight matrix.
   if (ipucou.eq.1) then
@@ -1732,23 +1738,22 @@ if (iappel.eq.1) then
     ! We do not take into account transpose of grad
     ivisep = 0
 
-    call coditv &
- ( idtvar , iterns , ivarfl(iu)      , iconvp , idiffp , ndircp , &
-   imrgrp , nswrsp , nswrgp , imligp , ircflp , ivisep ,          &
-   ischcp , isstpp , iescap , idftnp , iswdyp ,                   &
-   iwarnp ,                                                       &
-   blencp , epsilp , epsrsp , epsrgp , climgp ,                   &
-   relaxp , thetap ,                                              &
-   vect   , vect   ,                                              &
-   coefav , coefbv , cofafv , cofbfv ,                            &
-   imasfl , bmasfl ,                                              &
-   viscfi , viscbi , viscf  , viscb  , secvif , secvib ,          &
-   rvoid  , rvoid  , rvoid  ,                                     &
-   icvflb , ivoid  ,                                              &
-   fimpcp ,                                                       &
-   smbr   ,                                                       &
-   vect   ,                                                       &
-   rvoid  )
+    vcopt_loc%nswrsm = nswrsp
+
+    p_k_value => vcopt_loc
+    c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
+
+    call cs_equation_iterative_solve_vector                 &
+ ( idtvar , iterns ,                                        &
+   ivarfl(iu)      , c_name ,                               &
+   ivisep , iescap , c_k_value       ,                      &
+   vect   , vect   ,                                        &
+   coefav , coefbv , cofafv , cofbfv ,                      &
+   imasfl , bmasfl , viscfi ,                               &
+   viscbi , viscf  , viscb  , secvif ,                      &
+   secvib , rvoid  , rvoid  , rvoid  ,                      &
+   icvflb , ivoid  ,                                        &
+   fimpcp , smbr   , vect   , rvoid  )
 
     do iel = 1, ncelet
       rom = crom(iel)
@@ -1785,17 +1790,27 @@ else if (iappel.eq.2) then
   idtva0 = 0
   imasac = 0
 
-  call bilscv &
- ( idtva0 , ivarfl(iu)      , iconvp , idiffp , nswrgp , imligp , ircflp , &
-   ischcp , isstpp , inc    , imrgrp , ivisse ,                            &
-   iwarnp , idftnp , imasac ,                                              &
-   blencp , epsrgp , climgp , relaxp , thetap ,                            &
-   vel    , vel    ,                                                       &
-   coefav , coefbv , cofafv , cofbfv ,                                     &
-   imasfl , bmasfl , viscf  , viscb  , secvif , secvib ,                   &
-   rvoid  , rvoid  , rvoid  ,                                              &
-   icvflb , icvfli ,                                                       &
-   smbr   )
+  vcopt_loc = vcopt_u
+
+  vcopt_loc%istat  = -1
+  vcopt_loc%idifft = -1
+  vcopt_loc%iswdyn = -1
+  vcopt_loc%nswrsm = -1
+  vcopt_loc%iwgrec = 0
+  vcopt_loc%blend_st = 0 ! Warning, may be overwritten if a field
+  vcopt_loc%epsilo = -1
+  vcopt_loc%epsrsm = -1
+  vcopt_loc%extrag = -1
+
+  p_k_value => vcopt_loc
+  c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
+
+  call cs_balance_vector &
+ ( idtva0 , ivarfl(iu)      , imasac , inc    , ivisse ,                   &
+   c_k_value                , vel    , vel    , coefav , coefbv , cofafv , &
+   cofbfv , imasfl , bmasfl , viscf  , viscb  , secvif ,                   &
+   secvib , rvoid  , rvoid  , rvoid  ,                                     &
+   icvflb , icvfli , smbr   )
 
   call field_get_val_s(iestim(iestot), c_estim)
   do iel = 1, ncel

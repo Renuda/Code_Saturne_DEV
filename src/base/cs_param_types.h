@@ -406,7 +406,12 @@ typedef enum {
  * to zero.
  *
  * \var CS_PARAM_BC_NEUMANN
- * Neumann conditions. The value of the flux of variable is set to the user
+ * Neumann conditions (along the face normal). The value of the flux of
+ * variable is set to the user requirements.
+ *
+ * \var CS_PARAM_BC_NEUMANN_FULL
+ * Neumann conditions with full definition relative to all directions.
+ * The value of the flux of variable is set to the user
  * requirements.
  *
  * \var CS_PARAM_BC_ROBIN
@@ -429,6 +434,7 @@ typedef enum {
   CS_PARAM_BC_DIRICHLET,
   CS_PARAM_BC_HMG_NEUMANN,
   CS_PARAM_BC_NEUMANN,
+  CS_PARAM_BC_NEUMANN_FULL,
   CS_PARAM_BC_ROBIN,
   CS_PARAM_BC_SLIDING,
   CS_PARAM_BC_CIRCULATION,
@@ -532,6 +538,95 @@ typedef enum {
 
 } cs_param_amg_type_t;
 
+/*! \enum cs_param_schur_approx_t
+ *
+ *  \brief Strategy to build the Schur complement approximation. This appears
+ *  in block preconditioning or uzawa algorithms when a monolithic (fully
+ *  coupled approach) is used.
+ *  | A   B^t|
+ *  | B   0  |
+ *
+ *  \var CS_PARAM_SCHUR_NONE
+ *  Associated keyword: "none"
+ *  There is no schur complement approximation.
+ *
+ *  \var CS_PARAM_SCHUR_DIAG_INVERSE
+ *  Associated keyword: "diag_schur"
+ *  The schur complement approximation is defined as B.diag(A)^-1.B^t
+ *
+ *  \var CS_PARAM_SCHUR_ELMAN
+ *  Associated keyword: "elman_schur"
+ *  The inverse of the schur complement matrix is approximated by
+ *  (BBt)^-1 B.A.B^t (B.Bt)^-1
+ *  This formulation is detailed in Elman'99, SIAM J. SCI. COMPUT.
+ *
+ *  \var CS_PARAM_SCHUR_IDENTITY
+ *  Associated keyword: "identity"
+ *  The schur complement approximation is simply the identity matrix
+ *
+ *  \var CS_PARAM_SCHUR_LUMPED_INVERSE
+ *  Associated keyword: +"lumped_schur"
+ *  The schur complement approximation is defined as B.lumped(A^-1).B^t where
+ *  x=lumped(A^-1) results from A.x = 1 (1 is the array fills with 1 in each
+ *  entry)
+ *
+ *  \var CS_PARAM_SCHUR_MASS_SCALED
+ *  Associated keyword: "scaled_mass"
+ *  The schur complement approximation is simply a scaled diagonal mass matrix
+ *  related to the 22 block
+ *
+ *  \var CS_PARAM_SCHUR_MASS_SCALED_DIAG_INVERSE
+ *  Associated keyword: "n3s_schur" or "mass_scaled_diag_schur"
+ *  The schur complement approximation is defined as
+ *  S \approx alpha.M22 + 1/dt*B.diag(A)^-1.B^t
+ *  where M22 is the mass matrix related to the (2,2) block
+ *
+ *  \var CS_PARAM_SCHUR_MASS_SCALED_LUMPED_INVERSE
+ *  Associated keyword: +"lumped_schur"
+ *  The schur complement approximation is defined as
+ *  S \approx alpha.M22 + 1/dt*B.lumped(A^-1).B^t
+ *  where M22 is the mass matrix related to the (2,2) block and where
+ *  x=lumped(A^-1) results from A.x = 1 (1 is the array fills with 1 in each
+ *  entry)
+ */
+
+typedef enum {
+
+  CS_PARAM_SCHUR_NONE,
+
+  CS_PARAM_SCHUR_DIAG_INVERSE,
+  CS_PARAM_SCHUR_ELMAN,
+  CS_PARAM_SCHUR_IDENTITY,
+  CS_PARAM_SCHUR_LUMPED_INVERSE,
+  CS_PARAM_SCHUR_MASS_SCALED,
+  CS_PARAM_SCHUR_MASS_SCALED_DIAG_INVERSE,
+  CS_PARAM_SCHUR_MASS_SCALED_LUMPED_INVERSE,
+
+  CS_PARAM_N_SCHUR_APPROX
+
+} cs_param_schur_approx_t;
+
+/*!
+ * \enum cs_param_precond_block_t
+ * Type of preconditioning by block
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_NONE
+ * No block preconditioner is requested (default)
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_DIAG
+ * Only the diagonal blocks are considered in the preconditioner
+ *
+ */
+
+typedef enum {
+
+  CS_PARAM_PRECOND_BLOCK_NONE,
+  CS_PARAM_PRECOND_BLOCK_DIAG,
+
+  CS_PARAM_N_PCD_BLOCK_TYPES
+
+} cs_param_precond_block_t;
+
 /*!
  * \enum cs_param_precond_type_t
  * Type of preconditioner to use with the iterative solver.
@@ -551,10 +646,6 @@ typedef enum {
  * \var CS_PARAM_PRECOND_AMG
  * Algebraic multigrid preconditioner (additional options may be set using
  * \ref cs_param_amg_type_t)
- *
- * \var CS_PARAM_PRECOND_AMG_BLOCK
- * Algebraic multigrid preconditioner by block (useful in case of vector
- * valued variables)
  *
  * \var CS_PARAM_PRECOND_AS
  * Additive Schwarz preconditioner
@@ -602,7 +693,6 @@ typedef enum {
   CS_PARAM_PRECOND_BJACOB_ILU0,
   CS_PARAM_PRECOND_BJACOB_SGS,
   CS_PARAM_PRECOND_AMG,
-  CS_PARAM_PRECOND_AMG_BLOCK,
   CS_PARAM_PRECOND_AS,          /*!< Only with PETSc */
   CS_PARAM_PRECOND_DIAG,
   CS_PARAM_PRECOND_GKB_CG,      /*!< Only with PETSc */
@@ -674,6 +764,16 @@ typedef enum {
  * \var CS_PARAM_ITSOL_MUMPS
  * MUMPS direct solver (LU factorization)
  *
+ * \var CS_PARAM_ITSOL_MUMPS_FLOAT
+ * MUMPS direct solver (LU factorization with float instead of double). This
+ * enables a saving of the memory consumption which is acceptable if one
+ * considers a preconditioner
+ *
+ * \var CS_PARAM_ITSOL_MUMPS_FLOAT_LDLT
+ * MUMPS direct solver (LDLT factorization also known as Cholesky
+ * factorization). This enables a saving of the memory consumption which is
+ * acceptable if one considers a preconditioner
+ *
  * \var CS_PARAM_ITSOL_MUMPS_LDLT
  * MUMPS direct solver (LDLT factorization also known as Cholesky factorization)
  *
@@ -700,6 +800,8 @@ typedef enum {
   CS_PARAM_ITSOL_JACOBI,
   CS_PARAM_ITSOL_MINRES,           /*!< Only with PETsc */
   CS_PARAM_ITSOL_MUMPS,            /*!< Only with PETsc/MUMPS */
+  CS_PARAM_ITSOL_MUMPS_FLOAT,      /*!< Only with MUMPS */
+  CS_PARAM_ITSOL_MUMPS_FLOAT_LDLT, /*!< Only with MUMPS */
   CS_PARAM_ITSOL_MUMPS_LDLT,       /*!< Only with PETsc/MUMPS */
   CS_PARAM_ITSOL_SYM_GAUSS_SEIDEL,
 
@@ -885,6 +987,32 @@ cs_param_get_solver_name(cs_param_itsol_type_t  solver);
 
 const char *
 cs_param_get_precond_name(cs_param_precond_type_t  precond);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief   Get the name of the type of block preconditioning
+ *
+ * \param[in] type     type of block preconditioning
+ *
+ * \return the associated type name
+ */
+/*----------------------------------------------------------------------------*/
+
+const char *
+cs_param_get_precond_block_name(cs_param_precond_block_t   type);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief   Get the name of the type of Schur complement approximation
+ *
+ * \param[in] type     type of Schur complement approximation
+ *
+ * \return the associated type name
+ */
+/*----------------------------------------------------------------------------*/
+
+const char *
+cs_param_get_schur_approx_name(cs_param_schur_approx_t   type);
 
 /*----------------------------------------------------------------------------*/
 /*!

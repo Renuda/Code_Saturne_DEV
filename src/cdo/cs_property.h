@@ -80,14 +80,18 @@ BEGIN_C_DECLS
 /*! \var CS_PROPERTY_ANISO
  *  4: Anisotropic behavior (a 3x3 tensor describe the behavior). This tensor
  *  should be symmetric positive definite (i.e 6 real numbers describe the
- *  behavior). */
+ *  behavior) but by default a 3x3 tensor is used. */
 #define CS_PROPERTY_ANISO         (1 << 2)
 
+/*! \var CS_PROPERTY_ANISO_SYM
+ *  8: Anisotropic behavior. This tensor is represented with 6 real numbers
+ *  since the tensor is symmetric */
+#define CS_PROPERTY_ANISO_SYM     (1 << 3)
 
 /*! \var CS_PROPERTY_BY_PRODUCT
- *  8: The property is defined as the product of two other properties
+ *  16: The property is defined as the product of two other properties
  */
-#define CS_PROPERTY_BY_PRODUCT    (1 << 3)
+#define CS_PROPERTY_BY_PRODUCT    (1 << 4)
 
 /*! @} */
 
@@ -558,6 +562,25 @@ cs_property_def_aniso_by_value(cs_property_t    *pty,
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief  Define an anisotropic cs_property_t structure by value for entities
+ *         related to a volume zone
+ *
+ * \param[in, out]  pty      pointer to a cs_property_t structure
+ * \param[in]       zname    name of the associated zone (if NULL or "" all
+ *                           cells are considered)
+ * \param[in]       tens     values to set (3x3 tensor)
+ *
+ * \return a pointer to the resulting cs_xdef_t structure
+ */
+/*----------------------------------------------------------------------------*/
+
+cs_xdef_t *
+cs_property_def_aniso_sym_by_value(cs_property_t    *pty,
+                                   const char       *zname,
+                                   cs_real_t         symtens[6]);
+
+/*----------------------------------------------------------------------------*/
+/*!
  * \brief  Define a cs_property_t structure thanks to an analytic function in
  *         a subdomain attached to the mesh location named ml_name
  *
@@ -656,6 +679,26 @@ cs_property_def_by_array(cs_property_t    *pty,
 void
 cs_property_def_by_field(cs_property_t    *pty,
                          cs_field_t       *field);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Evaluate the value of the property at each cell. Store the
+ *         evaluation in the given array.
+ *
+ * \param[in]       t_eval      physical time at which one evaluates the term
+ * \param[in]       pty         pointer to a cs_property_t structure
+ * \param[out]      pty_stride  = 0 if uniform, =1 otherwise
+ * \param[in, out]  pty_vals    pointer to an array of values. Allocated if not
+ *                              The size of the allocation depends on the value
+ *                              of the pty_stride
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_property_iso_get_cell_values(cs_real_t               t_eval,
+                                const cs_property_t    *pty,
+                                int                    *pty_stride,
+                                cs_real_t             **p_pty_vals);
 
 /*----------------------------------------------------------------------------*/
 /*!

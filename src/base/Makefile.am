@@ -161,18 +161,19 @@ cs_search.h \
 cs_selector.h \
 cs_sort.h \
 cs_sort_partition.h \
-cs_stokes_model.h \
 cs_syr4_coupling.h \
 cs_syr_coupling.h \
 cs_system_info.h \
 cs_thermal_model.h \
 cs_time_moment.h \
+cs_time_control.h \
 cs_time_plot.h \
 cs_time_step.h \
 cs_timer.h \
 cs_timer_stats.h \
 cs_tree.h \
 cs_turbomachinery.h \
+cs_velocity_pressure.h \
 cs_vof.h \
 cs_volume_zone.h \
 cs_volume_mass_injection.h \
@@ -322,17 +323,18 @@ cs_selector.c \
 cs_selector_f2c.f90 \
 cs_sort.c \
 cs_sort_partition.c \
-cs_stokes_model.c \
 cs_syr4_coupling.c \
 cs_syr_coupling.c \
 cs_thermal_model.c \
 cs_tagmri.f90 \
 cs_tagmro.f90 \
+cs_time_control.c \
 cs_time_moment.c \
 cs_time_plot.c \
 cs_time_step.c \
 cs_timer_stats.c \
 cs_turbomachinery.c \
+cs_velocity_pressure.c \
 cs_vof.c \
 cs_volume_mass_injection.c \
 cs_volume_zone.c \
@@ -485,6 +487,8 @@ cs_eos_la_CPPFLAGS = \
 -I$(top_srcdir)/src/mesh \
 -I$(top_srcdir)/src/bft \
 $(EOS_CPPFLAGS) $(MPI_CPPFLAGS)
+cs_eos_la_LIBADD = \
+$(EOS_LDFLAGS) $(EOS_LIBS) $(EOSRUNPATH)
 pkginclude_HEADERS += cs_eos.hxx
 pkglib_LTLIBRARIES += cs_eos.la
 cs_eos_la_SOURCES = cs_eos.cxx

@@ -68,11 +68,11 @@
 #include "cs_physical_constants.h"
 #include "cs_prototypes.h"
 #include "cs_rotation.h"
-#include "cs_stokes_model.h"
 #include "cs_thermal_model.h"
 #include "cs_time_step.h"
 #include "cs_turbulence_model.h"
 #include "cs_turbulence_rotation.h"
+#include "cs_velocity_pressure.h"
 
 /*----------------------------------------------------------------------------
  * Header for the current file
@@ -152,8 +152,6 @@ cs_turbulence_kw(cs_lnum_t        ncesmp,
   const cs_real_t *cell_f_vol = fvq->cell_f_vol;
   const cs_real_t *distb = fvq->b_dist;
   const cs_lnum_t *b_face_cells = m->b_face_cells;
-
-  int imvisf = cs_glob_space_disc->imvisf;
 
   const cs_time_scheme_t *time_scheme = cs_get_glob_time_scheme();
   const cs_real_t thets  = time_scheme->thetst;
@@ -496,7 +494,7 @@ cs_turbulence_kw(cs_lnum_t        ncesmp,
 
     cs_face_viscosity(m,
                       fvq,
-                      imvisf,
+                      vcopt_u.imvisf,
                       w1,
                       viscf,
                       viscb);
@@ -693,7 +691,7 @@ cs_turbulence_kw(cs_lnum_t        ncesmp,
 
     /* Boussinesq approximation, only for the thermal scalar for the moment */
 
-    if (cs_glob_stokes_model->idilat == 0) {
+    if (cs_glob_velocity_pressure_model->idilat == 0) {
 
       cs_field_gradient_scalar(f_thm,
                                true,
@@ -1121,7 +1119,7 @@ cs_turbulence_kw(cs_lnum_t        ncesmp,
 
       cs_face_viscosity(m,
                         fvq,
-                        imvisf,
+                        vcopt_k->imvisf,
                         w7,
                         viscf,
                         viscb);
@@ -1180,7 +1178,7 @@ cs_turbulence_kw(cs_lnum_t        ncesmp,
 
       cs_face_viscosity(m,
                         fvq,
-                        imvisf,
+                        vcopt_w->imvisf,
                         w7,
                         viscf,
                         viscb);
@@ -1316,7 +1314,7 @@ cs_turbulence_kw(cs_lnum_t        ncesmp,
 
     cs_face_viscosity(m,
                       fvq,
-                      imvisf,
+                      vcopt_k->imvisf,
                       w1,
                       viscf,
                       viscb);
@@ -1378,7 +1376,7 @@ cs_turbulence_kw(cs_lnum_t        ncesmp,
 
     cs_face_viscosity(m,
                       fvq,
-                      imvisf,
+                      vcopt_w->imvisf,
                       w1,
                       viscf,
                       viscb);

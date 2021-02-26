@@ -289,11 +289,6 @@ cs_field_pointer_map_base(void)
   cs_field_pointer_map(CS_ENUMF_(eps),
                        cs_field_by_name_try("epsilon"));
 
-  cs_field_pointer_map(CS_ENUMF_(k_sgs), 
-                       cs_field_by_name_try("k_sgs"));
-  cs_field_pointer_map(CS_ENUMF_(eps_sgs), 
-                       cs_field_by_name_try("epsilon_sgs"));
-
   cs_field_pointer_map(CS_ENUMF_(r11), cs_field_by_name_try("r11"));
   cs_field_pointer_map(CS_ENUMF_(r22), cs_field_by_name_try("r22"));
   cs_field_pointer_map(CS_ENUMF_(r33), cs_field_by_name_try("r33"));

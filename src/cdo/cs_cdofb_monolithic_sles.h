@@ -62,11 +62,11 @@ typedef struct {
    * components are gathered in one block. In this case, the full matrix is a
    * 1x1 matrix
    *
-   * If n_row_blocks = 1 and div_op != NULL then all the velocity components are
-   * gathered in one block. In this case, the full matrix is a 2x2 matrix
+   * If n_row_blocks = 1 and div_op != NULL then all the velocity components
+   * are gathered in one block. In this case, the full matrix is a 2x2 matrix
 
-   * If n_row_blocks = 3 and div_op == NULL then there is one block dedicated to
-   * each velocity component. In this case, the full matrix is a 4x4 matrix
+   * If n_row_blocks = 3 and div_op == NULL then there is one block dedicated
+   * to each velocity component. In this case, the full matrix is a 4x4 matrix
    *
    * Please notice that div_op if not NULL is stored in a non-assembled way.
    */
@@ -76,15 +76,15 @@ typedef struct {
   /* Blocks related to the velocity momentum */
   cs_matrix_t  **block_matrices;
 
-  /* B^t.Diag(A)^-1.B which corresponds to a compatible discretization of the
-     discrete Laplacian on the pressure space */
+  /* B^t*.approx(A^-1).B which corresponds to a compatible discretization of
+     the discrete Laplacian on the pressure space */
   cs_matrix_t   *compatible_laplacian;
 
-  cs_real_t     *div_op;    /* Block related to the -divergence (block A_{10} */
+  cs_real_t     *div_op;    /* Block related to the -divergence (block
+                               A_{10}) */
 
   /* Arrays split according to the block shape. U is interlaced or not
-   * according to the SLES strategy
-   */
+   * according to the SLES strategy */
 
   cs_lnum_t      n_faces;       /* local number of DoFs for each component
                                  * of the velocity */
@@ -94,7 +94,8 @@ typedef struct {
   cs_real_t     *p_c;           /* pressure values at cells */
 
   cs_real_t     *b_f;           /* RHS for the momentum (size = 3*n_faces) */
-  cs_real_t     *b_c;           /* RHS for the mass equation (size = n_cells) */
+  cs_real_t     *b_c;           /* RHS for the mass equation (size =
+                                   n_cells) */
 
   cs_sles_t     *sles;          /* main SLES structure */
   cs_sles_t     *schur_sles;    /* auxiliary SLES for the Schur complement
@@ -221,6 +222,27 @@ cs_cdofb_monolithic_solve(const cs_navsto_param_t       *nsp,
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief Solve a linear system arising from the discretization of the
+ *        Navier-Stokes equation with a CDO face-based approach. The system is
+ *        split into blocks to enable more efficient preconditioning
+ *        techniques. The main iterative solver is a Krylov solver such as GCR,
+ *        GMRES or MINRES
+ *
+ * \param[in]      nsp      pointer to a cs_navsto_param_t structure
+ * \param[in]      eqp      pointer to a cs_equation_param_t structure
+ * \param[in, out] msles    pointer to a cs_cdofb_monolithic_sles_t structure
+ *
+ * \return the (cumulated) number of iterations of the solver
+ */
+/*----------------------------------------------------------------------------*/
+
+int
+cs_cdofb_monolithic_krylov_block_precond(const cs_navsto_param_t       *nsp,
+                                         const cs_equation_param_t     *eqp,
+                                         cs_cdofb_monolithic_sles_t    *msles);
+
+/*----------------------------------------------------------------------------*/
+/*!
  * \brief  Solve a linear system arising from the discretization of the
  *         Navier-Stokes equation with a CDO face-based approach.
  *         The system is split into blocks to enable more efficient
@@ -263,6 +285,9 @@ cs_cdofb_monolithic_gkb_solve(const cs_navsto_param_t       *nsp,
  * \brief  Use the preconditioned Uzawa-CG algorithm to solve the saddle-point
  *         problem arising from CDO-Fb schemes for Stokes, Oseen and
  *         Navier-Stokes with a monolithic coupling
+ *         This algorithm is based on Koko's paper "Uzawa conjugate gradient
+ *         method for the Stokes problem: Matlab implementation with P1-iso-P2/
+ *         P1 finite element"
  *
  * \param[in]      nsp      pointer to a cs_navsto_param_t structure
  * \param[in]      eqp      pointer to a cs_equation_param_t structure
@@ -276,6 +301,29 @@ int
 cs_cdofb_monolithic_uzawa_cg_solve(const cs_navsto_param_t       *nsp,
                                    const cs_equation_param_t     *eqp,
                                    cs_cdofb_monolithic_sles_t    *msles);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Use the preconditioned Uzawa-CG algorithm to solve the saddle-point
+ *         problem arising from CDO-Fb schemes for Stokes, Oseen and
+ *         Navier-Stokes with a monolithic coupling
+ *         This algorithm is based on the EDF report H-E40-1991-03299-FR
+ *         devoted the numerical algorithms used in the code N3S.
+ *         Specifically a Cahout-Chabard preconditioning is used to approximate
+ *         the Schur complement.
+ *
+ * \param[in]      nsp      pointer to a cs_navsto_param_t structure
+ * \param[in]      eqp      pointer to a cs_equation_param_t structure
+ * \param[in, out] msles    pointer to a cs_cdofb_monolithic_sles_t structure
+ *
+ * \return the cumulated number of iterations of the solver
+ */
+/*----------------------------------------------------------------------------*/
+
+int
+cs_cdofb_monolithic_uzawa_n3s_solve(const cs_navsto_param_t       *nsp,
+                                    const cs_equation_param_t     *eqp,
+                                    cs_cdofb_monolithic_sles_t    *msles);
 
 /*----------------------------------------------------------------------------*/
 /*!

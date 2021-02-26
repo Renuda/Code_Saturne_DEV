@@ -847,18 +847,8 @@ _ale_solve_poisson_cdo(const cs_domain_t  *domain,
 
   cs_ale_update_mesh_quantities(&(mq->min_vol), &(mq->max_vol), &(mq->tot_vol));
 
-  if (cs_equation_uses_new_mechanism(eq))
-    cs_equation_solve_steady_state(m, eq);
-
-  else { /* Deprecated */
-
-    /* Define the algebraic system */
-    cs_equation_build_system(m, eq);
-
-    /* Solve the algebraic system */
-    cs_equation_solve_deprecated(eq);
-
-  }
+  /* Solve the algebraic system */
+  cs_equation_solve_steady_state(m, eq);
 
   /* Retrieving fields */
   cs_field_t  *f_displ = cs_field_by_name("mesh_displacement");
@@ -1021,7 +1011,7 @@ _ale_solve_poisson_legacy(const cs_domain_t *domain,
 
     cs_face_viscosity(m,
                       mq,
-                      cs_glob_space_disc->imvisf,
+                      var_cal_opt.imvisf,
                       CS_F_(vism)->val,
                       i_visc,
                       b_visc);
@@ -1033,7 +1023,7 @@ _ale_solve_poisson_legacy(const cs_domain_t *domain,
 
     cs_face_anisotropic_viscosity_vector(m,
                                          mq,
-                                         cs_glob_space_disc->imvisf,
+                                         var_cal_opt.imvisf,
                                          (cs_real_6_t *)CS_F_(vism)->val,
                                          (cs_real_33_t *)i_visc,
                                          b_visc);
@@ -1575,10 +1565,28 @@ cs_ale_init_setup(cs_domain_t   *domain)
   /* Mesh viscosity (iso or ortho)
    * TODO declare it before: add in activate, def here...  */
   int dim = cs_field_by_name("mesh_viscosity")->dim;
-  cs_property_type_t type = (dim == 1) ? CS_PROPERTY_ISO : CS_PROPERTY_ORTHO;
-  cs_property_t  *viscosity = cs_property_add("mesh_viscosity", type);
 
-  cs_property_def_by_field(viscosity, cs_field_by_name("mesh_viscosity"));
+  cs_property_t  *mesh_visc = cs_property_by_name("mesh_viscosity");
+  if (mesh_visc == NULL)  {      /* Not already added */
+    cs_property_type_t  type = 0;
+    if (dim == 1)
+      type = CS_PROPERTY_ISO;
+    else if (dim == 3)
+      type = CS_PROPERTY_ORTHO;
+    else if (dim == 6)
+      type = CS_PROPERTY_ANISO_SYM;
+    else if (dim == 9)
+      type = CS_PROPERTY_ANISO;
+    else
+      bft_error(__FILE__, __LINE__, 0,
+                "%s: Invalid dimension (=%d) for the mesh viscosity.\n",
+                __func__, dim);
+
+    /* Add and define this property */
+    mesh_visc = cs_property_add("mesh_viscosity", type);
+    cs_property_def_by_field(mesh_visc, cs_field_by_name("mesh_viscosity"));
+
+  }
 
   cs_var_cal_opt_t var_cal_opt;
   cs_field_get_key_struct(CS_F_(mesh_u), key_cal_opt_id, &var_cal_opt);
@@ -1590,8 +1598,8 @@ cs_ale_init_setup(cs_domain_t   *domain)
                              var_cal_opt.verbosity);
 
   cs_equation_param_t  *eqp = cs_equation_param_by_name("mesh_velocity");
-
-  cs_equation_add_diffusion(eqp, viscosity);
+  assert(mesh_visc != NULL);
+  cs_equation_add_diffusion(eqp, mesh_visc);
 }
 
 /*----------------------------------------------------------------------------*/

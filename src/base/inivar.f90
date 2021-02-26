@@ -219,8 +219,6 @@ if (ippmod(icompf).ge.0.and.(    isuite.eq.0                 &
 
 endif
 
-call user_extra_operations_initialize()
-
 ! Pressure / Total pressure initialisation
 
 ! Standard:
@@ -660,6 +658,8 @@ if (nscal.gt.0) then
   enddo
 
 endif
+
+call user_extra_operations_initialize()
 
 !===============================================================================
 ! 5.  IMPRESSIONS DE CONTROLE POUR LES INCONNUES, LE PAS DE TEMPS

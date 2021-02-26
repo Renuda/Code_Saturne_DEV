@@ -41,6 +41,7 @@
 
 #include <bft_error.h>
 #include <bft_mem.h>
+#include <bft_printf.h>
 
 #include "cs_boundary_zone.h"
 #include "cs_cdo_bc.h"
@@ -395,8 +396,11 @@ _set_key(cs_equation_param_t   *eqp,
     else if (strcmp(keyval, "minres") == 0)
       eqp->sles_param->solver = CS_PARAM_ITSOL_MINRES;
 
-    else if (strcmp(keyval, "mumps") == 0) {
-      eqp->sles_param->solver = CS_PARAM_ITSOL_MUMPS;
+    else if (strcmp(keyval, "mumps") == 0 ||
+             strcmp(keyval, "mumps_float") == 0 ||
+             strcmp(keyval, "mumps_float_ldlt") == 0 ||
+             strcmp(keyval, "mumps_ldlt") == 0) {
+
       eqp->sles_param->precond = CS_PARAM_PRECOND_NONE;
 
       /* Modify the default and check availability of MUMPS solvers */
@@ -408,49 +412,41 @@ _set_key(cs_equation_param_t   *eqp,
 #if defined(HAVE_PETSC)
 #if defined(PETSC_HAVE_MUMPS)
         eqp->sles_param->solver_class = CS_PARAM_SLES_CLASS_PETSC;
-#else
+#else  /* MUMPS: no, PETSc: yes: PETSc with MUMPS: no */
         bft_error(__FILE__, __LINE__, 0,
                   " %s: Error detected while setting \"%s\" key for eq. %s\n"
                   " MUMPS is not available with your installation.\n"
                   " Please check your installation settings.\n",
                   __func__, "CS_EQKEY_ITSOL", eqname);
 #endif  /* PETSC_HAVE_MUMPS */
-#endif  /* HAVE_PETSC */
-#endif  /* HAVE_MUMPS */
-      }
-      assert(eqp->sles_param->solver_class != CS_PARAM_SLES_CLASS_CS &&
-             eqp->sles_param->solver_class != CS_PARAM_SLES_CLASS_HYPRE);
-
-    }
-    else if (strcmp(keyval, "mumps_ldlt") == 0) {
-      eqp->sles_param->solver = CS_PARAM_ITSOL_MUMPS_LDLT;
-      eqp->sles_param->precond = CS_PARAM_PRECOND_NONE;
-
-      /* Modify the default */
-      if (eqp->sles_param->solver_class == CS_PARAM_SLES_CLASS_CS) {
-#if defined(HAVE_MUMPS)
-        eqp->sles_param->solver_class = CS_PARAM_SLES_CLASS_MUMPS;
-#else
-#if defined(HAVE_PETSC)
-#if defined(PETSC_HAVE_MUMPS)
-        eqp->sles_param->solver_class = CS_PARAM_SLES_CLASS_PETSC;
-#else
+#else   /* MUMPS: no, PETSc: no */
         bft_error(__FILE__, __LINE__, 0,
                   " %s: Error detected while setting \"%s\" key for eq. %s\n"
                   " MUMPS is not available with your installation.\n"
                   " Please check your installation settings.\n",
                   __func__, "CS_EQKEY_ITSOL", eqname);
-#endif  /* PETSC_HAVE_MUMPS */
 #endif  /* HAVE_PETSC */
 #endif  /* HAVE_MUMPS */
       }
+
+      /* Sanity check */
       assert(eqp->sles_param->solver_class != CS_PARAM_SLES_CLASS_CS &&
              eqp->sles_param->solver_class != CS_PARAM_SLES_CLASS_HYPRE);
+
+      if (strcmp(keyval, "mumps") == 0)
+        eqp->sles_param->solver = CS_PARAM_ITSOL_MUMPS;
+      else if (strcmp(keyval, "mumps_float") == 0)
+        eqp->sles_param->solver = CS_PARAM_ITSOL_MUMPS_FLOAT;
+      else if (strcmp(keyval, "mumps_float_ldlt") == 0)
+        eqp->sles_param->solver = CS_PARAM_ITSOL_MUMPS_FLOAT_LDLT;
+      else if (strcmp(keyval, "mumps_ldlt") == 0)
+        eqp->sles_param->solver = CS_PARAM_ITSOL_MUMPS_LDLT;
 
     }
     else if (strcmp(keyval, "none") == 0)
       eqp->sles_param->solver = CS_PARAM_ITSOL_NONE;
-    else {
+
+    else { /* keyval not found among the available keyvals */
       const char *_val = keyval;
       bft_error(__FILE__, __LINE__, 0,
                 emsg, __func__, eqname, _val, "CS_EQKEY_ITSOL");
@@ -554,37 +550,42 @@ _set_key(cs_equation_param_t   *eqp,
     }
     else if (strcmp(keyval, "amg_block") == 0 ||
              strcmp(keyval, "block_amg") == 0) {
-      if (eqp->dim == 1) {  /* Switch to a classical AMG preconditioner */
 
-        eqp->sles_param->precond = CS_PARAM_PRECOND_AMG;
+      eqp->sles_param->precond = CS_PARAM_PRECOND_AMG;
+      eqp->sles_param->pcd_block_type = CS_PARAM_PRECOND_BLOCK_DIAG;
 
-        /* Set the default choice */
-        if (eqp->sles_param->solver_class == CS_PARAM_SLES_CLASS_CS)
-          eqp->sles_param->amg_type = CS_PARAM_AMG_HOUSE_K;
-        if (eqp->sles_param->solver_class == CS_PARAM_SLES_CLASS_PETSC) {
-          eqp->sles_param->amg_type = CS_PARAM_AMG_PETSC_GAMG;
-          /* Default when using PETSc */
-          eqp->sles_param->resnorm_type = CS_PARAM_RESNORM_NORM2_RHS;
-        }
+      /* Set the default choice */
+      switch (eqp->sles_param->solver_class) {
 
-      }
-      else {
-
-        eqp->sles_param->precond = CS_PARAM_PRECOND_AMG_BLOCK;
-
+      case CS_PARAM_SLES_CLASS_CS:
+        eqp->sles_param->amg_type = CS_PARAM_AMG_HOUSE_K;
+        break;
+      case CS_PARAM_SLES_CLASS_PETSC:
+        eqp->sles_param->amg_type = CS_PARAM_AMG_PETSC_GAMG;
+        /* Default when using PETSc */
+        eqp->sles_param->resnorm_type = CS_PARAM_RESNORM_NORM2_RHS;
+        break;
+      case CS_PARAM_SLES_CLASS_HYPRE:
         /* Set the default choice */
 #if defined(PETSC_HAVE_HYPRE)
         eqp->sles_param->amg_type = CS_PARAM_AMG_HYPRE_BOOMER;
         eqp->sles_param->solver_class = CS_PARAM_SLES_CLASS_HYPRE;
 #else
+        cs_base_warn(__FILE__, __LINE__);
+        bft_printf(" Switch to PETSc multigrid since Hypre is not available.");
         eqp->sles_param->amg_type = CS_PARAM_AMG_PETSC_GAMG;
         eqp->sles_param->solver_class = CS_PARAM_SLES_CLASS_PETSC;
 #endif
-
         /* Default when using PETSc */
         eqp->sles_param->resnorm_type = CS_PARAM_RESNORM_NORM2_RHS;
+        break;
 
+      default:
+        bft_error(__FILE__, __LINE__, 0,
+                  "%s: Invalid choice for block AMG\n", __func__);
+        break;
       }
+
     }
     else if (strcmp(keyval, "as") == 0)
       eqp->sles_param->precond = CS_PARAM_PRECOND_AS;
@@ -797,6 +798,7 @@ cs_equation_create_param(const char            *name,
   eqp->isstpc = 1;
   eqp->nswrgr = 100;
   eqp->nswrsm = 1;
+  eqp->imvisf = 0;
   eqp->imrgra = -1;
   eqp->imligr = -1;
   eqp->ircflu = 1;
@@ -805,9 +807,9 @@ cs_equation_create_param(const char            *name,
   eqp->thetav = 1.;
   eqp->blencv = 1.;
   eqp->blend_st = 0.;
-  eqp->epsilo = 1.e-8;
-  eqp->epsrsm = 1.e-7;
-  eqp->epsrgr = 1.e-5;
+  eqp->epsilo = 1.e-5;
+  eqp->epsrsm = 1.e-4;
+  eqp->epsrgr = 1.e-4;
   eqp->climgr = 1.5;
   eqp->extrag = 0.;
   eqp->relaxv = 1.;
@@ -928,7 +930,7 @@ cs_equation_create_param(const char            *name,
 /*----------------------------------------------------------------------------*/
 
 void
-cs_equation_param_copy_from(const cs_equation_param_t   *ref,
+cs_equation_copy_param_from(const cs_equation_param_t   *ref,
                             cs_equation_param_t         *dst,
                             bool                         copy_fid)
 {
@@ -956,6 +958,7 @@ cs_equation_param_copy_from(const cs_equation_param_t   *ref,
   dst->isstpc = ref->isstpc;
   dst->nswrgr = ref->nswrgr;
   dst->nswrsm = ref->nswrsm;
+  dst->imvisf = ref->imvisf;
   dst->imrgra = ref->imrgra;
   dst->imligr = ref->imligr;
   dst->ircflu = ref->ircflu;
@@ -1112,7 +1115,7 @@ cs_equation_param_copy_from(const cs_equation_param_t   *ref,
 /*----------------------------------------------------------------------------*/
 
 void
-cs_equation_param_clear(cs_equation_param_t   *eqp)
+cs_equation_clear_param(cs_equation_param_t   *eqp)
 {
   if (eqp == NULL)
     return;
@@ -1200,7 +1203,7 @@ cs_equation_free_param(cs_equation_param_t     *eqp)
   if (eqp == NULL)
     return NULL;
 
-  cs_equation_param_clear(eqp);
+  cs_equation_clear_param(eqp);
 
   BFT_FREE(eqp);
 
@@ -1303,14 +1306,14 @@ cs_equation_param_last_stage(cs_equation_param_t   *eqp)
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief  Summary of a \ref cs_equation_param_t structure
+ * \brief  Print the detail of a \ref cs_equation_param_t structure
  *
  * \param[in]  eqp      pointer to a \ref cs_equation_param_t structure
  */
 /*----------------------------------------------------------------------------*/
 
 void
-cs_equation_summary_param(const cs_equation_param_t   *eqp)
+cs_equation_param_log(const cs_equation_param_t   *eqp)
 {
   if (eqp == NULL)
     return;
@@ -1776,7 +1779,7 @@ cs_equation_add_bc_by_value(cs_equation_param_t         *eqp,
 
   /* Add a new cs_xdef_t structure */
   int  dim = eqp->dim;
-  if (bc_type == CS_PARAM_BC_NEUMANN||
+  if (bc_type == CS_PARAM_BC_NEUMANN_FULL ||
       bc_type == CS_PARAM_BC_HMG_NEUMANN)
     dim *= 3;  /* vector if scalar eq, tensor if vector eq. */
 
@@ -1857,7 +1860,7 @@ cs_equation_add_bc_by_array(cs_equation_param_t        *eqp,
     state_flag = CS_FLAG_STATE_FACEWISE;
 
   int dim = eqp->dim;
-  if (bc_type == CS_PARAM_BC_NEUMANN ||
+  if (bc_type == CS_PARAM_BC_NEUMANN_FULL ||
       bc_type == CS_PARAM_BC_HMG_NEUMANN)
     dim *= 3;  /* vector if scalar eq, tensor if vector eq. */
 
@@ -1918,7 +1921,7 @@ cs_equation_add_bc_by_analytic(cs_equation_param_t        *eqp,
   /* Set the value for dim */
   int dim = eqp->dim;
 
-  if (bc_type == CS_PARAM_BC_NEUMANN ||
+  if (bc_type == CS_PARAM_BC_NEUMANN_FULL ||
       bc_type == CS_PARAM_BC_HMG_NEUMANN)
     dim *= 3;  /* vector if scalar eq, tensor if vector eq. */
 
@@ -1999,7 +2002,7 @@ cs_equation_add_bc_by_dof_func(cs_equation_param_t        *eqp,
   /* Set the value for dim */
   int dim = eqp->dim;
 
-  if (bc_type == CS_PARAM_BC_NEUMANN ||
+  if (bc_type == CS_PARAM_BC_NEUMANN_FULL ||
       bc_type == CS_PARAM_BC_HMG_NEUMANN)
     dim *= 3;  /* vector if scalar eq, tensor if vector eq. */
 

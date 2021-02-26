@@ -139,7 +139,9 @@ cs_lagr_car(int              iprev,
      ---------------*/
 
   bool turb_disp_model = false;
-  if (   cs_glob_lagr_model->modcpl == 1)
+  if (   cs_glob_lagr_model->modcpl > 0
+      && cs_glob_time_step->nt_cur > cs_glob_lagr_model->modcpl
+      && cs_glob_time_step->nt_cur > cs_glob_lagr_stat_options->idstnt)
     turb_disp_model = true;
 
   cs_lnum_t nor = cs_glob_lagr_time_step->nor;
@@ -388,23 +390,16 @@ cs_lagr_car(int              iprev,
 
         if (turb_disp_model) {
 
-          /* relative main direction */
-          cs_real_3_t vrn, n_dir;
-          for (cs_lnum_t i = 0; i < 3; i++)
-            vrn[i] = vpart[i] - vflui[i];
-
-          cs_math_3_normalise(vrn, n_dir);
-
-          /* crossing trajectory in the n_dir direction */
+          /* Crossing trajectory in the direction of "<u_f>-<u_p>"
+           * and in the span-wise direction */
           cs_real_t an, at;
           an = (1.0 + cbcb * uvwdif);
           at = (1.0 + 4.0 * cbcb * uvwdif);
 
-          /* We take (only) the diagonal part of
-           *  an. n(x)n + at (1 - n(x)n) */
-          for (cs_lnum_t id = 0; id < 3; id++)
-            bbi[id] = sqrt(an * cs_math_pow2(n_dir[id]) +
-                           at * (1. - cs_math_pow2(n_dir[id])));
+          bbi[0] = sqrt(an); /* First direction, n, in the local reference
+                                frame */
+          bbi[1] = sqrt(at); /* Second and third direction, orthogonal to n */
+          bbi[2] = sqrt(at);
 
           /* Compute the timescale of the fluid velocities seen by discrete
            * particles in parallel and transverse directions */
@@ -431,7 +426,7 @@ cs_lagr_car(int              iprev,
           }
           else if (   extra->itytur == 2 || extra->itytur == 4
                    || extra->iturb == 50 || extra->iturb == 60) {
-            ktil = energi[cell_id];          
+            ktil = energi[cell_id];
           }
 
           for (cs_lnum_t id = 0; id < 3; id++) {
@@ -472,7 +467,7 @@ cs_lagr_car(int              iprev,
 
     BFT_FREE(energi);
     BFT_FREE(dissip);
-    
+
   }
   else {
 

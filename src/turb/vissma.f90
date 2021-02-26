@@ -38,7 +38,6 @@
 !> Please refer to the
 !> <a href="../../theory.pdf#smago"><b>standard Smagorinsky model</b></a>
 !> section of the theory guide for more informations.
-!>
 !-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
@@ -46,10 +45,9 @@
 !______________________________________________________________________________.
 !  mode           name          role
 !______________________________________________________________________________!
-!> \param[out]    gradv         the computed velocity gradients
 !______________________________________________________________________________!
 
-subroutine vissma (gradv)
+subroutine vissma
 
 !===============================================================================
 ! Module files
@@ -70,8 +68,6 @@ implicit none
 
 ! Arguments
 
-double precision, intent(inout) :: gradv(3,3,ncelet)
-
 ! Local variables
 
 integer          iel, inc
@@ -82,6 +78,7 @@ double precision s11, s22, s33
 double precision dudy, dudz, dvdx, dvdz, dwdx, dwdy
 double precision xfil, xa  , xb
 
+double precision, dimension(:,:,:), allocatable :: gradv
 double precision, dimension(:,:), pointer :: coefau
 double precision, dimension(:,:,:), pointer :: coefbu
 double precision, dimension(:), pointer :: crom
@@ -95,6 +92,9 @@ double precision, dimension(:), pointer :: visct
 
 call field_get_coefa_v(ivarfl(iu), coefau)
 call field_get_coefb_v(ivarfl(iu), coefbu)
+
+! Allocate temporary arrays for gradients calculation
+allocate(gradv(3, 3, ncelet))
 
 call field_get_val_s(ivisct, visct)
 call field_get_val_s(icrom, crom)
@@ -132,8 +132,11 @@ do iel = 1, ncel
                      +        (dvdz+dwdy)**2)
 enddo
 
+! Free memory
+deallocate(gradv)
+
 !===============================================================================
-! 3.  Calculation of (dynamic) viscosity
+! 3.  Calculation of (dynamic) velocity
 !===============================================================================
 
 coef = csmago**2 * sqrt(2.d0)
@@ -143,6 +146,11 @@ do iel = 1, ncel
   delta  = coef * delta**2
   visct(iel) = crom(iel) * delta * sqrt(visct(iel))
 enddo
+
+!----
+! Format
+!----
+
 
 !----
 ! End

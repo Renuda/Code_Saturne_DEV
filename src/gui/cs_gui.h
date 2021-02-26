@@ -206,10 +206,9 @@ void CS_PROCF (csnum2, CSNUM2) (double  *relaxp,
  * subroutine cssca2
  * *****************
  *
- * integer          iturt    -->  turbulent flux model
  *----------------------------------------------------------------------------*/
 
-void CS_PROCF (cssca2, CSSCA2) (int        *iturt);
+void CS_PROCF (cssca2, CSSCA2) (void);
 
 /*----------------------------------------------------------------------------
  * Read reference dynamic and user scalar viscosity
@@ -591,6 +590,13 @@ cs_gui_error_estimator(int *iescal,
 
 void
 cs_gui_zones(void);
+
+/*----------------------------------------------------------------------------
+ * Define internal coupling through the GUI.
+ *----------------------------------------------------------------------------*/
+
+void
+cs_gui_internal_coupling(void);
 
 /*----------------------------------------------------------------------------*/
 

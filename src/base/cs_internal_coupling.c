@@ -55,8 +55,10 @@
 #include "cs_sort.h"
 #include "cs_search.h"
 #include "cs_mesh_connect.h"
+#include "cs_mesh_location.h"
 #include "cs_coupling.h"
 #include "cs_halo.h"
+#include "cs_matrix.h"
 #include "cs_mesh.h"
 #include "cs_mesh_boundary.h"
 #include "cs_mesh_quantities.h"
@@ -66,8 +68,7 @@
 #include "cs_selector.h"
 #include "cs_parall.h"
 #include "cs_prototypes.h"
-#include "cs_stokes_model.h"
-#include "cs_matrix.h"
+#include "cs_velocity_pressure.h"
 
 /*----------------------------------------------------------------------------
  *  Header for the current file
@@ -137,6 +138,33 @@ cs_f_ic_field_coupled_faces(const int   field_id,
 /*=============================================================================
  * Private function definitions
  *============================================================================*/
+
+/*----------------------------------------------------------------------------
+ * Return the equivalent heat transfer coefficient. If both terms are
+ * below a given tolerance, 0. is returned.
+ *
+ * parameters:
+ *   h1     <-- first exchange coefficient
+ *   h2     <-- second exchange coefficient
+ *
+ * return:
+ *   value of equivalent exchange coefficient
+ *----------------------------------------------------------------------------*/
+
+static inline cs_real_t
+_calc_heq(cs_real_t h1,
+          cs_real_t h2)
+{
+
+  const cs_real_t h_eps = 1.e-6;
+
+  cs_real_t heq = 0.;
+  if (h1 > h_eps && h2 > h_eps)
+    heq = h1 * h2 / (h1 + h2);
+
+  return heq;
+
+}
 
 /*----------------------------------------------------------------------------
  * Compute the inverse of the face viscosity tensor and anisotropic vector
@@ -946,6 +974,28 @@ cs_internal_coupling_add_volume(cs_mesh_t   *mesh,
   _criteria_initialize(criteria_cells, NULL, cpl);
 
   _n_internal_couplings++;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Define coupling volume using given cs_zone_t. Then, this volume will
+ * be separated from the rest of the domain with thin walls.
+ *
+ * \param[in, out] mesh  pointer to mesh structure to modify
+ * \param[in]      z     pointer to cs_volume_zone_t
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_internal_coupling_add_zone(cs_mesh_t       *mesh,
+                              const cs_zone_t *z)
+{
+
+  const char *criteria =
+    cs_mesh_location_get_selection_string(z->location_id);
+
+  cs_internal_coupling_add_volume(mesh, criteria);
+
 }
 
 /*----------------------------------------------------------------------------*/
@@ -2366,7 +2416,7 @@ cs_internal_coupling_spmv_contribution(bool               exclude_diag,
 
       cs_real_t hint = hintp[face_id];
       cs_real_t hext = hextp[face_id];
-      cs_real_t heq = hint * hext / (hint + hext);
+      cs_real_t heq = _calc_heq(hint, hext);
 
       y[cell_id] += thetap * idiffp * heq * (pi - pj);
     }
@@ -2392,7 +2442,7 @@ cs_internal_coupling_spmv_contribution(bool               exclude_diag,
 
       cs_real_t hint = hintp[face_id];
       cs_real_t hext = hextp[face_id];
-      cs_real_t heq = hint * hext / (hint + hext);
+      cs_real_t heq = _calc_heq(hint, hext);
 
       for (cs_lnum_t k = 0; k < 3; k++)
         _y[cell_id][k] += thetap * idiffp * heq * (pi[k] - pj[k]);
@@ -2564,7 +2614,8 @@ cs_internal_coupling_matrix_add_values(const cs_field_t              *f,
 
     cs_real_t hint = hintp[face_id];
     cs_real_t hext = hextp[face_id];
-    cs_real_t c = thetap * idiffp * (hint * hext / (hint + hext));
+    cs_real_t heq = _calc_heq(hint, hext);
+    cs_real_t c = thetap * idiffp * heq;
 
     d_g_row_id[jj] = g_id_l[ii];
     e_g_row_id[kk] = g_id_l[ii]; e_g_col_id[kk] = g_id_d[ii];

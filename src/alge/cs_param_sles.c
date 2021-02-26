@@ -34,10 +34,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(HAVE_PETSC)
-#include <petscversion.h>
-#endif
-
 /*----------------------------------------------------------------------------
  *  Local headers
  *----------------------------------------------------------------------------*/
@@ -376,8 +372,7 @@ _petsc_set_krylov_solver(cs_param_sles_t    *slesp,
     break;
 
   case CS_PARAM_ITSOL_CG:        /* Preconditioned Conjugate Gradient */
-    if (slesp->precond == CS_PARAM_PRECOND_AMG ||
-        slesp->precond == CS_PARAM_PRECOND_AMG_BLOCK)
+    if (slesp->precond == CS_PARAM_PRECOND_AMG)
       KSPSetType(ksp, KSPFCG);
     else
       KSPSetType(ksp, KSPCG);
@@ -872,176 +867,6 @@ _petsc_block_jacobi_hook(void     *context,
 }
 #endif /* defined(HAVE_PETSC) */
 
-/*============================================================================
- * Public function prototypes
- *============================================================================*/
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief  Create a \ref cs_param_sles_t structure and assign a default
- *         settings
- *
- * \param[in]  field_id      id related to to the variable field or -1
- * \param[in]  system_name   name of the system to solve or NULL
- *
- * \return a pointer to a cs_param_sles_t stucture
- */
-/*----------------------------------------------------------------------------*/
-
-cs_param_sles_t *
-cs_param_sles_create(int          field_id,
-                     const char  *system_name)
-{
-  cs_param_sles_t  *slesp = NULL;
-
-  BFT_MALLOC(slesp, 1, cs_param_sles_t);
-
-  slesp->verbosity = 0;                         /* SLES verbosity */
-  slesp->field_id = field_id;                   /* associated field id */
-  slesp->solver_class = CS_PARAM_SLES_CLASS_CS; /* solver family */
-  slesp->precond = CS_PARAM_PRECOND_DIAG;       /* preconditioner */
-  slesp->solver = CS_PARAM_ITSOL_GMRES;         /* iterative solver */
-  slesp->amg_type = CS_PARAM_AMG_NONE;          /* no predefined AMG type */
-  slesp->n_max_iter = 10000;                    /* max. number of iterations */
-  slesp->eps = 1e-8;                            /* relative tolerance to stop
-                                                   an iterative solver */
-  slesp->resnorm_type = CS_PARAM_RESNORM_NONE;
-  slesp->setup_done = false;
-
-  slesp->name = NULL;
-  if (system_name != NULL) {
-    int  len = strlen(system_name) + 1;
-    BFT_MALLOC(slesp->name, len, char);
-    strncpy(slesp->name, system_name, len);
-  }
-
-  return slesp;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief  Free a \ref cs_param_sles_t structure
- *
- * \param[in, out]  slesp    pointer to a \cs_param_sles_t structure to free
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_param_sles_free(cs_param_sles_t   **p_slesp)
-{
-  if (p_slesp == NULL)
-    return;
-
-  cs_param_sles_t  *slesp = *p_slesp;
-
-  if (slesp == NULL)
-    return;
-
-  BFT_FREE(slesp->name);
-  BFT_FREE(slesp);
-  slesp = NULL;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief  Log information related to the linear settings stored in the
- *         structure
- *
- * \param[in] slesp    pointer to a \ref cs_param_sles_log
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_param_sles_log(cs_param_sles_t   *slesp)
-{
-  if (slesp == NULL)
-    return;
-
-  cs_log_printf(CS_LOG_SETUP, "\n### %s | Linear algebra settings\n",
-                slesp->name);
-  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Family:", slesp->name);
-  if (slesp->solver_class == CS_PARAM_SLES_CLASS_CS)
-    cs_log_printf(CS_LOG_SETUP, "             Code_Saturne\n");
-  else if (slesp->solver_class == CS_PARAM_SLES_CLASS_MUMPS)
-    cs_log_printf(CS_LOG_SETUP, "             MUMPS\n");
-  else if (slesp->solver_class == CS_PARAM_SLES_CLASS_HYPRE)
-    cs_log_printf(CS_LOG_SETUP, "             HYPRE\n");
-  else if (slesp->solver_class == CS_PARAM_SLES_CLASS_PETSC)
-    cs_log_printf(CS_LOG_SETUP, "             PETSc\n");
-
-  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Verbosity:          %d\n",
-                slesp->name, slesp->verbosity);
-  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Field id:           %d\n",
-                slesp->name, slesp->field_id);
-  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.MaxIter:     %d\n",
-                slesp->name, slesp->n_max_iter);
-
-  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.Name:        %s\n",
-                slesp->name, cs_param_get_solver_name(slesp->solver));
-  if (slesp->solver == CS_PARAM_ITSOL_AMG)
-    cs_log_printf(CS_LOG_SETUP, "  * %s | SLES AMG.Type:           %s\n",
-                  slesp->name, cs_param_get_amg_type_name(slesp->amg_type));
-  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.Precond:     %s\n",
-                slesp->name, cs_param_get_precond_name(slesp->precond));
-  if (slesp->precond == CS_PARAM_PRECOND_AMG)
-    cs_log_printf(CS_LOG_SETUP, "  * %s | SLES AMG.Type:           %s\n",
-                  slesp->name, cs_param_get_amg_type_name(slesp->amg_type));
-
-  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.Eps:        % -10.6e\n",
-                slesp->name, slesp->eps);
-
-  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Normalization:      ",
-                slesp->name);
-  switch (slesp->resnorm_type) {
-  case CS_PARAM_RESNORM_NORM2_RHS:
-    cs_log_printf(CS_LOG_SETUP, "Euclidean norm of the RHS\n");
-    break;
-  case CS_PARAM_RESNORM_WEIGHTED_RHS:
-    cs_log_printf(CS_LOG_SETUP, "Weighted Euclidean norm of the RHS\n");
-    break;
-  case CS_PARAM_RESNORM_FILTERED_RHS:
-    cs_log_printf(CS_LOG_SETUP, "Filtered Euclidean norm of the RHS\n");
-    break;
-  case CS_PARAM_RESNORM_NONE:
-  default:
-    cs_log_printf(CS_LOG_SETUP, "None\n");
-    break;
-  }
-  cs_log_printf(CS_LOG_SETUP, "\n");
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief   Copy a cs_param_sles_t structure from src to dst
- *
- * \param[in]       src    reference cs_param_sles_t structure to copy
- * \param[in, out]  dst    copy of the reference at exit
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_param_sles_copy_from(cs_param_sles_t   *src,
-                        cs_param_sles_t   *dst)
-{
-  if (dst == NULL)
-    return;
-
-  /* Remark: name is managed at the creation of the structure */
-
-  dst->setup_done = src->setup_done;
-  dst->verbosity = src->verbosity;
-  dst->field_id = src->field_id;
-
-  dst->solver_class = src->solver_class;
-  dst->precond = src->precond;
-  dst->solver = src->solver;
-  dst->amg_type = src->amg_type;
-
-  dst->resnorm_type = src->resnorm_type;
-  dst->n_max_iter = src->n_max_iter;
-  dst->eps = src->eps;
-}
-
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Set parameters for initializing SLES structures used for the
@@ -1053,9 +878,9 @@ cs_param_sles_copy_from(cs_param_sles_t   *src,
  */
 /*----------------------------------------------------------------------------*/
 
-void
-cs_equation_param_set_saturne_sles(bool                 use_field_id,
-                                   cs_param_sles_t     *slesp)
+static void
+_set_saturne_sles(bool                 use_field_id,
+                  cs_param_sles_t     *slesp)
 {
   assert(slesp != NULL);  /* Sanity checks */
 
@@ -1342,26 +1167,21 @@ cs_equation_param_set_saturne_sles(bool                 use_field_id,
  */
 /*----------------------------------------------------------------------------*/
 
-void
-cs_equation_param_set_mumps_sles(bool                 use_field_id,
-                                 cs_param_sles_t     *slesp)
+static void
+_set_mumps_sles(bool                 use_field_id,
+                cs_param_sles_t     *slesp)
 {
   assert(slesp != NULL);  /* Sanity checks */
 
   const  char  *sles_name = use_field_id ? NULL : slesp->name;
   assert(slesp->field_id > -1 || sles_name != NULL);
 
-  int  sym = 0; /* One assumes a non-symmetric as default */
-  if (slesp->solver == CS_PARAM_ITSOL_MUMPS_LDLT)
-    sym = 1;
-
 #if defined(HAVE_MUMPS)
   cs_sles_mumps_define(slesp->field_id,
                        sles_name,
-                       sym,
-                       slesp->verbosity,
+                       slesp,
                        cs_user_sles_mumps_hook,
-                       (void *)slesp);
+                       NULL);
 #else
   bft_error(__FILE__, __LINE__, 0,
             "%s: System: %s\n"
@@ -1382,9 +1202,9 @@ cs_equation_param_set_mumps_sles(bool                 use_field_id,
  */
 /*----------------------------------------------------------------------------*/
 
-void
-cs_equation_param_set_petsc_hypre_sles(bool                 use_field_id,
-                                       cs_param_sles_t     *slesp)
+static void
+_set_petsc_hypre_sles(bool                 use_field_id,
+                      cs_param_sles_t     *slesp)
 {
   assert(slesp != NULL);  /* Sanity checks */
 
@@ -1394,7 +1214,8 @@ cs_equation_param_set_petsc_hypre_sles(bool                 use_field_id,
 #if defined(HAVE_PETSC)
   cs_sles_petsc_init();
 
-  if (slesp->precond == CS_PARAM_PRECOND_AMG_BLOCK) {
+  if (slesp->precond == CS_PARAM_PRECOND_AMG &&
+      slesp->pcd_block_type == CS_PARAM_PRECOND_BLOCK_DIAG) {
 
     if (slesp->amg_type == CS_PARAM_AMG_PETSC_GAMG) {
       cs_sles_petsc_define(slesp->field_id,
@@ -1446,6 +1267,182 @@ cs_equation_param_set_petsc_hypre_sles(bool                 use_field_id,
 #endif /* HAVE_PETSC */
 }
 
+/*============================================================================
+ * Public function prototypes
+ *============================================================================*/
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Create a \ref cs_param_sles_t structure and assign a default
+ *         settings
+ *
+ * \param[in]  field_id      id related to to the variable field or -1
+ * \param[in]  system_name   name of the system to solve or NULL
+ *
+ * \return a pointer to a cs_param_sles_t stucture
+ */
+/*----------------------------------------------------------------------------*/
+
+cs_param_sles_t *
+cs_param_sles_create(int          field_id,
+                     const char  *system_name)
+{
+  cs_param_sles_t  *slesp = NULL;
+
+  BFT_MALLOC(slesp, 1, cs_param_sles_t);
+
+  slesp->verbosity = 0;                         /* SLES verbosity */
+  slesp->field_id = field_id;                   /* associated field id */
+  slesp->solver_class = CS_PARAM_SLES_CLASS_CS; /* solver family */
+  slesp->precond = CS_PARAM_PRECOND_DIAG;       /* preconditioner */
+  slesp->solver = CS_PARAM_ITSOL_GMRES;         /* iterative solver */
+  slesp->amg_type = CS_PARAM_AMG_NONE;          /* no predefined AMG type */
+  slesp->pcd_block_type = CS_PARAM_PRECOND_BLOCK_NONE; /* no block by default */
+  slesp->n_max_iter = 10000;                    /* max. number of iterations */
+  slesp->eps = 1e-8;                            /* relative tolerance to stop
+                                                   an iterative solver */
+  slesp->resnorm_type = CS_PARAM_RESNORM_NONE;
+  slesp->setup_done = false;
+
+  slesp->name = NULL;
+  if (system_name != NULL) {
+    int  len = strlen(system_name) + 1;
+    BFT_MALLOC(slesp->name, len, char);
+    strncpy(slesp->name, system_name, len);
+  }
+
+  return slesp;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Free a \ref cs_param_sles_t structure
+ *
+ * \param[in, out]  slesp    pointer to a \cs_param_sles_t structure to free
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_param_sles_free(cs_param_sles_t   **p_slesp)
+{
+  if (p_slesp == NULL)
+    return;
+
+  cs_param_sles_t  *slesp = *p_slesp;
+
+  if (slesp == NULL)
+    return;
+
+  BFT_FREE(slesp->name);
+  BFT_FREE(slesp);
+  slesp = NULL;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Log information related to the linear settings stored in the
+ *         structure
+ *
+ * \param[in] slesp    pointer to a \ref cs_param_sles_log
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_param_sles_log(cs_param_sles_t   *slesp)
+{
+  if (slesp == NULL)
+    return;
+
+  cs_log_printf(CS_LOG_SETUP, "\n### %s | Linear algebra settings\n",
+                slesp->name);
+  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Family:", slesp->name);
+  if (slesp->solver_class == CS_PARAM_SLES_CLASS_CS)
+    cs_log_printf(CS_LOG_SETUP, "             Code_Saturne\n");
+  else if (slesp->solver_class == CS_PARAM_SLES_CLASS_MUMPS)
+    cs_log_printf(CS_LOG_SETUP, "             MUMPS\n");
+  else if (slesp->solver_class == CS_PARAM_SLES_CLASS_HYPRE)
+    cs_log_printf(CS_LOG_SETUP, "             HYPRE\n");
+  else if (slesp->solver_class == CS_PARAM_SLES_CLASS_PETSC)
+    cs_log_printf(CS_LOG_SETUP, "             PETSc\n");
+
+  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Verbosity:          %d\n",
+                slesp->name, slesp->verbosity);
+  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Field id:           %d\n",
+                slesp->name, slesp->field_id);
+  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.MaxIter:     %d\n",
+                slesp->name, slesp->n_max_iter);
+
+  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.Name:        %s\n",
+                slesp->name, cs_param_get_solver_name(slesp->solver));
+  if (slesp->solver == CS_PARAM_ITSOL_AMG)
+    cs_log_printf(CS_LOG_SETUP, "  * %s | SLES AMG.Type:           %s\n",
+                  slesp->name, cs_param_get_amg_type_name(slesp->amg_type));
+
+  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.Precond:     %s\n",
+                slesp->name, cs_param_get_precond_name(slesp->precond));
+  if (slesp->precond == CS_PARAM_PRECOND_AMG)
+    cs_log_printf(CS_LOG_SETUP, "  * %s | SLES AMG.Type:           %s\n",
+                  slesp->name, cs_param_get_amg_type_name(slesp->amg_type));
+  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Block.Precond:      %s\n",
+                slesp->name,
+                cs_param_get_precond_block_name(slesp->pcd_block_type));
+
+  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Solver.Eps:        % -10.6e\n",
+                slesp->name, slesp->eps);
+
+  cs_log_printf(CS_LOG_SETUP, "  * %s | SLES Normalization:      ",
+                slesp->name);
+  switch (slesp->resnorm_type) {
+  case CS_PARAM_RESNORM_NORM2_RHS:
+    cs_log_printf(CS_LOG_SETUP, "Euclidean norm of the RHS\n");
+    break;
+  case CS_PARAM_RESNORM_WEIGHTED_RHS:
+    cs_log_printf(CS_LOG_SETUP, "Weighted Euclidean norm of the RHS\n");
+    break;
+  case CS_PARAM_RESNORM_FILTERED_RHS:
+    cs_log_printf(CS_LOG_SETUP, "Filtered Euclidean norm of the RHS\n");
+    break;
+  case CS_PARAM_RESNORM_NONE:
+  default:
+    cs_log_printf(CS_LOG_SETUP, "None\n");
+    break;
+  }
+  cs_log_printf(CS_LOG_SETUP, "\n");
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief   Copy a cs_param_sles_t structure from src to dst
+ *
+ * \param[in]       src    reference cs_param_sles_t structure to copy
+ * \param[in, out]  dst    copy of the reference at exit
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_param_sles_copy_from(cs_param_sles_t   *src,
+                        cs_param_sles_t   *dst)
+{
+  if (dst == NULL)
+    return;
+
+  /* Remark: name is managed at the creation of the structure */
+
+  dst->setup_done = src->setup_done;
+  dst->verbosity = src->verbosity;
+  dst->field_id = src->field_id;
+
+  dst->solver_class = src->solver_class;
+  dst->precond = src->precond;
+  dst->solver = src->solver;
+  dst->amg_type = src->amg_type;
+  dst->pcd_block_type = src->pcd_block_type;
+
+  dst->resnorm_type = src->resnorm_type;
+  dst->n_max_iter = src->n_max_iter;
+  dst->eps = src->eps;
+}
+
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Define cs_sles_t structure in accordance with the settings of a
@@ -1469,18 +1466,18 @@ cs_param_sles_set(bool                 use_field_id,
 
   case CS_PARAM_SLES_CLASS_CS: /* Code_Saturne's own solvers */
     /* true = use field_id instead of slesp->name to set the sles */
-    cs_equation_param_set_saturne_sles(use_field_id, slesp);
+    _set_saturne_sles(use_field_id, slesp);
     break;
 
   case CS_PARAM_SLES_CLASS_MUMPS: /* MUMPS sparse direct solvers */
     /* true = use field_id instead of slesp->name to set the sles */
-    cs_equation_param_set_mumps_sles(use_field_id, slesp);
+    _set_mumps_sles(use_field_id, slesp);
     break;
 
   case CS_PARAM_SLES_CLASS_PETSC: /* PETSc solvers */
   case CS_PARAM_SLES_CLASS_HYPRE: /* HYPRE solvers through PETSc */
     /* true = use field_id instead of slesp->name to set the sles */
-    cs_equation_param_set_petsc_hypre_sles(use_field_id, slesp);
+    _set_petsc_hypre_sles(use_field_id, slesp);
     break;
 
   default:

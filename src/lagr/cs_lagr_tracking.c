@@ -1599,9 +1599,9 @@ _boundary_treatment(cs_lagr_particle_set_t    *particles,
 
       event_flag = event_flag | CS_EVENT_REBOUND;
     }
-
+      
   }
-  
+
   else if (b_type == CS_LAGR_REBOUND || b_type == CS_LAGR_SYM) {
 
     particle_state = CS_LAGR_PART_TO_SYNC;
@@ -1832,7 +1832,7 @@ _boundary_treatment(cs_lagr_particle_set_t    *particles,
   }
 
   return particle_state;
-    }
+}
 
 /*----------------------------------------------------------------------------
  * Move a particle as far as possible while remaining on a given rank.

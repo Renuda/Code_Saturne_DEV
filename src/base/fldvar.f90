@@ -113,9 +113,6 @@ call field_get_key_id('coupled', keycpl)
 ! ---> Remplissage de ITYTUR
 itytur = iturb/10
 
-! Set type and order of the turbulence model
-call cs_set_type_order_turbulence_model()
-
 ! ---> Coherence modele
 !     Rq : ATTENTION il faudrait renforcer le blindage
 
@@ -1103,6 +1100,7 @@ type(var_cal_opt) :: vcopt
 
 call field_get_key_struct_var_cal_opt(id, vcopt)
 
+! Undefined values, may be modified by modini
 vcopt%isstpc = -999
 vcopt%nswrsm = -1
 vcopt%imligr = -999

@@ -91,6 +91,32 @@ static cs_property_t  **_properties = NULL;
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief  Get the dimension of a property
+ *         iso = 1, ortho = 3, aniso_sym = 6, aniso = 9
+ *
+ * \param[in]  type      type of property
+ *
+ * \return the dimension associated to the type
+ */
+/*----------------------------------------------------------------------------*/
+
+static inline int
+_get_pty_dim(cs_property_type_t      type)
+{
+  if (type & CS_PROPERTY_ISO)
+    return 1;
+  else if (type & CS_PROPERTY_ORTHO)
+    return 3;
+  else if (type & CS_PROPERTY_ANISO_SYM)
+    return 6;
+  else if (type & CS_PROPERTY_ANISO)
+    return 9;
+  else
+    return 0;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
  * \brief  Check if the settings are valid
  *
  * \param[in]  tens      values of the tensor
@@ -188,7 +214,7 @@ _invert_tensor(cs_real_3_t          *tens,
     for (int k = 0; k < 3; k++)
       tens[k][k] = 1.0/tens[k][k];
 
-  else { /* anisotropic */
+  else { /* anisotropic (sym. or not) */
 
     cs_real_33_t  invmat;
 
@@ -328,6 +354,28 @@ _get_cell_tensor(cs_lnum_t               c_id,
       tensor[k][k] = eval[k];
 
   }
+  else if (pty->type & CS_PROPERTY_ANISO_SYM) {
+
+    double  eval[6];
+    pty->get_eval_at_cell[def_id](1, &c_id, true,  /* dense output */
+                                  cs_glob_mesh,
+                                  cs_cdo_connect,
+                                  cs_cdo_quant,
+                                  t_eval,
+                                  def->context,
+                                  eval);
+
+    /* Diag. values */
+    tensor[0][0] = eval[0];
+    tensor[1][1] = eval[1];
+    tensor[2][2] = eval[2];
+
+    /* Extra-diag. values */
+    tensor[0][1] = tensor[1][0] = eval[3];
+    tensor[0][2] = tensor[2][0] = eval[4];
+    tensor[1][2] = tensor[2][1] = eval[5];
+
+  }
   else {
 
     assert(pty->type & CS_PROPERTY_ANISO);
@@ -430,6 +478,22 @@ _tensor_in_cell(const cs_cell_mesh_t   *cm,
       tensor[k][k] = eval[k];
 
   }
+  else if (pty->type & CS_PROPERTY_ANISO_SYM) {
+
+    double  eval[6];
+    pty->get_eval_at_cell_cw[def_id](cm, t_eval, def->context, eval);
+
+    /* Diag. values */
+    tensor[0][0] = eval[0];
+    tensor[1][1] = eval[1];
+    tensor[2][2] = eval[2];
+
+    /* Extra-diag. values */
+    tensor[0][1] = tensor[1][0] = eval[3];
+    tensor[0][2] = tensor[2][0] = eval[4];
+    tensor[1][2] = tensor[2][1] = eval[5];
+
+  }
   else {
 
     assert(pty->type & CS_PROPERTY_ANISO);
@@ -507,9 +571,11 @@ _define_pty_by_product(cs_property_t          *pty)
   assert(id == 0);
 
   int dim = 1;
-  if (pty->type == CS_PROPERTY_ORTHO)
+  if (pty->type & CS_PROPERTY_ORTHO)
     dim = 3;
-  else if (pty->type == CS_PROPERTY_ANISO)
+  else if (pty->type & CS_PROPERTY_ANISO_SYM)
+    dim = 6;
+  else if (pty->type & CS_PROPERTY_ANISO)
     dim = 9;
 
   cs_flag_t  state_flag = 0;
@@ -546,35 +612,47 @@ _create_property(const char           *name,
                  cs_property_type_t    type)
 {
   /* Check the sanity of type */
-  if (type & CS_PROPERTY_ISO) {
-    if (type & CS_PROPERTY_ANISO)
-      bft_error(__FILE__, __LINE__, 0,
-                "%s: Detection of a wrong type for property %s\n"
-                "Set to CS_PROPERTY_ISO and CS_PROPERTY_ANISO.",
-                __func__, name);
-    if (type & CS_PROPERTY_ORTHO)
-      bft_error(__FILE__, __LINE__, 0,
-                "%s: Detection of a wrong type for property %s\n"
-                "Set to CS_PROPERTY_ISO and CS_PROPERTY_ORTHO.",
-                __func__, name);
+
+  int n_types = 0;
+  const int flags[] = {CS_PROPERTY_ISO,
+                       CS_PROPERTY_ORTHO,
+                       CS_PROPERTY_ANISO_SYM,
+                       CS_PROPERTY_ANISO};
+
+  for (int i = 0; i < 4; i++) {
+    if (type & flags[i])
+      n_types += 1;
   }
-  else if (type & CS_PROPERTY_ORTHO) {
-    if (type & CS_PROPERTY_ANISO)
-      bft_error(__FILE__, __LINE__, 0,
-                "%s: Detection of a wrong type for property %s\n"
-                "Set to CS_PROPERTY_ORTHO and CS_PROPERTY_ANISO.",
-                __func__, name);
+
+  if (n_types > 1) {
+
+    const char *names[] = {"CS_PROPERTY_ISO",
+                           "CS_PROPERTY_ORTHO",
+                           "CS_PROPERTY_ANISO_SYM",
+                           "CS_PROPERTY_ANISO"};
+    int l = 0;
+    char prop_list[256] = "";
+
+    for (int i = 0; i < 4 && l > 0; i++) {
+      if (type & flags[i]) {
+        snprintf(prop_list+l, 256-l, "  %s\n", names[i]);
+        prop_list[255] = '\0';
+        l = strlen(prop_list);
+      }
+    }
+
   }
-  else {
+  else if (n_types < 1)
     if ((type & CS_PROPERTY_ANISO) == 0)
       bft_error(__FILE__, __LINE__, 0,
-                "%s: No type specified for property %s\n"
-                " Set one among CS_PROPERTY_ISO, CS_PROPERTY_ORTHO or"
-                " CS_PROPERTY_ANISO.", __func__, name);
-  }
+                "%s: No known type specified for property %s\n"
+                " Set one among\n"
+                "   CS_PROPERTY_ISO,\n"
+                "   CS_PROPERTY_ORTHO,\n"
+                "   CS_PROPERTY_ANISO_SYM,\n"
+                "   CS_PROPERTY_ANISO.\n", __func__, name);
 
   cs_property_t  *pty = NULL;
-
   BFT_MALLOC(pty, 1, cs_property_t);
 
   /* Copy name */
@@ -1192,7 +1270,7 @@ cs_property_def_ortho_by_value(cs_property_t    *pty,
 {
   if (pty == NULL)
     bft_error(__FILE__, __LINE__, 0, _(_err_empty_pty));
-  if (pty->type != CS_PROPERTY_ORTHO)
+  if ((pty->type & CS_PROPERTY_ORTHO) == 0)
     bft_error(__FILE__, __LINE__, 0,
               " Invalid setting: property %s is not orthotropic.\n"
               " Please check your settings.", pty->name);
@@ -1242,7 +1320,7 @@ cs_property_def_aniso_by_value(cs_property_t    *pty,
 {
   if (pty == NULL)
     bft_error(__FILE__, __LINE__, 0, _(_err_empty_pty));
-  if (pty->type != CS_PROPERTY_ANISO)
+  if ((pty->type & CS_PROPERTY_ANISO) == 0)
     bft_error(__FILE__, __LINE__, 0,
               " Invalid setting: property %s is not anisotropic.\n"
               " Please check your settings.", pty->name);
@@ -1270,6 +1348,57 @@ cs_property_def_aniso_by_value(cs_property_t    *pty,
   pty->defs[new_id] = d;
   pty->get_eval_at_cell[new_id] = cs_xdef_eval_tensor_by_val;
   pty->get_eval_at_cell_cw[new_id] = cs_xdef_cw_eval_tensor_by_val;
+
+  /* Set the state flag */
+  pty->state_flag |= CS_FLAG_STATE_CELLWISE | CS_FLAG_STATE_STEADY;
+  if (z_id == 0)
+    pty->state_flag |= CS_FLAG_STATE_UNIFORM;
+
+  return d;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Define an anisotropic cs_property_t structure by value for entities
+ *         related to a volume zone
+ *
+ * \param[in, out]  pty       pointer to a cs_property_t structure
+ * \param[in]       zname     name of the associated zone (if NULL or "" all
+ *                            cells are considered)
+ * \param[in]       symtens   values to set (6 values -- symmetric storage)
+ *
+ * \return a pointer to the resulting cs_xdef_t structure
+ */
+/*----------------------------------------------------------------------------*/
+
+cs_xdef_t *
+cs_property_def_aniso_sym_by_value(cs_property_t    *pty,
+                                   const char       *zname,
+                                   cs_real_t         symtens[6])
+{
+  if (pty == NULL)
+    bft_error(__FILE__, __LINE__, 0, _(_err_empty_pty));
+  if ((pty->type & CS_PROPERTY_ANISO_SYM) == 0)
+    bft_error(__FILE__, __LINE__, 0,
+              " Invalid setting: property %s is not anisotropic"
+              " with a symmetric storage.\n"
+              " Please check your settings.", pty->name);
+
+  int  new_id = _add_new_def(pty);
+  int  z_id = cs_get_vol_zone_id(zname);
+  cs_flag_t  state_flag = CS_FLAG_STATE_UNIFORM | CS_FLAG_STATE_CELLWISE |
+    CS_FLAG_STATE_STEADY;
+  cs_flag_t  meta_flag = 0; /* metadata */
+  cs_xdef_t  *d = cs_xdef_volume_create(CS_XDEF_BY_VALUE,
+                                        6, /* dim */
+                                        z_id,
+                                        state_flag,
+                                        meta_flag,
+                                        symtens);
+
+  pty->defs[new_id] = d;
+  pty->get_eval_at_cell[new_id] = cs_xdef_eval_symtens_by_val;
+  pty->get_eval_at_cell_cw[new_id] = cs_xdef_cw_eval_symtens_by_val;
 
   /* Set the state flag */
   pty->state_flag |= CS_FLAG_STATE_CELLWISE | CS_FLAG_STATE_STEADY;
@@ -1323,6 +1452,10 @@ cs_property_def_by_time_func(cs_property_t      *pty,
   else if (pty->type & CS_PROPERTY_ORTHO) {
     dim = 3;
     pty->get_eval_at_cell[new_id] = cs_xdef_eval_vector_at_cells_by_time_func;
+  }
+  else if (pty->type & CS_PROPERTY_ANISO_SYM) {
+    dim = 6;
+    pty->get_eval_at_cell[new_id] = cs_xdef_eval_symtens_at_cells_by_time_func;
   }
   else if (pty->type & CS_PROPERTY_ANISO) {
     dim = 9;
@@ -1380,11 +1513,7 @@ cs_property_def_by_analytic(cs_property_t        *pty,
                                      .input = input,
                                      .free_input = NULL };
 
-  int  dim = 1;
-  if (pty->type == CS_PROPERTY_ORTHO)
-    dim = 3;
-  else if (pty->type == CS_PROPERTY_ANISO)
-    dim = 9;
+  int  dim = _get_pty_dim(pty->type);
 
   cs_xdef_t  *d = cs_xdef_volume_create(CS_XDEF_BY_ANALYTIC_FUNCTION,
                                         dim,
@@ -1430,11 +1559,7 @@ cs_property_def_by_func(cs_property_t         *pty,
   cs_flag_t  state_flag = 0;
   cs_flag_t  meta_flag = 0; /* metadata */
 
-  int dim = 1;
-  if (pty->type == CS_PROPERTY_ORTHO)
-    dim = 3;
-  else if (pty->type == CS_PROPERTY_ANISO)
-    dim = 9;
+  int  dim = _get_pty_dim(pty->type);
 
   cs_xdef_t  *d = cs_xdef_volume_create(CS_XDEF_BY_FUNCTION,
                                         dim,
@@ -1482,12 +1607,7 @@ cs_property_def_by_array(cs_property_t    *pty,
               " Please modify your settings.",
               pty->n_definitions, pty->name);
 
-  int  dim = 1;
-  if (pty->type == CS_PROPERTY_ORTHO)
-    dim = 3;
-  else if (pty->type == CS_PROPERTY_ANISO)
-    dim = 9;
-
+  int  dim = _get_pty_dim(pty->type);
   cs_flag_t  state_flag = 0; /* Will be updated during the creation */
   cs_flag_t  meta_flag = 0;  /* metadata */
 
@@ -1496,7 +1616,7 @@ cs_property_def_by_array(cs_property_t    *pty,
                                      .stride = dim,
                                      .loc = loc,
                                      .values = array,
-                                     . is_owner = is_owner,
+                                     .is_owner = is_owner,
                                      .index = index };
 
   cs_xdef_t  *d = cs_xdef_volume_create(CS_XDEF_BY_ARRAY,
@@ -1542,12 +1662,7 @@ cs_property_def_by_field(cs_property_t    *pty,
                          cs_field_t       *field)
 {
   int  id = _add_new_def(pty);
-
-  int dim = 1;
-  if (pty->type == CS_PROPERTY_ORTHO)
-    dim = 3;
-  else if (pty->type == CS_PROPERTY_ANISO)
-    dim = 9;
+  int dim = _get_pty_dim(pty->type);
 
   /* Sanity checks */
   assert(dim == field->dim);
@@ -1583,6 +1698,56 @@ cs_property_def_by_field(cs_property_t    *pty,
 
   /* Set the state flag */
   pty->state_flag |= CS_FLAG_STATE_CELLWISE;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Evaluate the value of the property at each cell. Store the
+ *         evaluation in the given array.
+ *
+ * \param[in]       t_eval      physical time at which one evaluates the term
+ * \param[in]       pty         pointer to a cs_property_t structure
+ * \param[out]      pty_stride  = 0 if uniform, =1 otherwise
+ * \param[in, out]  pty_vals    pointer to an array of values. Allocated if not
+ *                              The size of the allocation depends on the value
+ *                              of the pty_stride
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_property_iso_get_cell_values(cs_real_t               t_eval,
+                                const cs_property_t    *pty,
+                                int                    *pty_stride,
+                                cs_real_t             **p_pty_vals)
+{
+  if (pty == NULL)
+    return;
+  assert(pty->type & CS_PROPERTY_ISO);
+
+  bool  allocate = (*p_pty_vals == NULL) ? true : false;
+  cs_real_t  *values = *p_pty_vals;
+
+  if (cs_property_is_uniform(pty)) {
+
+    *pty_stride = 0;
+    if (allocate)
+      BFT_MALLOC(values, 1, cs_real_t);
+    /* Evaluation at c_id = 0. One assumes that there is at least one cell per
+       MPI rank */
+    values[0] = cs_property_get_cell_value(0, t_eval, pty);
+
+  }
+  else {
+
+    *pty_stride = 1;
+    if (allocate)
+      BFT_MALLOC(values, cs_cdo_quant->n_cells, cs_real_t);
+    cs_property_eval_at_cells(t_eval, pty, values);
+
+  }
+
+  /* Return the pointer to values */
+  p_pty_vals = values;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1685,7 +1850,7 @@ cs_property_eval_at_cells(cs_real_t               t_eval,
 
         } /* Loop on definitions */
 
-        int  b_dim = (b->type & CS_PROPERTY_ORTHO) ? 3 : 9;
+        int  b_dim = _get_pty_dim(b->type);
 
         /* 2. Evaluates the property B and operates the product */
         for (int i = 0; i < b->n_definitions; i++) {
@@ -1739,7 +1904,7 @@ cs_property_eval_at_cells(cs_real_t               t_eval,
 
         } /* Loop on definitions */
 
-        int  a_dim = (a->type & CS_PROPERTY_ORTHO) ? 3 : 9;
+        int  a_dim = _get_pty_dim(a->type);
 
         /* 2. Evaluates the property A and operates the product */
         for (int i = 0; i < a->n_definitions; i++) {
@@ -2096,6 +2261,10 @@ cs_property_log_setup(void)
       cs_log_printf(CS_LOG_SETUP, "  * %s | Type: isotropic", pty->name);
     else if (pty->type & CS_PROPERTY_ORTHO)
       cs_log_printf(CS_LOG_SETUP, "  * %s | Type: orthotropic", pty->name);
+    else if (pty->type & CS_PROPERTY_ANISO_SYM)
+      cs_log_printf(CS_LOG_SETUP,
+                    "  * %s | Type: anisotropic with a symmetric storage",
+                    pty->name);
     else if (pty->type & CS_PROPERTY_ANISO)
       cs_log_printf(CS_LOG_SETUP, "  * %s | Type: anisotropic", pty->name);
     else

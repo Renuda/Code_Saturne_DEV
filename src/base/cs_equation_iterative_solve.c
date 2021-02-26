@@ -104,8 +104,6 @@ BEGIN_C_DECLS
 /*! \brief This function solves an advection diffusion equation with source
  * terms for one time step for the variable \f$ a \f$.
  *
- * <a name="codits"></a>
- *
  * The equation reads:
  *
  * \f[
@@ -492,7 +490,7 @@ cs_equation_iterative_solve_scalar(int                   idtvar,
       pvar[iel] = pvark[iel];
   }
 
-  /* In the following, bilsca is called with inc=1,
+  /* In the following, cs_balance_scalar is called with inc=1,
      except for Weight Matrix (nswrsp=-1) */
   inc = 1;
 
@@ -1230,7 +1228,6 @@ cs_equation_iterative_solve_vector(int                   idtvar,
   cs_solving_info_t sinfo;
 
   cs_field_t *f;
-  int coupling_id = -1;
 
   cs_real_t    *xam;
   cs_real_33_t *dam;
@@ -1278,7 +1275,6 @@ cs_equation_iterative_solve_vector(int                   idtvar,
   if (f_id > -1) {
     f = cs_field_by_id(f_id);
     cs_field_get_key_struct(f, key_sinfo_id, &sinfo);
-    coupling_id = cs_field_get_key_int(f, cs_field_key_id("coupling_entity"));
   }
 
   /* Name */
@@ -1404,7 +1400,7 @@ cs_equation_iterative_solve_vector(int                   idtvar,
     }
   }
 
-  /* In the following, bilscv is called with inc=1,
+  /* In the following, cs_balance_vector is called with inc=1,
    * except for Weight Matrix (nswrsp=-1) */
   inc = 1;
 
@@ -2224,7 +2220,7 @@ cs_equation_iterative_solve_tensor(int                   idtvar,
     }
   }
 
-  /* In the following, bilscv is called with inc=1,
+  /* In the following, cs_balance_vector is called with inc=1,
    * except for Weight Matrix (nswrsp=-1) */
   inc = 1;
 

@@ -170,6 +170,9 @@ _allocate_navsto_system(void)
   navsto->mass_flux_array = NULL;
   navsto->mass_flux_array_pre = NULL;
 
+  /* Related modules */
+  navsto->turbulence = NULL;
+
   /* Post-processing fields */
   navsto->velocity_divergence = NULL;
   navsto->kinetic_energy = NULL;
@@ -730,7 +733,8 @@ cs_navsto_system_init_setup(void)
   }
 
   /* Initialize the turbulence modelling */
-  cs_turbulence_init_setup(ns->turbulence);
+  const cs_equation_t *mom_eq = cs_navsto_system_get_momentum_eq();
+  cs_turbulence_init_setup(ns->turbulence, mom_eq);
 
 }
 
@@ -1113,10 +1117,10 @@ cs_navsto_system_finalize_setup(const cs_mesh_t            *mesh,
  *         system. This is done after the setup step.
  *         Set an initial value for the velocity and pressure field if needed
  *
- * \param[in]  mesh      pointer to a cs_mesh_t structure
- * \param[in]  connect   pointer to a cs_cdo_connect_t structure
- * \param[in]  quant     pointer to a cs_cdo_quantities_t structure
- * \param[in]  ts        pointer to a cs_time_step_t structure
+ * \param[in]  mesh        pointer to a cs_mesh_t structure
+ * \param[in]  connect     pointer to a cs_cdo_connect_t structure
+ * \param[in]  quant       pointer to a cs_cdo_quantities_t structure
+ * \param[in]  time_step   pointer to a cs_time_step_t structure
  */
 /*----------------------------------------------------------------------------*/
 
@@ -1124,7 +1128,7 @@ void
 cs_navsto_system_initialize(const cs_mesh_t             *mesh,
                             const cs_cdo_connect_t      *connect,
                             const cs_cdo_quantities_t   *quant,
-                            const cs_time_step_t        *ts)
+                            const cs_time_step_t        *time_step)
 {
   cs_navsto_system_t  *ns = cs_navsto_system;
 
@@ -1150,11 +1154,11 @@ cs_navsto_system_initialize(const cs_mesh_t             *mesh,
 
   /* Initial conditions for the velocity */
   if (ns->init_velocity != NULL)
-    ns->init_velocity(nsp, quant, ts, ns->scheme_context);
+    ns->init_velocity(nsp, quant, time_step, ns->scheme_context);
 
   /* Initial conditions for the pressure */
   if (ns->init_pressure != NULL)
-    ns->init_pressure(nsp, quant, ts, ns->pressure);
+    ns->init_pressure(nsp, quant, time_step, ns->pressure);
 
   if (nsp->space_scheme == CS_SPACE_SCHEME_CDOFB) {
 
@@ -1164,7 +1168,7 @@ cs_navsto_system_initialize(const cs_mesh_t             *mesh,
          before */
       cs_real_t  *pr_f = cs_cdofb_predco_get_face_pressure(ns->scheme_context);
 
-      cs_cdofb_navsto_init_face_pressure(nsp, connect, ts, pr_f);
+      cs_cdofb_navsto_init_face_pressure(nsp, connect, time_step, pr_f);
     }
 
     /* Initialize the mass flux */
@@ -1174,7 +1178,7 @@ cs_navsto_system_initialize(const cs_mesh_t             *mesh,
 
   } /* Face-based schemes */
 
-  cs_turbulence_initialize(mesh, connect, quant, ts, ns->turbulence);
+  cs_turbulence_initialize(mesh, connect, quant, time_step, ns->turbulence);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1225,28 +1229,34 @@ cs_navsto_system_set_solid_cells(cs_lnum_t          n_solid_cells,
  *         Navier-Stokes system has been computed
  *
  * \param[in] mesh       pointer to a cs_mesh_t structure
- * \param[in] time_step  structure managing the time stepping
  * \param[in] connect    pointer to a cs_cdo_connect_t structure
- * \param[in] cdoq       pointer to a cs_cdo_quantities_t structure
+ * \param[in] quant      pointer to a cs_cdo_quantities_t structure
+ * \param[in] time_step  structure managing the time stepping
  */
 /*----------------------------------------------------------------------------*/
 
 void
 cs_navsto_system_update(const cs_mesh_t             *mesh,
-                        const cs_time_step_t        *time_step,
                         const cs_cdo_connect_t      *connect,
-                        const cs_cdo_quantities_t   *cdoq)
+                        const cs_cdo_quantities_t   *quant,
+                        const cs_time_step_t        *time_step)
 {
   CS_UNUSED(mesh);
-  CS_UNUSED(time_step);
-  CS_UNUSED(connect);
-  CS_UNUSED(cdoq);
 
   cs_navsto_system_t  *ns = cs_navsto_system;
 
   if (ns == NULL) bft_error(__FILE__, __LINE__, 0, _(_err_empty_ns));
 
-  /* Nothing to do up to now */
+  /* Update quantities relative to turbulence (e.g. turbulence
+   * viscosity...) */
+  cs_turbulence_t  *tbs = ns->turbulence;
+  if (tbs->update != NULL)
+    tbs->update(mesh,
+                connect,
+                quant,
+                time_step,
+                tbs);
+
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1255,17 +1265,17 @@ cs_navsto_system_update(const cs_mesh_t             *mesh,
  *         steady-state approach
  *
  * \param[in] mesh       pointer to a cs_mesh_t structure
- * \param[in] time_step  structure managing the time stepping
  * \param[in] connect    pointer to a cs_cdo_connect_t structure
- * \param[in] cdoq       pointer to a cs_cdo_quantities_t structure
+ * \param[in] quant      pointer to a cs_cdo_quantities_t structure
+ * \param[in] time_step  structure managing the time stepping
  */
 /*----------------------------------------------------------------------------*/
 
 void
 cs_navsto_system_compute_steady_state(const cs_mesh_t             *mesh,
-                                      const cs_time_step_t        *time_step,
                                       const cs_cdo_connect_t      *connect,
-                                      const cs_cdo_quantities_t   *cdoq)
+                                      const cs_cdo_quantities_t   *quant,
+                                      const cs_time_step_t        *time_step)
 {
   cs_navsto_system_t  *ns = cs_navsto_system;
 
@@ -1275,6 +1285,8 @@ cs_navsto_system_compute_steady_state(const cs_mesh_t             *mesh,
   if (!cs_navsto_param_is_steady(nsp))
     return;
 
+  cs_turbulence_t  *tbs = ns->turbulence;
+
   /* First resolve the thermal system if needed */
   cs_equation_t  *th_eq = cs_thermal_system_get_equation();
 
@@ -1282,12 +1294,23 @@ cs_navsto_system_compute_steady_state(const cs_mesh_t             *mesh,
 
     assert(th_eq != NULL);
 
+    /* Update variable, properties according to the computed variables */
+    cs_navsto_system_update(mesh, connect, quant, time_step);
+
     /* Build and solve the Navier-Stokes system */
     ns->compute_steady(mesh, nsp, ns->scheme_context);
 
+    /* Build and solve the turbulence variable system */
+    if (tbs->compute_steady != NULL)
+      tbs->compute_steady(mesh,
+                          connect,
+                          quant,
+                          time_step,
+                          tbs);
+
     /* Solve the thermal equation */
     if (cs_equation_param_has_time(cs_equation_get_param(th_eq)) == false)
-      cs_thermal_system_compute_steady_state(mesh, time_step, connect, cdoq);
+      cs_thermal_system_compute_steady_state(mesh, connect, quant, time_step);
 
   }
   else if (nsp->model_flag & CS_NAVSTO_MODEL_BOUSSINESQ) {
@@ -1305,12 +1328,12 @@ cs_navsto_system_compute_steady_state(const cs_mesh_t             *mesh,
     cs_real_t  *th_var = cs_equation_get_cell_values(th_eq, false);
 
     cs_real_t  *th_var_iter_prev = NULL;
-    BFT_MALLOC(th_var_iter_prev, cdoq->n_cells, cs_real_t);
-    memcpy(th_var_iter_prev, th_var, cdoq->n_cells*sizeof(cs_real_t));
+    BFT_MALLOC(th_var_iter_prev, quant->n_cells, cs_real_t);
+    memcpy(th_var_iter_prev, th_var, quant->n_cells*sizeof(cs_real_t));
 
     cs_real_t  inv_tref = cs_thermal_system_get_reference_temperature();
     if (fabs(inv_tref) > cs_math_zero_threshold)
-      inv_tref = 1/inv_tref;
+      inv_tref = 1./inv_tref;
     else
       inv_tref = 1.;
 
@@ -1319,15 +1342,26 @@ cs_navsto_system_compute_steady_state(const cs_mesh_t             *mesh,
 
     do {
 
+      /* Update variable, properties according to the computed variables */
+      cs_navsto_system_update(mesh, connect, quant, time_step);
+
       /* Build and solve the thermal system */
-      cs_thermal_system_compute_steady_state(mesh, time_step, connect, cdoq);
+      cs_thermal_system_compute_steady_state(mesh, connect, quant, time_step);
 
       /* Build and solve the Navier-Stokes system */
       ns->compute_steady(mesh, nsp, ns->scheme_context);
 
+      /* Build and solve the turbulence variable system */
+      if (tbs->compute_steady != NULL)
+        tbs->compute_steady(mesh,
+                            connect,
+                            quant,
+                            time_step,
+                            tbs);
+
       /* Check convergence */
       cs_real_t  delta = -1;
-      for (cs_lnum_t c_id = 0; c_id < cdoq->n_cells; c_id++) {
+      for (cs_lnum_t c_id = 0; c_id < quant->n_cells; c_id++) {
         cs_real_t  _delta = fabs(th_var[c_id] - th_var_iter_prev[c_id]);
         th_var_iter_prev[c_id] = th_var[c_id];
         if (_delta > delta)
@@ -1359,10 +1393,18 @@ cs_navsto_system_compute_steady_state(const cs_mesh_t             *mesh,
     /* Build and solve the Navier-Stokes system */
     ns->compute_steady(mesh, nsp, ns->scheme_context);
 
+    /* Build and solve the turbulence variable system
+     * TODO, we should loop over NS+turbulence and add a
+     * stopping criteria on the NS matrix for instance
+     * */
+    if (tbs->compute_steady != NULL)
+      tbs->compute_steady(mesh,
+                          connect,
+                          quant,
+                          time_step,
+                          tbs);
   }
 
-  /* Update variable, properties according to the new computed variables */
-  cs_navsto_system_update(mesh, time_step, connect, cdoq);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1370,23 +1412,28 @@ cs_navsto_system_compute_steady_state(const cs_mesh_t             *mesh,
  * \brief  Build, solve and update the Navier-Stokes system
  *
  * \param[in] mesh       pointer to a cs_mesh_t structure
- * \param[in] time_step  structure managing the time stepping
  * \param[in] connect    pointer to a cs_cdo_connect_t structure
- * \param[in] cdoq       pointer to a cs_cdo_quantities_t structure
+ * \param[in] quant       pointer to a cs_cdo_quantities_t structure
+ * \param[in] time_step  structure managing the time stepping
  */
 /*----------------------------------------------------------------------------*/
 
 void
 cs_navsto_system_compute(const cs_mesh_t             *mesh,
-                         const cs_time_step_t        *time_step,
                          const cs_cdo_connect_t      *connect,
-                         const cs_cdo_quantities_t   *cdoq)
+                         const cs_cdo_quantities_t   *quant,
+                         const cs_time_step_t        *time_step)
 {
   cs_navsto_system_t  *ns = cs_navsto_system;
 
   if (ns == NULL) bft_error(__FILE__, __LINE__, 0, _(_err_empty_ns));
 
   const cs_navsto_param_t  *nsp = ns->param;
+
+  cs_turbulence_t  *tbs = ns->turbulence;
+
+  /* Update variable, properties according to the new computed variables */
+  cs_navsto_system_update(mesh, connect, quant, time_step);
 
   if (nsp->model_flag & CS_NAVSTO_MODEL_PASSIVE_THERMAL_TRACER) {
 
@@ -1396,12 +1443,22 @@ cs_navsto_system_compute(const cs_mesh_t             *mesh,
     assert(th_eq != NULL);
 
     /* Build and solve the Navier-Stokes system */
-    if (cs_navsto_param_is_steady(nsp) == false)
+    if (cs_navsto_param_is_steady(nsp) == false) {
       ns->compute(mesh, nsp, ns->scheme_context);
+
+      /* Build and solve the turbulence variable system */
+      if (tbs->compute != NULL)
+        tbs->compute(mesh,
+                     connect,
+                     quant,
+                     time_step,
+                     tbs);
+
+    }
 
     /* Solve the thermal equation */
     if (cs_equation_param_has_time(cs_equation_get_param(th_eq)))
-      cs_thermal_system_compute(true, mesh, time_step, connect, cdoq);
+      cs_thermal_system_compute(true, mesh, connect, quant, time_step);
 
   }
   else if (nsp->model_flag & CS_NAVSTO_MODEL_BOUSSINESQ) {
@@ -1419,10 +1476,19 @@ cs_navsto_system_compute(const cs_mesh_t             *mesh,
     if (cs_equation_param_has_time(cs_equation_get_param(th_eq))) {
 
       /* Build and solve the thermal system */
-      cs_thermal_system_compute(true, mesh, time_step, connect, cdoq);
+      cs_thermal_system_compute(true, mesh, connect, quant, time_step);
 
       /* Build and solve the Navier-Stokes system */
       ns->compute(mesh, nsp, ns->scheme_context);
+
+      /* Build and solve the turbulence variable system */
+      if (tbs->compute != NULL)
+        tbs->compute(mesh,
+                     connect,
+                     quant,
+                     time_step,
+                     tbs);
+
 
     }
     else { /* Thermal system is declared as steady. So, this is equivalent to a
@@ -1442,28 +1508,34 @@ cs_navsto_system_compute(const cs_mesh_t             *mesh,
     /* Build and solve the Navier-Stokes system */
     ns->compute(mesh, nsp, ns->scheme_context);
 
+    /* Build and solve the turbulence variable system */
+    if (tbs->compute != NULL)
+      tbs->compute(mesh,
+                   connect,
+                   quant,
+                   time_step,
+                   tbs);
+
   }
 
-  /* Update variable, properties according to the new computed variables */
-  cs_navsto_system_update(mesh, time_step, connect, cdoq);
 }
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief  Predefined extra-operations for the Navier-Stokes system
  *
- * \param[in]  mesh      pointer to a cs_mesh_t structure
- * \param[in]  connect   pointer to a cs_cdo_connect_t structure
- * \param[in]  cdoq      pointer to a cs_cdo_quantities_t structure
- * \param[in]  ts        pointer to a cs\time_step_t structure
+ * \param[in]  mesh        pointer to a cs_mesh_t structure
+ * \param[in]  connect     pointer to a cs_cdo_connect_t structure
+ * \param[in]  quant       pointer to a cs_cdo_quantities_t structure
+ * \param[in]  time_step   pointer to a cs_time_step_t structure
  */
 /*----------------------------------------------------------------------------*/
 
 void
 cs_navsto_system_extra_op(const cs_mesh_t             *mesh,
                           const cs_cdo_connect_t      *connect,
-                          const cs_cdo_quantities_t   *cdoq,
-                          const cs_time_step_t        *ts)
+                          const cs_cdo_quantities_t   *quant,
+                          const cs_time_step_t        *time_step)
 {
   cs_navsto_system_t  *navsto = cs_navsto_system;
 
@@ -1487,7 +1559,7 @@ cs_navsto_system_extra_op(const cs_mesh_t             *mesh,
       const cs_real_t  *u_face = cs_equation_get_face_values(eq, need_prev);
       const cs_real_t  *u_cell = navsto->velocity->val;
 
-      cs_cdofb_navsto_extra_op(nsp, mesh, cdoq, connect, ts,
+      cs_cdofb_navsto_extra_op(nsp, mesh, quant, connect, time_step,
                                adv, mass_flux,
                                u_cell, u_face);
     }

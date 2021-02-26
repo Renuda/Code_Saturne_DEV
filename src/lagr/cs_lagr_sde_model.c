@@ -947,8 +947,8 @@ _lagitf(cs_lagr_attribute_t  *iattr)
         || extra->iturb == 50 || extra->iturb == 60) {
 
       if (extra->itytur == 2 || extra->itytur == 4 || extra->iturb == 50) {
-        energ  = extra->cvar_k->val[cell_id];
-        dissip = extra->cvar_ep->val[cell_id];
+        energ    = extra->cvar_k->val[cell_id];
+        dissip   = extra->cvar_ep->val[cell_id];
       }
       else if (extra->itytur == 3) {
 

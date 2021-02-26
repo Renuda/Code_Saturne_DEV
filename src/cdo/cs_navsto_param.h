@@ -204,14 +204,6 @@ typedef enum {
  * This option is only available with the support to the PETSc library up to now.
  *
  *
- * \var CS_NAVSTO_SLES_BY_BLOCKS
- * Associated keyword: "blocks"
- *
- * The Navier-Stokes system is split into a 3x3 block matrix for the velocity
- * unknows and in a non-assembly way for the divergence/pressure gradient
- * operators.
- *
- *
  * \var CS_NAVSTO_SLES_BLOCK_MULTIGRID_CG
  * Associated keyword: "block_amg_cg"
  *
@@ -236,6 +228,17 @@ typedef enum {
  * preconditioned with one multigrid iteration. The main iterative solver is a
  * flexible GMRES. This option is only available with the support to the PETSc
  * library up to now.
+ *
+ *
+ * \var CS_NAVSTO_SLES_DIAG_SCHUR_MINRES
+ * Associated keyword: "diag_schur_minres"
+ *
+ * The Stokes or Navier-Stokes system with an explicit advection is solved
+ * using a MINRES algorithm with a block diagonal preconditioner using an Schur
+ * approximation for the pressure block (the block 22). The system is stored
+ * using a hybrid assembled/unassembled blocks. The velocity block is assembled
+ * (with potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
  *
  *
  * \var CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK
@@ -287,6 +290,16 @@ typedef enum {
  * The residual is computed in the energy norm.
  *
  *
+ * \var CS_NAVSTO_SLES_MINRES
+ * Associated keyword: "minres"
+ *
+ * The Stokes or Navier-Stokes system with an explicit advection is solved
+ * using a MINRES algorithm without preconditioning. The system is stored using
+ * a hybrid assembled/unassembled blocks. The velocity block is assembled (with
+ * potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
+ *
+ *
  * \var CS_NAVSTO_SLES_MULTIPLICATIVE_GMRES_BY_BLOCK
  * Associated keyword: "multiplicative_gmres"
  *
@@ -335,12 +348,14 @@ typedef enum {
 
   CS_NAVSTO_SLES_ADDITIVE_GMRES_BY_BLOCK,
   CS_NAVSTO_SLES_BLOCK_MULTIGRID_CG,
-  CS_NAVSTO_SLES_BY_BLOCKS,
+  CS_NAVSTO_SLES_BY_BLOCKS,     /* deprecated */
   CS_NAVSTO_SLES_DIAG_SCHUR_GMRES,
+  CS_NAVSTO_SLES_DIAG_SCHUR_MINRES,
   CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK,
   CS_NAVSTO_SLES_GKB_PETSC,
   CS_NAVSTO_SLES_GKB_GMRES,
   CS_NAVSTO_SLES_GKB_SATURNE,
+  CS_NAVSTO_SLES_MINRES,
   CS_NAVSTO_SLES_MULTIPLICATIVE_GMRES_BY_BLOCK,
   CS_NAVSTO_SLES_MUMPS,
   CS_NAVSTO_SLES_UPPER_SCHUR_GMRES,
@@ -380,6 +395,11 @@ typedef struct {
    *  Choice of strategy for solving the Navier--Stokes system
    */
   cs_navsto_sles_t              strategy;
+
+  /*! \var schur_strategy
+   *  Choice of the way of preconditioning the schur approximation
+   */
+  cs_param_schur_approx_t       schur_approximation;
 
   /*!
    * @name Inner and linear algorithm
@@ -535,7 +555,7 @@ typedef struct {
    * @{
    */
   /*! \var phys_constants
-   * Main physical constants (gravity vector and coriolis source term). This
+   * Main physical constants (gravity vector and Coriolis source term). This
    * structure is shared with the legacy part.
    */
   cs_physical_constants_t       *phys_constants;
@@ -869,6 +889,10 @@ typedef struct {
  * Set the type to use in all routines involving quadrature (similar to \ref
  * CS_EQKEY_BC_QUADRATURE)
  *
+ * \var CS_NSKEY_SCHUR_STRATEGY
+ * Set the way to define the Schur complement approximation
+ * (cf. \ref cs_param_schur_approx_t)
+ *
  * \var CS_NSKEY_SLES_STRATEGY
  * Strategy for solving the SLES arising from the discretization of the
  * Navier-Stokes system
@@ -915,6 +939,7 @@ typedef enum {
   CS_NSKEY_NL_ALGO_RTOL,
   CS_NSKEY_NL_ALGO_VERBOSITY,
   CS_NSKEY_QUADRATURE,
+  CS_NSKEY_SCHUR_STRATEGY,
   CS_NSKEY_SLES_STRATEGY,
   CS_NSKEY_SPACE_SCHEME,
   CS_NSKEY_THERMAL_TOLERANCE,

@@ -122,18 +122,16 @@ integer          iiun, ibcl
 integer          ivarsc
 integer          iiscav
 integer          ifcvsl, iflmas, iflmab
-integer          nswrgp, imligp, iwarnp
-integer          iconvp, idiffp, ndircp
-integer          imrgrp, nswrsp, ircflp, ischcp, isstpp, iescap, ivissv
-integer          idftnp, iswdyp
+integer          iwarnp
+integer          iconvp, imvisp
+integer          iescap, ivissv
+integer          idftnp
 integer          iflid , st_prv_id, st_id,  keydri, iscdri
 integer          icvflb, f_dim, iflwgr
 integer          key_buoyant_id, is_buoyant_fld
 
 integer          ivoid(1)
 
-double precision epsrgp, climgp, relaxp, blencp, epsilp
-double precision epsrsp
 double precision sclnor
 double precision thetv , thets , thetap, thetp1
 double precision smbexp(3)
@@ -166,8 +164,13 @@ double precision, dimension(:), pointer :: cproa_delay, cproa_sat
 double precision, dimension(:,:), pointer :: cvar_var, cvara_var
 
 type(var_cal_opt) :: vcopt
+type(var_cal_opt), target :: vcopt_loc
+type(var_cal_opt), pointer :: p_k_value
+type(c_ptr) :: c_k_value
 
 type(gwf_soilwater_partition) :: sorption_scal
+
+character(len=len_trim(nomva0)+1, kind=c_char) :: c_name
 
 !===============================================================================
 
@@ -459,8 +462,10 @@ if (vcopt%idiff.ge.1) then
       call synsca(cpro_wgrec_s)
     endif
 
+    imvisp = vcopt%imvisf
+
     call viscfa &
-   ( imvisf ,                      &
+   ( imvisp ,                      &
      w1     ,                      &
      viscf  , viscb  )
 
@@ -598,7 +603,8 @@ endif
 ! Darcy:
 ! This step is necessary because the divergence of the
 ! hydraulic head (or pressure), which is taken into account as the
-! 'aggregation term' via codits -> bilsca -> bilsc2,
+! 'aggregation term' via
+! cs_equation_iterative_solve_scalar -> cs_balance_scalar,
 ! is not exactly equal to the loss of mass of water in the unsteady case
 ! (just as far as the precision of the Newton scheme is good),
 ! and does not take into account the sorbption of the tracer
@@ -631,26 +637,7 @@ endif
 ! 3. Solving
 !===============================================================================
 
-iconvp = vcopt%iconv
-idiffp = vcopt%idiff
-idftnp = vcopt%idften
-ndircp = vcopt%ndircl
-nswrsp = vcopt%nswrsm
-nswrgp = vcopt%nswrgr
-imrgrp = vcopt%imrgra
-imligp = vcopt%imligr
-ircflp = vcopt%ircflu
-ischcp = vcopt%ischcv
-isstpp = vcopt%isstpc
 iescap = 0
-iswdyp = vcopt%iswdyn
-iwarnp = vcopt%iwarni
-blencp = vcopt%blencv
-epsilp = vcopt%epsilo
-epsrsp = vcopt%epsrsm
-epsrgp = vcopt%epsrgr
-climgp = vcopt%climgr
-relaxp = vcopt%relaxv
 ! all boundary convective flux with upwind
 icvflb = 0
 ! transposed gradient term only for NS
@@ -661,22 +648,31 @@ call field_get_coefb_v(iflid, coefbp)
 call field_get_coefaf_v(iflid, cofafp)
 call field_get_coefbf_v(iflid, cofbfp)
 
-call coditv &
-!==========
- ( idtvar , iterns , iflid  , iconvp , idiffp , ndircp ,          &
-   imrgrp , nswrsp , nswrgp , imligp , ircflp , ivissv ,          &
-   ischcp , isstpp , iescap , idftnp , iswdyp ,                   &
-   iwarnp ,                                                       &
-   blencp , epsilp , epsrsp , epsrgp , climgp ,                   &
-   relaxp , thetv  ,                                              &
-   cvara_var       , cvara_var       ,                            &
-   coefap , coefbp , cofafp , cofbfp ,                            &
-   imasfl , bmasfl ,                                              &
-   viscf  , viscb  , viscf  , viscb  , rvoid  , rvoid  ,          &
-   viscce , weighf , weighb ,                                     &
-   icvflb , ivoid  ,                                              &
-   fimp   , smbrv  , cvar_var        ,                            &
-   rvoid  )
+c_name = trim(nomva0)//c_null_char
+
+vcopt_loc = vcopt
+
+vcopt_loc%istat  = -1
+vcopt_loc%idifft = -1
+vcopt_loc%iwgrec = 0
+vcopt_loc%thetav = thetv
+vcopt_loc%blend_st = 0 ! Warning, may be overwritten if a field
+vcopt_loc%extrag = 0
+
+p_k_value => vcopt_loc
+c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
+
+call cs_equation_iterative_solve_vector                     &
+ ( idtvar , iterns ,                                        &
+   iflid  , c_name ,                                        &
+   ivissv , iescap , c_k_value       ,                      &
+   cvara_var       , cvara_var       ,                      &
+   coefap , coefbp , cofafp , cofbfp ,                      &
+   imasfl , bmasfl , viscf  ,                               &
+   viscb  , viscf  , viscb  , rvoid  ,                      &
+   rvoid  , viscce , weighf , weighb ,                      &
+   icvflb , ivoid  ,                                        &
+   fimp   , smbrv  , cvar_var        , rvoid )
 
 !===============================================================================
 ! 4. Writing

@@ -134,13 +134,12 @@ call turb_rans_model_init
 call turb_les_model_init
 call turb_model_constants_init
 call wall_functions_init
-call stokes_options_init
 call physical_constants_init
 call porosity_from_scan_init
 call fluid_properties_init
 call space_disc_options_init
 call time_scheme_options_init
-call piso_options_init
+call velocity_pressure_options_init
 call restart_auxiliary_options_init
 call turb_reference_values_init
 call listing_writing_period_init
@@ -351,20 +350,11 @@ itempb = -1
 !       Les tests dans l'algo portent sur ces indicateurs
 
 
-!   -- Schema en temps (regroupera les options suivantes)
-!     = 1 Standard ordre 1
-!     = 2 Standard ordre 2
-!     si on veut, on peut en rajouter.
-!     Cette variable conditionne toutes les autres de maniere automatique,
-!     pour definir des schemas coherents dans modini.
-ischtp = -999
-
 !   -- Flux de masse (-999 = non initialise)
-!     = 1 Standard d'ordre 1 (THETFL = -999 inutile)
-!     = 0 Explicite (THETFL = 0)
-!     = 2 Ordre deux (THETFL = 0.5)
+!     = 1 Standard d'ordre 1
+!     = 0 Explicite
+!     = 2 Ordre deux
 istmpf = -999
-thetfl =-999.d0
 
 !   -- Termes sources Navier Stokes
 !     Pour les termes sources explicites en std, I..EXT definit
@@ -410,9 +400,6 @@ epsup  = 1.d-5
 !   -- Tab de travail pour normes de navsto
 xnrmu0 = 0.d0
 xnrmu  = 0.d0
-
-!   -- Nb d'iter point fixe vitesse pression
-nterup = 1
 
 do iscal = 1, nscamx
 
@@ -740,7 +727,6 @@ xct     = 6.d0
 !   pour le v2f phi-model
 cv2fa1 = 0.05d0
 cv2fe2 = 1.85d0
-cv2fmu = 0.22d0
 cv2fc1 = 1.4d0
 cv2fc2 = 0.3d0
 cv2fct = 6.d0
@@ -752,7 +738,6 @@ cpale1 = 1.44d0
 cpale2 = 1.83d0
 cpale3 = 2.3d0
 cpale4 = 0.4d0
-cpalmu = 0.22d0
 cpalct = 4.d0
 cpalcl = 0.164d0
 cpalet = 75.d0
@@ -804,11 +789,6 @@ cssr3 = 1.d0
 do iscal = 1, nscamx
   iclvfl(iscal) = -1
   rvarfl(iscal) = 0.8d0
-enddo
-
-! --- Turbulent flux for a scalar (Default: SGDH)
-do iscal = 1, nscamx
-  iturt(iscal) = 0
 enddo
 
 ! For the turbulent fluxes of the scalar

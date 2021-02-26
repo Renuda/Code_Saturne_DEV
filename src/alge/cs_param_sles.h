@@ -68,10 +68,18 @@ typedef struct {
   char                    *name;         /*!< System name (equation name if
                                            this is automatic) */
 
-  cs_param_sles_class_t    solver_class; /*!< class of SLES to consider  */
-  cs_param_precond_type_t  precond;      /*!< type of preconditioner */
-  cs_param_itsol_type_t    solver;       /*!< type of solver */
-  cs_param_amg_type_t      amg_type;     /*!< type of AMG algorithm if needed */
+  cs_param_sles_class_t      solver_class; /*!< class of SLES to consider  */
+  cs_param_precond_type_t    precond;      /*!< type of preconditioner */
+  cs_param_itsol_type_t      solver;       /*!< type of solver */
+
+  /*! \var amg_type
+   *  type of AMG algorithm if needed */
+  cs_param_amg_type_t        amg_type;
+
+  /*! \var pcd_block_type
+   *  type of block preconditioner to use (only meaningful for vector-valued
+   *  systems or more complex systems */
+  cs_param_precond_block_t   pcd_block_type;
 
   /*! \var resnorm_type
    *  normalized or not the norm of the residual used for the stopping criterion
@@ -142,51 +150,6 @@ cs_param_sles_log(cs_param_sles_t   *slesp);
 void
 cs_param_sles_copy_from(cs_param_sles_t   *src,
                         cs_param_sles_t   *dst);
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Set parameters for initializing SLES structures used for the
- *        resolution of the linear system.
- *        Case of saturne's own solvers.
- *
- * \param[in]       use_field_id  if false use system name
- * \param[in, out]  slesp         pointer to a \ref cs_param_sles_t structure
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_equation_param_set_saturne_sles(bool                 use_field_id,
-                                   cs_param_sles_t     *slesp);
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Set parameters for initializing SLES structures used for the
- *        resolution of the linear system.
- *        Case of MUMPS's own solvers.
- *
- * \param[in]       use_field_id  if false use system name
- * \param[in, out]  slesp         pointer to a \ref cs_param_sles_t structure
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_equation_param_set_mumps_sles(bool                 use_field_id,
-                                 cs_param_sles_t     *slesp);
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Set parameters for initializing SLES structures used for the
- *        resolution of the linear system.
- *        Case of PETSc and Hypre families of solvers.
- *
- * \param[in]       use_field_id  if false use system name
- * \param[in, out]  slesp         pointer to a \ref cs_param_sles_t structure
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_equation_param_set_petsc_hypre_sles(bool                 use_field_id,
-                                       cs_param_sles_t     *slesp);
 
 /*----------------------------------------------------------------------------*/
 /*!
