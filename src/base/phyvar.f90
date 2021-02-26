@@ -126,7 +126,6 @@ double precision, dimension(:), pointer :: cpro_var, cpro_beta, cpro_visma_s
 double precision, allocatable, dimension(:) :: ttmp
 double precision, allocatable, dimension(:,:) :: grad
 double precision, dimension(:,:,:), allocatable :: gradv
-double precision, parameter :: four_thirds = 4.0/3.0
 
 integer          ipass
 data             ipass /0/
@@ -769,11 +768,9 @@ if (itytur.eq.4 .and. iilagr.gt.0) then
     s = sqrt(2.0d0 * s)
 
     delta = xlesfl * (ales*volume(iel))**bles
-    delta = csmago * csmago * delta * delta
-    c_k   = c_epsilon * csmago**four_thirds
 
-    cvar_ep(iel) = delta * s * s * s
-    cvar_k(iel) = c_k * delta
+    cvar_ep(iel) = (csmago * csmago * delta * delta) * s * s * s
+    cvar_k(iel) =  c_epsilon * (delta * cvar_ep(iel))**(2.0d0/3.0d0)
 
   enddo
 
