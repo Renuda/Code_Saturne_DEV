@@ -620,7 +620,7 @@ cs_lagr_orientation_dyn_spheroids(int              iprev,
         (_("The lagrangian module is not compatible with the selected turbulence model.\n"
            "\n"
            "Turbulent dispersion is taken into account with IDISTU = %d\n"
-           " Activated turbulence model is %d, when only k-eps, Rij-eps,\n"
+           " Activated turbulence model is %d, when only k-eps, LES, Rij-eps,\n"
            " V2f or k-omega are compatible with turbulent dispersion and Lagrangian module.\n"
            "\n"),
          (int)cs_glob_lagr_model->idistu,
