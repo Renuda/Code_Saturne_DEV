@@ -225,9 +225,9 @@ class StandardItemModelSpecies(QStandardItemModel):
 
         self.headers = [self.tr("Species"),
                         self.tr("Chemical Formula"),
-                        self.tr("Fuel Composition"), 
-                        self.tr("Oxidiser Composition"), 
-                        self.tr("Product Composition"), 
+                        self.tr("Nb of moles (Fuel)"), 
+                        self.tr("Nb of moles (Oxidiser)"), 
+                        self.tr("Nb of moles (Product)"), 
                         self.tr("Absorption Coeff")]
 
         self.setColumnCount(len(self.headers))
