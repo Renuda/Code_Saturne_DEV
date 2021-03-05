@@ -41,6 +41,7 @@ from code_saturne.Base.QtWidgets import *
 
 from code_saturne.model.Common import GuiParam
 from code_saturne.model.LocalizationModel import LocalizationModel, Zone
+from code_saturne.model.InternalCouplingModel import InternalCouplingModel
 from code_saturne.Pages.VolumicNatureForm import Ui_VolumicNatureForm
 
 # -------------------------------------------------------------------------------
@@ -90,13 +91,13 @@ class VolumicZoneNatureModel(QAbstractTableModel):
 
     def data(self, index, role):
         if not index.isValid():
-            return QVariant()
+            return None
         if role == Qt.DisplayRole and index.column() == 0:
-            return QVariant(self._data[index.row()][index.column()])
+            return self._data[index.row()][index.column()]
         elif role == Qt.CheckStateRole and index.column() > 0:
             return self.checkState(QPersistentModelIndex(index))
         else:
-            return QVariant()
+            return None
 
     def checkState(self, index):
         if not index.isValid():
@@ -104,11 +105,12 @@ class VolumicZoneNatureModel(QAbstractTableModel):
         return bool2CheckState(self._data[index.row()][index.column()])
 
     def setData(self, index, value, role=Qt.DisplayRole):
+        col = index.column()
         if not index.isValid():
             return False
-        if index.column() > 0:
+        if col > 0:
             value = checkState2Bool(value)
-        self._data[index.row()][index.column()] = value
+        self._data[index.row()][col] = value
         self.setModelFromData()
         self.dataChanged.emit(index, index)
         return True
@@ -134,9 +136,17 @@ class VolumicZoneNatureModel(QAbstractTableModel):
                             nature=new_nature)
             self._zoneModel.replaceZone(old_zone, new_zone)
 
+            icm = InternalCouplingModel(new_zone.case)
+            if "solid" in new_nature.keys():
+                if new_nature['solid'] == "on":
+                    icm.addZone(new_zone.getLabel())
+                else:
+                    icm.removeZone(new_zone.getLabel())
+
+
     def headerData(self, section, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return QVariant(self._headers[section])
+            return self._headers[section]
         return None
 
     def rowCount(self, index):
@@ -150,10 +160,20 @@ class VolumicZoneNatureModel(QAbstractTableModel):
 
     def flags(self, index):
         base_flags = Qt.ItemIsEnabled
-        if index.column() == 0:
+        col = index.column()
+        row = index.row()
+
+        if col == 0:
             return base_flags  # lock first column
         else:
-            return base_flags | Qt.ItemIsUserCheckable
+            h = self._headers[col]
+            zname = self._data[row][0]
+            # FIXME: For v7.0 'all_cells' is always used for physical properties.
+            # Will be changed for v7.1
+            if zname == "all_cells" and h in ("Physical properties", "Solid"):
+                return Qt.NoItemFlags
+            else:
+                return base_flags | Qt.ItemIsUserCheckable
 
 
 # Helper functions
@@ -161,6 +181,8 @@ class VolumicZoneNatureModel(QAbstractTableModel):
 def sort_headers(header):
     ordered_headers = ["Zone label",
                        "Initialization",
+                       "Physical properties",
+                       "Solid",
                        "Porosity",
                        "Head losses",
                        "Momentum source\n term",
@@ -186,18 +208,21 @@ def bool2CheckState(bool_value):
 class VolumicNatureView(QWidget, Ui_VolumicNatureForm):
     """ Display available volumic treatments for a given zone """
 
-    def __init__(self, parent, case):
+    def __init__(self, parent, case, tree):
         QWidget.__init__(self, parent)
         Ui_VolumicNatureForm.__init__(self)
         self.setupUi(self)
 
         self.case = case
         self.parent = parent
+        self.tree = tree
 
         # Get list of zones
         self.zoneModel = LocalizationModel("VolumicZone", self.case)
         self.tableModel = VolumicZoneNatureModel(self.zoneModel)
         self.volumicZoneNatureTableView.setModel(self.tableModel)
+
+        self.tableModel.dataChanged.connect(self.slotUpdateTree)
 
         # Tune Qt Display parameters
         last_section = self.tableModel.columnCount(None) - 1
@@ -211,3 +236,11 @@ class VolumicNatureView(QWidget, Ui_VolumicNatureForm):
             self.volumicZoneNatureTableView.horizontalHeader().setSectionResizeMode(last_section, QHeaderView.Stretch)
 
         self.case.undoStopGlobal()
+
+
+    @pyqtSlot()
+    def slotUpdateTree(self):
+
+        if self.tree:
+            self.tree.configureTree(self.case)
+

@@ -57,6 +57,7 @@ BoundaryConditionsTurbulenceInletViewNeptune.py \
 BoundaryConditionsView.py \
 BoundaryConditionsViewNeptune.py \
 BoundaryConditionsWallView.py \
+CouplingParametersView.py \
 CathareCouplingView.py \
 CoalCombustionView.py \
 ConjugateHeatTransferView.py \
@@ -78,6 +79,7 @@ InitializationView.py \
 InterfacialEnthalpyView.py \
 InterfacialForcesView.py \
 InterfacialAreaView.py \
+InternalCouplingView.py \
 LagrangianBoundaryView.py \
 LagrangianOutputView.py \
 LagrangianStatisticsView.py \
@@ -87,6 +89,7 @@ MainFieldsView.py \
 MainFieldsInitializationView.py \
 MainFieldsSourceTermsView.py \
 MobileMeshView.py \
+NeptuneWallTransferView.py \
 NonCondensableView.py \
 NotebookView.py \
 NucleateBoilingView.py \
@@ -121,7 +124,10 @@ UsersControlView.py \
 OutputFieldsView.py \
 OpenTurnsDialogView.py \
 SolidView.py \
-ThermodynamicsView.py \
+ThermodynamicsFieldView.py \
+ThermodynamicsInteractionView.py \
+ThermodynamicsSaturationView.py \
+NeptuneThermodynamicsView.py \
 TimeStepViewNeptune.py \
 VolumicNatureView.py \
 BoundaryNatureView.py \
@@ -153,6 +159,7 @@ BoundaryConditionsSlidingWallForm.ui \
 BoundaryConditionsTurbulenceInletForm.ui \
 BoundaryConditionsVelocityInletForm.ui \
 BoundaryConditionsWallRadiativeTransferForm.ui \
+CouplingParametersForm.ui \
 CoalCombustionForm.ui \
 CompressibleForm.ui \
 ConjugateHeatTransferForm.ui \
@@ -177,6 +184,7 @@ LagrangianStatisticsForm.ui \
 LocalizationForm.ui \
 MeshQualityCriteriaLogDialogForm.ui \
 MobileMeshForm.ui \
+NeptuneWallTransferForm.ui \
 NotebookForm.ui \
 NumericalParamEquationForm.ui \
 NumericalParamGlobalForm.ui \
@@ -223,7 +231,10 @@ BoundaryConditionsNeptune.ui \
 UsersControl.ui \
 OutputFields.ui \
 Solid.ui \
-Thermodynamics.ui \
+ThermodynamicsField.ui \
+ThermodynamicsInteraction.ui \
+ThermodynamicsSaturation.ui \
+NeptuneThermodynamics.ui \
 NumericalParamEquationNeptune.ui \
 BoundaryConditionsPressure.ui \
 BoundaryConditionsEnergy.ui \

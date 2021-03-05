@@ -115,7 +115,7 @@ def displayStaticPage(case, page_name, root, stbar, tree):
 
     elif page_name == tr("Volume conditions"):
         import code_saturne.Pages.VolumicNatureView as Page
-        thisPage = Page.VolumicNatureView(root, case)
+        thisPage = Page.VolumicNatureView(root, case, tree)
 
     elif page_name == tr("Calculation features"):
         import code_saturne.Pages.AnalysisFeaturesView as Page
@@ -149,13 +149,9 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.ElectricalView as Page
         thisPage = Page.ElectricalView(root, case, stbar)
 
-    elif page_name == tr("Conjugate heat transfer"):
-        import code_saturne.Pages.ConjugateHeatTransferView as Page
-        thisPage = Page.ConjugateHeatTransferView(root, case)
-
-    elif page_name == tr("Fluid properties"):
-        import code_saturne.Pages.FluidCharacteristicsView as Page
-        thisPage = Page.FluidCharacteristicsView(root, case)
+#    elif page_name == tr("Fluid properties"):
+#        import code_saturne.Pages.FluidCharacteristicsView as Page
+#        thisPage = Page.FluidCharacteristicsView(root, case)
 
     elif page_name == tr("Body forces"):
         import code_saturne.Pages.BodyForcesView as Page
@@ -193,10 +189,6 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.BoundaryConditionsViewNeptune as Page
         thisPage = Page.BoundaryConditionsView(root, case)
 
-    elif page_name == tr("Cathare Coupling"):
-        import code_saturne.Pages.CathareCouplingView as Page
-        thisPage = Page.CathareCouplingView(root, case)
-
     elif page_name == tr("Immersed Boundaries"):
         import code_saturne.Pages.ImmersedBoundariesViewNeptune as Page
         thisPage = Page.ImmersedBoundariesViewNeptune(root, case)
@@ -204,6 +196,10 @@ def displayStaticPage(case, page_name, root, stbar, tree):
     elif page_name == tr("Boundary conditions"):
         import code_saturne.Pages.BoundaryNatureView as Page
         thisPage = Page.BoundaryNatureView(root, case, tree)
+
+    elif page_name == tr("Coupling parameters"):
+        import code_saturne.Pages.CouplingParametersView as Page
+        thisPage = Page.CouplingParametersView(root, case)
 
     elif page_name == tr("Time averages"):
         import code_saturne.Pages.TimeAveragesView as Page
@@ -269,10 +265,6 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.PerformanceTuningView as Page
         thisPage = Page.PerformanceTuningView(root, case)
 
-    elif page_name == tr("Fluid structure interaction"):
-        import code_saturne.Pages.FluidStructureInteractionView as Page
-        thisPage = Page.FluidStructureInteractionView(root, case)
-
     elif page_name == tr("Atmospheric flows"):
         import code_saturne.Pages.AtmosphericFlowsView as Page
         thisPage = Page.AtmosphericFlowsView(root, case)
@@ -285,10 +277,6 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.MainFieldsView as Page
         thisPage = Page.MainFieldsView(root, case, tree)
 
-    elif page_name == tr("Thermodynamics"):
-        import code_saturne.Pages.ThermodynamicsView as Page
-        thisPage = Page.ThermodynamicsView(root, case)
-
     elif page_name == tr("Closure modeling"):
         import code_saturne.Pages.InterfacialForcesView as Page
         thisPage = Page.InterfacialForcesView(root, case, tree)
@@ -297,13 +285,9 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.InterfacialEnthalpyView as Page
         thisPage = Page.InterfacialEnthalpyView(root, case)
 
-    elif page_name == tr("Nucleate boiling parameters"):
-        import code_saturne.Pages.NucleateBoilingView as Page
-        thisPage = Page.NucleateBoilingView(root, case)
-
-    elif page_name == tr("Droplet condensation-evaporation"):
-        import code_saturne.Pages.DropletCondensationEvaporationView as Page
-        thisPage = Page.DropletCondensationEvaporationView(root, case)
+    elif page_name == tr("Wall transfer parameters"):
+        import code_saturne.Pages.NeptuneWallTransferView as Page
+        thisPage = Page.NeptuneWallTransferView(root, case)
 
     elif page_name == tr("Particles interactions"):
         import code_saturne.Pages.SolidView as Page

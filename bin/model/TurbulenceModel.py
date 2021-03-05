@@ -246,7 +246,7 @@ class TurbulenceModel(Variables, Model):
                 self.setNewProperty(self.node_turb, 'smagorinsky_constant^2')
             else:
                 self.__removeVariablesAndProperties([], 'smagorinsky_constant^2')
-            
+
             if self.node_lagr['model'] != "off":
                 lst = ('k_sgs', 'epsilon_sgs')
                 for v in lst:
@@ -281,6 +281,7 @@ class TurbulenceModel(Variables, Model):
             self.__removeVariablesAndProperties(lst, 'smagorinsky_constant^2')
 
         elif model_turb == 'Spalart-Allmaras':
+            lst = ('nu_tilda')
             self.setNewVariable(self.node_turb, 'nu_tilda', label='nu_tilda')
             self.setNewProperty(self.node_turb, 'turbulent_viscosity')
             self.__updateInletsForTurbulence()

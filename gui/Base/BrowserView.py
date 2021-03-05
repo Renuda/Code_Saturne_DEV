@@ -210,9 +210,9 @@ class TreeModel(QAbstractItemModel):
                 elif page_name == self.tr('Calculation features'):
                     img_path = ":/icons/22x22/calculation_features.png"
                     icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
-                elif page_name == self.tr('Fluid properties'):
-                    img_path = ":/icons/22x22/physical_properties.png"
-                    icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
+#                elif page_name == self.tr('Fluid properties'):
+#                    img_path = ":/icons/22x22/physical_properties.png"
+#                    icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
                 elif page_name == self.tr('Volume zones'):
                     img_path = ":/icons/22x22/volume_zones.png"
                     icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
@@ -472,10 +472,11 @@ class BrowserView(QWidget, Ui_BrowserForm):
 
     def _getSectionList(self):
 
+#              'Closure modeling', 'Fluid properties',
         sl = ['Calculation environment', 'Mesh', 'Calculation features',
-              'Closure modeling', 'Fluid properties',
+              'Closure modeling',
               'Particles and droplets tracking', 'Volume conditions',
-              'Boundary conditions', 'Additional BC models', 'Time settings',
+              'Boundary conditions', 'Coupling parameters', 'Time settings',
               'Numerical parameters',
               'Postprocessing', 'Performance settings']
 
@@ -491,27 +492,24 @@ class BrowserView(QWidget, Ui_BrowserForm):
             return ['Main fields', 'Deformable mesh', 'Turbulence models',
                     'Gas combustion', 'Thermal model', 'Body forces',
                     'Pulverized fuel combustion', 'Electrical models',
-                    'Conjugate heat transfer', 'Atmospheric flows',
+                    'Atmospheric flows',
                     'Species transport', 'Turbomachinery', 'Groundwater flows',
-                    'Fans', 'Non condensable gases', 'Thermodynamics']
+                    'Fans', 'Non condensable gases']
         elif section == 'Closure modeling':
             return ['Interfacial area',
                     'Interfacial enthalpy transfer',
-                    'Nucleate boiling parameters',
-                    'Droplet condensation-evaporation',
+                    'Wall transfer parameters',
                     'Particles interactions']
-        elif section == 'Fluid properties':
-            return []
+#        elif section == 'Fluid properties':
+#            return []
         elif section == 'Particles and droplets tracking':
             return ['Statistics']
         elif section == 'Volume conditions':
             return []
         elif section == "Boundary conditions":
             return []
-        elif section == 'Additional BC models':
-            return ['Particle boundary conditions',
-                    'Fluid structure interaction', 'Cathare Coupling',
-                    'Immersed Boundaries']
+        elif section == 'Coupling parameters':
+            return ['Immersed Boundaries']
         elif section == 'Time settings':
             return ['Start/Restart']
         elif section == 'Numerical parameters':
@@ -772,23 +770,21 @@ class BrowserView(QWidget, Ui_BrowserForm):
         self.setRowClose(self.tr('Groundwater flows'))
         self.setRowClose(self.tr('Fans'))
         self.setRowClose(self.tr('Non condensable gases'))
-        self.setRowClose(self.tr('Thermodynamics'))
         """
 
         self.setRowClose(self.tr('Closure modeling'))
         """
         self.setRowClose(self.tr('Interfacial area'))
         self.setRowClose(self.tr('Interfacial enthalpy transfer'))
-        self.setRowClose(self.tr('Nucleate boiling parameters'))
-        self.setRowClose(self.tr('Droplet condensation-evaporation'))
+        self.setRowClose(self.tr('Wall transfer parameters'))
         self.setRowClose(self.tr('Particles interactions'))
         """
 
-        self.setRowClose(self.tr('Fluid properties'))
-        """
-        self.setRowClose(self.tr('Fluid properties'))
-        self.setRowClose(self.tr('Body forces'))
-        """
+#        self.setRowClose(self.tr('Fluid properties'))
+#        """
+#        self.setRowClose(self.tr('Fluid properties'))
+#        self.setRowClose(self.tr('Body forces'))
+#        """
 
         self.setRowClose(self.tr('Particles and droplets tracking'))
         """
@@ -805,9 +801,6 @@ class BrowserView(QWidget, Ui_BrowserForm):
         """
         """
         self.setRowClose(self.tr('Boundary_conditions'))
-        self.setRowClose(self.tr('Particle boundary conditions'))
-        self.setRowClose(self.tr('Fluid structure interaction'))
-        self.setRowClose(self.tr('Cathare Coupling'))
         self.setRowClose(self.tr('Immersed Boundaries'))
         """
 
@@ -855,6 +848,7 @@ class BrowserView(QWidget, Ui_BrowserForm):
         m_elec = False
         m_atmo = False
         m_gwf = False
+        m_icm = False
 
         node_pm = case.xmlGetNode('thermophysical_models')
 
@@ -915,6 +909,16 @@ class BrowserView(QWidget, Ui_BrowserForm):
             if m_thermal > 0:
                 m_cht = True
 
+            if not m_icm:
+                node = node_pm.xmlGetChildNode("internal_coupling")
+                if node:
+                    node = node.xmlGetChildNode("solid_zones")
+                    if node:
+                        if len(node.xmlGetChildNodeList("zone")) > 0:
+                            m_icm = True
+                        else:
+                            m_icm = False
+
         node = case.xmlGetNode('lagrangian', 'model')
         if node and node['model'] != "off":
             m_lagr = True
@@ -923,11 +927,10 @@ class BrowserView(QWidget, Ui_BrowserForm):
 
         m_ncfd = {}
         m_ncfd['non_condens'] = False
-        m_ncfd['nucleate_boiling'] = False
-        m_ncfd['droplet_condens'] = False
         m_ncfd['particles_interactions'] = False
         m_ncfd['itf_area'] = False
         m_ncfd['itf_h_transfer'] = False
+        m_ncfd['wall_transfer'] = False
 
         ncfd_fields = 0
 
@@ -944,28 +947,23 @@ class BrowserView(QWidget, Ui_BrowserForm):
             from code_saturne.model.MainFieldsModel import MainFieldsModel
             from code_saturne.model.InterfacialForcesModel import InterfacialForcesModel
             predefined_flow = MainFieldsModel(case).getPredefinedFlow()
+            heat_mass_transfer = MainFieldsModel(case).getHeatMassTransferStatus()
 
             if (len(MainFieldsModel(case).getSolidFieldIdList()) > 0):
                 m_ncfd['particles_interactions'] = True
-            if (len(MainFieldsModel(case).getDispersedFieldList()) > 0
-                    or InterfacialForcesModel(case).getBubblesForLIMStatus() == 'on'):
-                m_ncfd['itf_area'] = True
+
+            m_ncfd['itf_area'] = True
+            m_ncfd['non_condens'] = True
+            m_ncfd["itf_h_transfer"] = {"on": True, "off": False}[heat_mass_transfer]
+            m_ncfd['wall_transfer'] = {"on": True, "off": False}[heat_mass_transfer]
 
             if predefined_flow == "free_surface":
-                m_ncfd['non_condens'] = True
-                m_ncfd['nucleate_boiling'] = True
-                m_ncfd['itf_h_transfer'] = True
-            elif predefined_flow == "boiling_flow":
-                m_ncfd['non_condens'] = True
-                m_ncfd['nucleate_boiling'] = True
-                m_ncfd['itf_h_transfer'] = True
-            elif predefined_flow == "droplet_flow":
-                m_ncfd['non_condens'] = True
-                m_ncfd['droplet_condens'] = True
-                m_ncfd['itf_h_transfer'] = True
+                m_ncfd['itf_area'] = False
             elif predefined_flow == "particles_flow":
                 m_ncfd['particles_interactions'] = True
-                m_ncfd['itf_h_transfer'] = True
+                m_ncfd['wall_transfer'] = False
+            elif predefined_flow == "None":
+                m_ncfd['particles_interactions'] = True
 
         is_ncfd = (p_module == 'neptune_cfd')
 
@@ -989,7 +987,6 @@ class BrowserView(QWidget, Ui_BrowserForm):
         self.setRowShow(self.tr('Gas combustion'), m_gas_comb)
         self.setRowShow(self.tr('Pulverized fuel combustion'), m_sf_comb)
         self.setRowShow(self.tr('Electrical models'), m_elec)
-        self.setRowShow(self.tr('Conjugate heat transfer'), m_cht)
         self.setRowShow(self.tr('Atmospheric flows'), m_atmo)
         self.setRowShow(self.tr('Species transport'))
         self.setRowShow(self.tr('Turbomachinery'), m_tbm)
@@ -997,20 +994,18 @@ class BrowserView(QWidget, Ui_BrowserForm):
         self.setRowShow(self.tr('Fans'), m_fans)
 
         self.setRowShow(self.tr('Non condensable gases'), m_ncfd['non_condens'])
-        self.setRowShow(self.tr('Thermodynamics'), is_ncfd)
 
         # Closure modeling
 
         self.setRowShow(self.tr('Closure modeling'), (ncfd_fields > 1))
         self.setRowShow(self.tr('Interfacial enthalpy transfer'), m_ncfd['itf_h_transfer'])
         self.setRowShow(self.tr('Interfacial area'), m_ncfd['itf_area'])
-        self.setRowShow(self.tr('Nucleate boiling parameters'), m_ncfd['nucleate_boiling'])
-        self.setRowShow(self.tr('Droplet condensation-evaporation'), m_ncfd['droplet_condens'])
+        self.setRowShow(self.tr('Wall transfer parameters'), m_ncfd['wall_transfer'])
         self.setRowShow(self.tr('Particles interactions'), m_ncfd['particles_interactions'])
 
         # Fluid properties
 
-        self.setRowShow(self.tr('Fluid properties'), (not (m_gwf or is_ncfd)))
+#        self.setRowShow(self.tr('Fluid properties'), (not (m_gwf or is_ncfd)))
 
         # Particles and droplets tracking
 
@@ -1027,13 +1022,10 @@ class BrowserView(QWidget, Ui_BrowserForm):
         # Boundary zones
 
         self.setRowShow(self.tr('Boundary conditions'))
-        self.setRowShow(self.tr('Particle boundary conditions'), m_lagr)
-        self.setRowShow(self.tr('Fluid structure interaction'), m_ale)
-        self.setRowShow(self.tr('Cathare Coupling'), is_ncfd)
         # Immersed boundaries is deactivated for the moment. Will be
         # reactivated following v6.1 once Page is updated in NCFD
         self.setRowShow(self.tr('Immersed Boundaries'), False)
-        self.setRowShow(self.tr("Additional BC models"), m_lagr or m_ale or is_ncfd or False)
+        self.setRowShow(self.tr("Coupling parameters"), m_lagr or m_ale or is_ncfd or m_cht or m_icm)
 
         # Time settings
 

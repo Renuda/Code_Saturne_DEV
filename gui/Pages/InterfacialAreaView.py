@@ -84,42 +84,46 @@ class InterfacialAreaView(QWidget, Ui_InterfacialArea):
         self.case.undoStopGlobal()
         self.mdl = InterfacialAreaModel(self.case)
 
+        dispersed_fields = self.mdl.getDispersedFieldList() + InterfacialForcesModel(self.case).getGLIMfields()
+
+        if dispersed_fields == []:
+            self.groupBoxField.hide()
+            self.groupBoxMinMaxDiameter.hide()
+            self.groupBoxModel.hide()
+            self.labelNoDispersedPhase.show()
+            self.mdl.remove()
+            return
+
         # Combo box models
         id_to_set = -1
         self.modelField = ComboModel(self.comboBoxField, 1, 1)
 
         # For consistency with the previous pages, the second phase of the
         # Large Interface Model is set before the dispersed fields
-        if InterfacialForcesModel(self.case).getBubblesForLIMStatus() == 'on':
-            id_to_set = 2
-            label = self.mdl.getLabel(id_to_set)
-            name = str(id_to_set)
-            self.modelField.addItem(self.tr(label), name)
-            self.modelField.setItem(str_model = name)
 
-        for fieldId in self.mdl.getDispersedFieldList() :
+        for fieldId in dispersed_fields:
             label = self.mdl.getLabel(fieldId)
             name = str(fieldId)
             self.modelField.addItem(self.tr(label), name)
 
-        if len(self.mdl.getDispersedFieldList()) > 0 and id_to_set == -1:
-            id_to_set = self.mdl.getDispersedFieldList()[0]
-            self.modelField.setItem(str_model = id_to_set)
+        if len(dispersed_fields) > 0 and id_to_set == -1:
+            id_to_set = dispersed_fields[0]
+            self.modelField.setItem(str_model=id_to_set)
 
         # case no field
         self.currentid = id_to_set
 
         self.modelModel = ComboModel(self.comboBoxModel, 2, 1)
-        self.modelModel.addItem(self.tr("constant"),"constant")
-        self.modelModel.addItem(self.tr("interfacial area transport"),"interfacial_area_transport")
+        self.modelModel.addItem(self.tr("constant"), "constant")
+        self.modelModel.addItem(self.tr("interfacial area transport"), "interfacial_area_transport")
 
         self.modelSourceTerm = ComboModel(self.comboBoxSourceTerm, 4, 1)
 
         self.modelSourceTerm.addItem(self.tr("No coalescence, no fragmentation"),"no_coalescence_no_fragmentation")
         self.modelSourceTerm.addItem(self.tr("Yao & Morel"),"wei_yao")
         self.modelSourceTerm.addItem(self.tr("Kamp & Colin"),"kamp_colin")
-        self.modelSourceTerm.addItem(self.tr("Ruyer & Seiler"),"ruyer_seiler")
-        self.modelSourceTerm.disableItem(2)
+        self.modelSourceTerm.addItem(self.tr("Ruyer & Seiler"), "ruyer_seiler")
+        self.modelSourceTerm.disableItem(2)  # Why ?
 
         # Validators
         validatorDefDiam = DoubleValidator(self.lineEditDefaultDiameter, min = 0.0)
@@ -196,7 +200,7 @@ class InterfacialAreaView(QWidget, Ui_InterfacialArea):
         """
         if self.lineEditMinDiameter.validator().state == QValidator.Acceptable:
             value = from_qvariant(var, float)
-            self.mdl.setMinDiameter(value)
+            self.mdl.setMinDiameter(self.currentid, value)
 
 
     @pyqtSlot(str)
@@ -205,13 +209,14 @@ class InterfacialAreaView(QWidget, Ui_InterfacialArea):
         """
         if self.lineEditMaxDiameter.validator().state == QValidator.Acceptable:
             value = from_qvariant(var, float)
-            self.mdl.setMaxDiameter(value)
+            self.mdl.setMaxDiameter(self.currentid, value)
 
 
     def initializeVariables(self, fieldId):
         """
         Initialize variables when a new fieldId is choosen
         """
+        self.labelNoDispersedPhase.hide()
         model = self.mdl.getAreaModel(fieldId)
         self.modelModel.setItem(str_model = model)
 
@@ -228,18 +233,22 @@ class InterfacialAreaView(QWidget, Ui_InterfacialArea):
 
             self.groupBoxMinMaxDiameter.show()
 
-            value = self.mdl.getMinDiameter()
+            value = self.mdl.getMinDiameter(self.currentid)
             self.lineEditMinDiameter.setText(str(value))
 
-            value = self.mdl.getMaxDiameter()
+            value = self.mdl.getMaxDiameter(self.currentid)
             self.lineEditMaxDiameter.setText(str(value))
 
             if MainFieldsModel(self.case).getFieldNature(fieldId) != 'gas' :
                 self.modelSourceTerm.disableItem(1)
                 self.modelSourceTerm.disableItem(2)
                 self.modelSourceTerm.disableItem(3)
-            else :
-                self.modelSourceTerm.enableItem(1)
-                self.modelSourceTerm.enableItem(2)
-                self.modelSourceTerm.enableItem(3)
-
+            else:
+                if MainFieldsModel(self.case).getPredefinedFlow() == "multiregime":
+                    self.modelSourceTerm.disableItem(1)
+                    self.modelSourceTerm.disableItem(2)
+                    self.modelSourceTerm.enableItem(3)
+                else:
+                    self.modelSourceTerm.enableItem(1)
+                    self.modelSourceTerm.enableItem(2)
+                    self.modelSourceTerm.enableItem(3)

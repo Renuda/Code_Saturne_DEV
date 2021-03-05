@@ -61,6 +61,8 @@ from code_saturne.model.DefineUserScalarsModel import DefineUserScalarsModel
 from code_saturne.model.AtmosphericFlowsModel import AtmosphericFlowsModel
 from code_saturne.model.GroundwaterModel import GroundwaterModel
 from code_saturne.model.MainFieldsModel import MainFieldsModel
+from code_saturne.model.NeptuneWallTransferModel import NeptuneWallTransferModel
+from code_saturne.model.InterfacialEnthalpyModel import InterfacialEnthalpyModel
 from code_saturne.model.HgnModel import HgnModel
 
 from code_saturne.model.LagrangianModel import LagrangianModel
@@ -68,9 +70,9 @@ from code_saturne.model.TurboMachineryModel import TurboMachineryModel
 from code_saturne.model.MobileMeshModel import MobileMeshModel
 from code_saturne.model.FansModel import FansStatus
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # log config
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 logging.basicConfig()
 log = logging.getLogger("AnalysisFeaturesView")
@@ -159,17 +161,18 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
                               'merkle_model')
 
         self.modelNeptuneCFD.addItem(self.tr("User-defined"), "None")
-        self.modelNeptuneCFD.addItem(self.tr("Thermal free surface flow"), "free_surface")
-        self.modelNeptuneCFD.addItem(self.tr("Boiling flow"), "boiling_flow")
+        self.modelNeptuneCFD.addItem(self.tr("Stratified flow"), "free_surface")
+        self.modelNeptuneCFD.addItem(self.tr("Bubbly flow"), "boiling_flow")
         self.modelNeptuneCFD.addItem(self.tr("Droplet-laden flow"), "droplet_flow")
         self.modelNeptuneCFD.addItem(self.tr("Particle-laden flow"), "particles_flow")
+        self.modelNeptuneCFD.addItem(self.tr("Multiregime liquid/gas flow"), "multiregime")
 
         # Lagrangian combobox
 
-        self.modelLagrangian = QtPage.ComboModel(self.comboBoxLagrangian,4,1)
-        self.modelLagrangian.addItem(self.tr("off"),                 "off")
-        self.modelLagrangian.addItem(self.tr("One-way coupling"),    "one_way")
-        self.modelLagrangian.addItem(self.tr("Two-way coupling"),    "two_way")
+        self.modelLagrangian = QtPage.ComboModel(self.comboBoxLagrangian, 4, 1)
+        self.modelLagrangian.addItem(self.tr("off"), "off")
+        self.modelLagrangian.addItem(self.tr("One-way coupling"), "one_way")
+        self.modelLagrangian.addItem(self.tr("Two-way coupling"), "two_way")
         self.modelLagrangian.addItem(self.tr("Frozen carrier flow"), "frozen")
 
         # Turbomachinery combobox
@@ -194,7 +197,8 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
         self.comboBoxSinglePhase.activated[str].connect(self.slotSinglePhase)
         self.comboBoxGroundwater.activated[str].connect(self.slotGroundwater)
         self.comboBoxHgn.activated[str].connect(self.slotHgn)
-        self.comboBoxNeptuneCFD.activated[str].connect(self.slotNeptuneCFD)
+        self.comboBoxNeptuneCFD.currentTextChanged[str].connect(self.slotNeptuneCFD)
+        self.checkBoxNeptuneHeatMass.stateChanged.connect(self.slotNeptuneHeatMass)
         self.checkBoxALE.stateChanged.connect(self.slotALE)
         self.checkBoxFans.stateChanged.connect(self.slotFans)
 
@@ -240,11 +244,6 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
 
         self.init_common()
 
-        if self.gas.getUniformVariableThermodynamicalPressure() == 'on':
-            self.checkBoxPther.setChecked(True)
-        else:
-            self.checkBoxPther.setChecked(False)
-
         # Update the Tree files and folders
 
         self.browser.configureTree(self.case)
@@ -275,8 +274,8 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
         self.comboBoxHgn.hide()
         self.comboBoxNeptuneCFD.hide()
 
+        self.checkBoxNeptuneHeatMass.hide()
         self.checkBoxPther.hide()
-
 
     def __stringModelFromCombo(self, name):
         """
@@ -416,6 +415,13 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
         if self.checkPrev == 'SinglePhase':
             self.radioButtonSinglePhase.setChecked(True)
 
+        # Thermodynamic pressure
+
+        if self.gas.getUniformVariableThermodynamicalPressure() == 'on':
+            self.checkBoxPther.setChecked(True)
+        else:
+            self.checkBoxPther.setChecked(False)
+
         # Lagrangian model features
 
         self.lagr  = LagrangianModel(self.case)
@@ -460,11 +466,15 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
         self.__hideComboBox()
 
         self.comboBoxNeptuneCFD.show()
+        self.checkBoxNeptuneHeatMass.show()
 
         self.nept = MainFieldsModel(self.case)
 
         predefined_flow = self.nept.getPredefinedFlow()
         self.modelNeptuneCFD.setItem(str_model=predefined_flow)
+        # Force refresh
+        text = self.modelNeptuneCFD.dicoM2V[predefined_flow]
+        self.comboBoxNeptuneCFD.currentTextChanged[str].emit(text)
 
         self.radioButtonNeptuneCFD.setChecked(True)
 
@@ -474,7 +484,7 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
 
         # Lagrangian model features
 
-        self.lagr  = LagrangianModel(self.case)
+        self.lagr = LagrangianModel(self.case)
 
         lagr = self.lagr.getLagrangianModel()
         self.modelLagrangian.setItem(str_model=lagr)
@@ -718,14 +728,47 @@ class AnalysisFeaturesView(QWidget, Ui_AnalysisFeaturesForm):
         """
         Called when the comboBoxNeptuneCFD changed
         """
+        model_p = self.nept.getPredefinedFlow()
         model = self.__stringModelFromCombo('NeptuneCFD')
-        self.nept.setPredefinedFlow(model)
+        if model != model_p:
+            # If new choice is different from current choice,
+            # we ask for confirmation, then reset default modeling
+            # choices of NCFD.
+            name   = self.modelNeptuneCFD.dicoM2V[model]
+            name_p = self.modelNeptuneCFD.dicoM2V[model_p]
+            msg = 'You are switching from "%s" to "%s".\n' % (name_p, name)
+            msg+= "This will reset your multiphase modeling choices.\n"
+            msg+= "Do you wish to continue ?"
+            choice = QMessageBox.question(self, 'Warning', msg,
+                                          QMessageBox.Yes | QMessageBox.No)
+            if choice == QMessageBox.Yes:
+                self.nept.setPredefinedFlow(model)
+            else:
+                self.modelNeptuneCFD.setItem(str_model=model_p)
+                return
 
         self.checkBoxALE.hide()
         self.checkBoxFans.hide()
 
+        heat_mass_transfer = self.nept.getHeatMassTransferStatus()
+        check_state = {"on": Qt.Checked, "off": Qt.Unchecked}[heat_mass_transfer]
+        self.checkBoxNeptuneHeatMass.setCheckState(check_state)
+
         self.browser.configureTree(self.case)
 
+    @pyqtSlot(int)
+    def slotNeptuneHeatMass(self, val):
+        predefined_flow = self.nept.getPredefinedFlow()
+        if val == 0:
+            self.nept.setHeatMassTransferStatus("off")
+            NeptuneWallTransferModel(self.case).clear()
+            InterfacialEnthalpyModel(self.case).deleteLiquidVaporEnthalpyTransfer()
+        else:
+            self.nept.setHeatMassTransferStatus("on")
+            for field_id in self.nept.getFieldIdList():
+                self.nept.setEnergyResolution(field_id, "on")
+                self.nept.setEnergyModel(field_id, "total_enthalpy")
+        self.browser.configureTree(self.case)
 
     @pyqtSlot(str)
     def slotReactiveFlows(self, text):

@@ -94,7 +94,7 @@ class Zone(object):
         else:
             self._localization = self.defaultValues()['localization']
         if nature:
-            if typeZone == 'VolumicZone' and type(nature) == bytes:
+            if typeZone == 'VolumicZone' and type(nature) == str:
                 self._nature = self.defaultValues()['nature'].copy()
                 self._nature[nature] = "on"
             else:
@@ -237,17 +237,22 @@ class VolumicZone(Zone):
         self.case = case
 
         self._natureDict = {}
-        self._natureDict['initialization']       = self.tr("Initialization")
+        self._natureDict['initialization'] = self.tr("Initialization")
+        self._natureDict['physical_properties'] = self.tr("Physical properties")
+        self._natureList.append('physical_properties')
 
         if self.case.module_name() == 'code_saturne':
             from code_saturne.model.GroundwaterModel import GroundwaterModel
             if GroundwaterModel(self.case).getGroundwaterModel() != "groundwater":
+                self._natureList.append('solid')
+                self._natureDict['solid'] = self.tr("Solid")
+
                 self._natureList.append('head_losses')
                 self._natureList.append('porosity')
                 self._natureList.append('momentum_source_term')
 
-                self._natureDict['head_losses']          = self.tr("Head losses")
-                self._natureDict['porosity']             = self.tr("Porosity")
+                self._natureDict['head_losses'] = self.tr("Head losses")
+                self._natureDict['porosity'] = self.tr("Porosity")
                 self._natureDict['momentum_source_term'] = self.tr("Momentum source\n term")
             else:
                 self._natureList.append('momentum_source_term')
@@ -266,6 +271,7 @@ class VolumicZone(Zone):
                 if node_darcy['model'] != 'off':
                     self._natureList.append('groundwater_law')
                     self._natureDict['groundwater_law']  = self.tr("Groundwater\n volumic law")
+
         elif self.case.module_name() == 'neptune_cfd':
             self._natureList.append('head_losses')
             self._natureList.append('porosity')
@@ -299,6 +305,8 @@ class VolumicZone(Zone):
         dico['nature']['thermal_source_term'] = "off"
         dico['nature']['scalar_source_term'] = "off"
         dico['nature']['groundwater_law'] = "off"
+        dico['nature']['physical_properties'] = "off"
+        dico['nature']['solid'] = "off"
         return dico
 
     def isNatureActivated(self, text):
@@ -737,7 +745,7 @@ class VolumicLocalizationModel(LocalizationModel):
         # update data in the entire case
         lst = self.__natureOptions
         lst.append('initial_value')
-        lst.append('head_loss')
+        lst.append('head_losses')
         for tag in lst:
             for n in self.case.xmlGetNodeList(tag, zone=old_zone.getCodeNumber()):
                 n['zone'] = newCodeNumber

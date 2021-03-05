@@ -91,6 +91,16 @@ class VolumicConditionsView(QWidget, Ui_VolumicConditionsForm):
         else:
             self.neptuneInitializationWidget.hide()
             self.saturneInitializationWidget.setup(self.case, self.zone_name)
+
+        if case.xmlRootNode().tagName == "NEPTUNE_CFD_GUI":
+            self.saturnePropertiesWidget.hide()
+            self.neptunePropertiesWidget.show()
+            self.neptunePropertiesWidget.setup(self.case, self.zone_name)
+        else:
+            self.saturnePropertiesWidget.show()
+            self.neptunePropertiesWidget.hide()
+            self.saturnePropertiesWidget.setup(self.case, self.zone_name)
+
         self.porosityPage.setup(self.case, self.zone_name)
         self.headLossesPage.setup(self.case, self.zone_name)
         if case.xmlRootNode().tagName == "NEPTUNE_CFD_GUI":
@@ -102,15 +112,35 @@ class VolumicConditionsView(QWidget, Ui_VolumicConditionsForm):
         self.groundwaterLawPage.setup(self.case, self.zone_name)
 
         if not (self.zone.isNatureActivated("groundwater_law")):
-            self.tabWidget.removeTab(4)
+            for i in range(self.tabWidget.count()):
+                if self.tabWidget.tabText(i) == "Groundwater laws":
+                    self.tabWidget.removeTab(i)
+                    break
         if not (self.zone.isNatureActivated("source_term")):
-            self.tabWidget.removeTab(3)
+            for i in range(self.tabWidget.count()):
+                if self.tabWidget.tabText(i) == "Source terms":
+                    self.tabWidget.removeTab(i)
+                    break
         if not (self.zone.isNatureActivated("head_losses")):
-            self.tabWidget.removeTab(2)
+            for i in range(self.tabWidget.count()):
+                if self.tabWidget.tabText(i) == "Head losses":
+                    self.tabWidget.removeTab(i)
+                    break
         if not (self.zone.isNatureActivated("porosity")):
-            self.tabWidget.removeTab(1)
+            for i in range(self.tabWidget.count()):
+                if self.tabWidget.tabText(i) == "Porosity":
+                    self.tabWidget.removeTab(i)
+                    break
+        if not (self.zone.isNatureActivated("physical_properties")):
+            for i in range(self.tabWidget.count()):
+                if self.tabWidget.tabText(i) == "Physical properties":
+                    self.tabWidget.removeTab(i)
+                    break
         if not (self.zone.isNatureActivated("initialization")):
-            self.tabWidget.removeTab(0)
+            for i in range(self.tabWidget.count()):
+                if self.tabWidget.tabText(i) == "Initialization":
+                    self.tabWidget.removeTab(i)
+                    break
 
 #-------------------------------------------------------------------------------
 # End

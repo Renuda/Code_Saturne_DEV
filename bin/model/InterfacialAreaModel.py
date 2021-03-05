@@ -30,6 +30,7 @@ from code_saturne.model.MainFieldsModel import *
 from code_saturne.model.InterfacialForcesModel import InterfacialForcesModel
 
 
+# TODO : try to include this model in "InterfaceForcesModel" directly ?
 class InterfacialAreaModel(MainFieldsModel, Variables, Model):
 
     """
@@ -56,17 +57,15 @@ class InterfacialAreaModel(MainFieldsModel, Variables, Model):
     def defaultValues(self):
         default = {}
 
-        default['diameter']        = 0.001
-        default['mindiam']         = 1.e-6
-        default['maxdiam']         = 0.1
-        default['coupling']        = "uncoupled"
-        default['areamodel']       = "constant"
-        default['sourcetermgas']   = "no_coalescence_no_fragmentation"
+        default['diameter'] = 0.001
+        default['mindiam'] = 1.e-6
+        default['maxdiam'] = 0.1
+        default['coupling'] = "uncoupled"
+        default['areamodel'] = "constant"
+        default['sourcetermgas'] = "no_coalescence_no_fragmentation"
         default['sourcetermsolid'] = "no_coalescence_no_fragmentation"
-
-        if InterfacialForcesModel(self.case).getBubblesForLIMStatus() == 'on':
-            default['areamodel']     = "interfacial_area_transport"
-            default['sourcetermgas'] = "ruyer_seiler"
+        default['areamodel'] = "interfacial_area_transport"
+        default['sourcetermgas'] = "ruyer_seiler"
 
         return default
 
@@ -229,52 +228,68 @@ class InterfacialAreaModel(MainFieldsModel, Variables, Model):
 
 
     @Variables.undoLocal
-    def setMinDiameter(self, value) :
+    def setMinDiameter(self, fieldId, value):
         """
         """
+        self.isInList(str(fieldId), self.getFieldIdList())
         self.isPositiveFloat(value)
 
-        self.XMLAreaDiam.xmlInitNode('min_diameter')
-        self.XMLAreaDiam.xmlSetData('min_diameter', value)
-
+        node = self.XMLAreaDiam.xmlGetNode('field', field_id=fieldId)
+        node.xmlInitNode('min_diameter')
+        node.xmlSetData('min_diameter', value)
 
     @Variables.noUndo
-    def getMinDiameter(self) :
+    def getMinDiameter(self, fieldId):
         """
         """
-        value = self.XMLAreaDiam.xmlGetDouble('min_diameter')
-        if value is None :
-            self.setMinDiameter(self.defaultValues()['mindiam'])
-            value = self.XMLAreaDiam.xmlGetDouble('min_diameter')
+        self.isInList(str(fieldId), self.getFieldIdList())
+        node = self.XMLAreaDiam.xmlGetNode('field', field_id=fieldId)
+        value = node.xmlGetDouble('min_diameter')
+        if value is None:
+            self.setMinDiameter(fieldId, self.defaultValues()['mindiam'])
+            node = self.XMLAreaDiam.xmlGetNode('field', field_id=fieldId)
+            value = node.xmlGetDouble('min_diameter')
         return value
-
 
     @Variables.undoLocal
-    def setMaxDiameter(self, value) :
+    def setMaxDiameter(self, fieldId, value):
         """
         """
+        self.isInList(str(fieldId), self.getFieldIdList())
         self.isPositiveFloat(value)
 
-        self.XMLAreaDiam.xmlInitNode('max_diameter')
-        self.XMLAreaDiam.xmlSetData('max_diameter', value)
-
+        node = self.XMLAreaDiam.xmlGetNode('field', field_id=fieldId)
+        node.xmlInitNode('max_diameter')
+        node.xmlSetData('max_diameter', value)
 
     @Variables.noUndo
-    def getMaxDiameter(self) :
+    def getMaxDiameter(self, fieldId):
         """
         """
-        value = self.XMLAreaDiam.xmlGetDouble('max_diameter')
-        if value is None :
-            self.setMaxDiameter(self.defaultValues()['maxdiam'])
-            value = self.XMLAreaDiam.xmlGetDouble('max_diameter')
+        self.isInList(str(fieldId), self.getFieldIdList())
+        node = self.XMLAreaDiam.xmlGetNode('field', field_id=fieldId)
+        value = node.xmlGetDouble('max_diameter')
+        if value is None:
+            self.setMaxDiameter(fieldId, self.defaultValues()['maxdiam'])
+            node = self.XMLAreaDiam.xmlGetNode('field', field_id=fieldId)
+            value = node.xmlGetDouble('max_diameter')
         return value
 
-#-------------------------------------------------------------------------------
+    def remove(self):
+        self.XMLAreaDiam.xmlRemoveChildren()
+        variables_model = Variables(self.case)
+        for fieldId in self.getFieldIdList():
+            variables_model.removeVariableProperty("variable", self.XMLNodeVariable, fieldId, "Xd")
+            variables_model.removeVariableProperty("variable", self.XMLNodeVariable, fieldId, "X2")
+
+
+# -------------------------------------------------------------------------------
 # DefineUsersScalars test case
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 class InterfacialAreaTestCase(ModelTest):
     """
     """
+
     def checkInterfacialAreaInstantiation(self):
         """Check whether the InterfacialAreaModel class could be instantiated"""
         model = None
@@ -354,9 +369,9 @@ class InterfacialAreaTestCase(ModelTest):
         """Check whether the InterfacialAreaModel class could set and get MinMaxDiameter"""
         MainFieldsModel(self.case).addDefinedField('1', 'field1', 'continuous', 'gas', 'on', 'on', 'off', 1)
         mdl = InterfacialAreaModel(self.case)
-        mdl.setAreaModel('1','interfacial_area_transport')
-        mdl.setMaxDiameter(4.5)
-        mdl.setMinDiameter(8.6)
+        mdl.setAreaModel('1', 'interfacial_area_transport')
+        mdl.setMaxDiameter("1", 4.5)
+        mdl.setMinDiameter("1", 8.6)
         doc = '''<interfacial_area_diameter>
                          <field field_id="1" model="interfacial_area_transport"/>
                          <max_diameter>
@@ -366,11 +381,11 @@ class InterfacialAreaTestCase(ModelTest):
                                  8.6
                          </min_diameter>
                  </interfacial_area_diameter>'''
-        assert mdl.XMLAreaDiam == self.xmlNodeFromString(doc),\
+        assert mdl.XMLAreaDiam == self.xmlNodeFromString(doc), \
             'Could not set MinMaxDiameter'
-        assert mdl.getMaxDiameter() == 4.5,\
+        assert mdl.getMaxDiameter("1") == 4.5, \
             'Could not get MaxDiameter'
-        assert mdl.getMinDiameter() == 8.6,\
+        assert mdl.getMinDiameter("1") == 8.6, \
             'Could not get MinDiameter'
 
 
