@@ -50,7 +50,6 @@ use ppppar
 use ppthch
 use ppincl
 use atincl
-use lagran
 use mesh
 use atchem
 use sshaerosol
@@ -569,7 +568,6 @@ use atincl
 use mesh
 use atchem
 use sshaerosol
-use lagran
 use field
 use cs_c_bindings
 

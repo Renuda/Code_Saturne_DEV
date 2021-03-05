@@ -60,14 +60,13 @@
 !> \param[in]     smacel        value of variables associated to the
 !>                               mass source
 !>                               for ivar = ipr, smacel = mass flux
-!> \param[out]    gradv         the computed velocity gradients
 !______________________________________________________________________________!
 
 subroutine visdyn &
  ( nvar   , nscal  , ncepdp , ncesmp ,                            &
    icepdc , icetsm , itypsm ,                                     &
    dt     ,                                                       &
-   ckupdc , smacel, gradv )
+   ckupdc , smacel )
 
 !===============================================================================
 ! Module files
@@ -100,7 +99,6 @@ integer          icetsm(ncesmp), itypsm(ncesmp,nvar)
 
 double precision dt(ncelet)
 double precision ckupdc(6,ncepdp), smacel(ncesmp,nvar)
-double precision, intent(inout) :: gradv(3,3,ncelet)
 
 ! Local variables
 
@@ -122,7 +120,7 @@ double precision, allocatable, dimension(:) :: w4, w5, w6
 double precision, allocatable, dimension(:) :: w7, w8, w9
 double precision, allocatable, dimension(:) :: w10, w0
 double precision, allocatable, dimension(:,:) :: xmij, w61, w62
-double precision, dimension(:,:,:), allocatable :: gradvf
+double precision, dimension(:,:,:), allocatable :: gradv, gradvf
 double precision, dimension(:,:), pointer :: coefau
 double precision, dimension(:,:,:), pointer :: coefbu
 double precision, dimension(:), pointer :: crom
@@ -169,7 +167,7 @@ allocate(xmij(6,ncelet))
 !===============================================================================
 
 ! Allocate temporary arrays for gradients calculation
-allocate(gradvf(3,3,ncelet))
+allocate(gradv(3,3,ncelet), gradvf(3,3,ncelet))
 
 inc = 1
 iprev = 0
@@ -224,7 +222,7 @@ do iel = 1, ncel
 enddo
 
 ! Free memory
-deallocate(gradvf)
+deallocate(gradv, gradvf)
 
 !     Here XMIJ contains Sij
 !         VISCT contains ||S||
@@ -401,7 +399,7 @@ do iel = 1, ncel
 enddo
 
 !===============================================================================
-! 3.  Calculation of (dynamic) viscosity
+! 3.  Calculation of (dynamic) velocity
 !===============================================================================
 
 ! Clipping in (mu + mu_t)>0 in phyvar
