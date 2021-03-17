@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -287,7 +287,6 @@ cs_user_lagr_model(void)
 
   /*! [coal_fouling_example] */
 
-
   /*! [dispersed_phases] */
 
   /* Calculation features for the dispersed phases
@@ -329,32 +328,33 @@ cs_user_lagr_model(void)
        * useful only if ISTTIO = 1.
        * the min value for NSTITS is 1 */
 
-    cs_glob_lagr_source_terms->nstits   = 1;
+    cs_glob_lagr_source_terms->nstits = 1;
 
-    /* two-way coupling for dynamic (velocities and turbulent scalars)   */
-    /* (default off: 0 ; on: 1)  */
+    /* two-way coupling for dynamic (velocities and turbulent scalars) */
+    /* (default off: 0; on: 1)  */
     /* (useful if ICCVFG = 0)    */
 
-    cs_glob_lagr_source_terms->ltsdyn   = 0;
+    cs_glob_lagr_source_terms->ltsdyn = 0;
 
-    /* two-way coupling for mass (if physical_model = CS_LAGR_PHYS_HEAT and impvar = 1)     */
-    /* (default off: 0 ; on: 1)  */
+    /* two-way coupling for mass,
+       (if physical_model = CS_LAGR_PHYS_HEAT and impvar = 1)
+       (default off: 0; on: 1) */
 
     if (   cs_glob_lagr_model->physical_model == CS_LAGR_PHYS_HEAT
         && (   cs_glob_lagr_specific_physics->impvar == 1
             || cs_glob_lagr_specific_physics->idpvar == 1))
-      cs_glob_lagr_source_terms->ltsmas     = 0;
+      cs_glob_lagr_source_terms->ltsmas = 0;
 
-    /* two-way coupling for thermal scalar */
-    /* (if physical_model = CS_LAGR_PHYS_HEAT and impvar = 1,
-     *  or physical_model = CS_LAGR_PHYS_COAL) */
-    /* or for coal variables (if physical_model = CS_LAGR_PHYS_COAL)    */
-    /* (default off: 0 ; on: 1)  */
+    /* two-way coupling for thermal scalar
+       (if physical_model = CS_LAGR_PHYS_HEAT and impvar = 1,
+       or physical_model = CS_LAGR_PHYS_COAL)
+       or for coal variables (if physical_model = CS_LAGR_PHYS_COAL)
+       (default off: 0; on: 1) */
 
     if (   (   cs_glob_lagr_model->physical_model == CS_LAGR_PHYS_HEAT
             && cs_glob_lagr_specific_physics->itpvar == 1)
         || cs_glob_lagr_model->physical_model == CS_LAGR_PHYS_COAL)
-      cs_glob_lagr_source_terms->ltsthe     = 0;
+      cs_glob_lagr_source_terms->ltsthe = 0;
 
   }
 
@@ -435,42 +435,17 @@ cs_user_lagr_model(void)
   /* Options concerning the numerical treatment of the dispersed phase
    * ================================================================= */
 
-  /* Integration order of the stochastic differential equations   */
-  /* (default 2; acceptable values 1 or 2)    */
+  /* Integration order of the stochastic differential equations */
 
   cs_glob_lagr_time_scheme->t_order = 1;
 
   /* Options concerning the treatment of the dispersed phase
    * ======================================================= */
 
-  /*  Caution: In this version, the turbulent dispersion works only if
-               the continuous phase is calculated with a k-eps or
-               a Rij-eps model
-
-      Activation of the turbulent dispersion
-      (default on: 1 ; off: 0) */
-
-  cs_glob_lagr_model->idistu = 1;
-
-  /* Turbulent dispersion imposed to the fluid one.
-
-     If activated, then particle turbulent dispersion is
-     equal to the fluid-particle one. The crossing-trajectory effects
-     are suppressed ; it is then a case of turbulent diffusion. If the
-     simulated particle density is equal to the fluid density, then
-     we are simulating the displacement of fluid particles.
-     (default off: 0 ; on: 1) */
-
-  cs_glob_lagr_model->idiffl = 0;
-
-  /* modcpl :
-     A value of 0 sets the assumption that we have regular particles.
-     In this case idistu=1 and diffl=0 automatically.
+  /* A value of 1 sets the assumption that we have regular particles.
      Since the turbulent dispersion model uses volume statistics,
-     idstnt must also be 1.
      When modcpl=0 then the particles are assumed to be fluid particles
-     and the turbulence dispersion model is disabled. Also, idistu=0
-     and idiffl=1 automatically. The default value is 1.*/
+     and the turbulence dispersion model is disabled. */
 
   cs_glob_lagr_model->modcpl = 1;
 
@@ -481,11 +456,10 @@ cs_user_lagr_model(void)
   /* Options concerning the treatment of specific forces
    * =================================================== */
 
-  /* idlvo = 0
-     = 1 dlvo deposition conditions are activated for the
-     wall with appropriate conditions idepfa (see cs_user_lag2.c) */
+  /* If dlvo = 1, DLVO deposition conditions are activated for the
+     wall with appropriate condition type \ref CS_LAGR_DEPO_DLVO. */
 
-  cs_glob_lagr_model->dlvo  = 0;
+  cs_glob_lagr_model->dlvo = 0;
 
   if (cs_glob_lagr_model->dlvo == 1) {
     /* Constants for the van der Waals forces
@@ -669,13 +643,13 @@ cs_user_lagr_model(void)
   cs_glob_lagr_model->precipitation = 0;
 
   /* Diameter of particles formed by precipitation */
-  cs_glob_lagr_precipitation_model->diameter  = 2e-06;
+  cs_glob_lagr_precipitation_model->diameter = 2e-06;
 
   /* Diameter of particles formed by precipitation */
-  cs_glob_lagr_precipitation_model->rho       = 5200.0;
+  cs_glob_lagr_precipitation_model->rho = 5200.0;
 
   /* Number of particle classes */
-  cs_glob_lagr_precipitation_model->nbrclas   = 2;
+  cs_glob_lagr_precipitation_model->nbrclas = 2;
 
   /*! [precipitation_disolution_model_activation] */
 

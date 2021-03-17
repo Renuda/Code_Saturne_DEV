@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -62,16 +62,18 @@ implicit none
 integer          f_id, n_moments
 integer          ii, jj, imom, iok, ikw
 integer          nbccou, flag
-integer          nscacp, iscal
+integer          nscacp, iscal, ivar
 integer          imrgrp
 integer          iscacp, kcpsyr, icpsyr
 integer          nfld, f_type
 integer          key_t_ext_id, icpext, kscmin, kscmax
 integer          iviext
+integer          kturt, turb_flux_model, turb_flux_model_type
 
 logical          is_set
 
 double precision relxsp, clvfmn, clvfmx, visls_0, visls_cmp
+double precision scminp
 
 character(len=80) :: name
 
@@ -85,6 +87,10 @@ iok = 0
 call field_get_key_id("syrthes_coupling", kcpsyr)
 
 call field_get_key_id("time_extrapolated", key_t_ext_id)
+
+call field_get_key_id("min_scalar_clipping", kscmin)
+call field_get_key_id("max_scalar_clipping", kscmax)
+call field_get_key_id('turbulent_flux_model', kturt)
 
 !===============================================================================
 ! 1. ENTREES SORTIES entsor
@@ -177,16 +183,6 @@ call indsui(isuite)
 if (isuit1.eq.-1) isuit1 = isuite
 
 ! ---> Schema en temps
-
-!   -- Flux de masse
-if (abs(thetfl+999.d0).gt.epzero) then
-  write(nfecra,1001) istmpf
-  iok = iok + 1
-elseif (istmpf.eq.0) then
-  thetfl = 0.d0
-elseif (istmpf.eq.2) then
-  thetfl = 0.5d0
-endif
 
 !    -- Proprietes physiques
 call field_get_key_int(iviscl, key_t_ext_id, iviext)
@@ -439,7 +435,10 @@ enddo
 !           a l'ordre 1 :
 !                  2  pour la pression
 !                  1  pour les autres variables
-!                  on initialise EPSILO a 1.D-8
+!                  on initialise EPSILO a 1.d-8
+!                     pour la pression
+!                  on initialise EPSILO a 1.d-5
+!                     pour les autres variables
 !                  on initialise EPSRSM a 10*EPSILO
 !           a l'ordre 2 :
 !                  5  pour la pression
@@ -470,9 +469,13 @@ if (ischtp.eq.2) then
     call field_set_key_struct_var_cal_opt(ivarfl(ii), vcopt)
   enddo
 endif
+
+! For the pressure, default solver precision 1e-8
+! because the mass conservation is up to this precision
 ii = ipr
 call field_get_key_struct_var_cal_opt(ivarfl(ii), vcopt)
 if (vcopt%nswrsm.eq.-1) vcopt%nswrsm = 2
+if (abs(vcopt%epsilo+1.d0).lt.epzero) vcopt%epsilo = 1.d-8
 call field_set_key_struct_var_cal_opt(ivarfl(ii), vcopt)
 
 do f_id = 0, nfld - 1
@@ -481,7 +484,7 @@ do f_id = 0, nfld - 1
   if (iand(f_type, FIELD_VARIABLE).eq.FIELD_VARIABLE) then
     call field_get_key_struct_var_cal_opt(f_id, vcopt)
     if (vcopt%nswrsm.eq.-1) vcopt%nswrsm = 1
-    if (abs(vcopt%epsilo+1.d0).lt.epzero) vcopt%epsilo = 1.d-8
+    if (abs(vcopt%epsilo+1.d0).lt.epzero) vcopt%epsilo = 1.d-5
     if (abs(vcopt%epsrsm+1.d0).lt.epzero) vcopt%epsrsm = 10.d0*vcopt%epsilo
     call field_set_key_struct_var_cal_opt(f_id, vcopt)
   endif
@@ -790,6 +793,11 @@ if (idtvar.lt.0) then
   arak = arak/max(vcopt%relaxv,epzero)
 endif
 
+! With a staggered approach no Rhie and Chow correction is needed
+if (staggered.eq.1) then
+  arak = 0.d0
+endif
+
 !===============================================================================
 ! 4. TABLEAUX DE cstphy
 !===============================================================================
@@ -800,6 +808,10 @@ endif
 
 cpow    = apow**(2.d0/(1.d0-bpow))
 dpow    = 1.d0/(1.d0+bpow)
+
+! Modified value of Cmu for V2f and Bl-v2k
+if (iturb.eq.50.or.iturb.eq.51) cmu = 0.22d0
+
 cmu025 = cmu**0.25d0
 
 if (idirsm.eq.0) then
@@ -839,12 +851,26 @@ endif
 !        0 pour les variances
 !      Les modifs adequates devront etre ajoutees pour les physiques
 !        particulieres
+!      If the user gives a value we put iclcfl to 2.
 
 do iscal = 1, nscal
   if (iscavr(iscal).gt.0) then
-    if (iclvfl(iscal).eq.-1) then
+
+    ! Get the min clipping
+    call field_get_key_double(ivarfl(isca(iscal)), kscmin, scminp)
+    ! If modified put 2
+    if (iclvfl(iscal).eq.-1 .and. abs(scminp+grand).ge.epzero) then
+      iclvfl(iscal) = 2
+
+    else if (iclvfl(iscal).eq.-1) then
       iclvfl(iscal) = 0
     endif
+
+    ! Min for variances is 0 or greater
+    call field_get_key_double(ivarfl(isca(iscal)), kscmin, scminp)
+    ! set min clipping to 0
+    scminp = max(0.d0, scminp)
+    call field_set_key_double(ivarfl(isca(iscal)), kscmin, scminp)
   endif
 enddo
 
@@ -907,18 +933,22 @@ endif
 ! Turbulent fluxes constant for GGDH, AFM and DFM
 if (nscal.gt.0) then
   do iscal = 1, nscal
+
+    call field_get_key_int(ivarfl(isca(iscal)), kturt, turb_flux_model)
+    turb_flux_model_type = turb_flux_model / 10
+
     ! AFM and GGDH on the scalar
-    if (ityturt(iscal).eq.1.or.ityturt(iscal).eq.2) then
+    if (turb_flux_model_type.eq.1.or.turb_flux_model_type.eq.2) then
       call field_get_key_struct_var_cal_opt(ivarfl(isca(iscal)), vcopt)
       vcopt%idften = ANISOTROPIC_RIGHT_DIFFUSION
       ctheta(iscal) = cthafm
       call field_set_key_struct_var_cal_opt(ivarfl(isca(iscal)), vcopt)
     ! DFM on the scalar
-    elseif (ityturt(iscal).eq.3) then
+    elseif (turb_flux_model_type.eq.3) then
       call field_get_key_struct_var_cal_opt(ivarfl(isca(iscal)), vcopt)
       vcopt%idifft = 0
       vcopt%idften = ISOTROPIC_DIFFUSION
-      if (iturt(iscal).eq.31) then
+      if (turb_flux_model.eq.31) then
         ctheta(iscal) = cthebdfm
         c2trit = 0.3d0
       else
@@ -942,10 +972,24 @@ if (nscal.gt.0) then
   enddo
 endif
 
+! harmonic face viscosity interpolation
+if (imvisf.eq.1) then
+  do ivar = 1, nvar
+    call field_get_key_struct_var_cal_opt(ivarfl(ivar), vcopt)
+    vcopt%imvisf = 1
+    call field_set_key_struct_var_cal_opt(ivarfl(ivar), vcopt)
+  enddo
+endif
+
 ! VoF model enabled
 if (ivofmt.gt.0) then
   ro0    = rho2
   viscl0 = mu2
+
+  ! VOF algorithm: continuity of the flux across internal faces
+  call field_get_key_struct_var_cal_opt(ivarfl(ipr), vcopt)
+  vcopt%imvisf = 1
+  call field_set_key_struct_var_cal_opt(ivarfl(ipr), vcopt)
 endif
 
 ! Anisotropic diffusion/permeability for Darcy module
@@ -971,9 +1015,6 @@ if (ippmod(idarcy).eq.1) then
     ctheta(iscal) = 1.d0
   enddo
 
-  ! harmonic face viscosity interpolation
-  imvisf = 1
-
   ! reference values for pressure and density
   p0 = 0.d0
   ro0 = 1.d0
@@ -986,6 +1027,19 @@ if (ippmod(idarcy).eq.1) then
   endif
 
 endif
+
+! Set iswdyn to 2 by default if not modified for pure diffusion equations
+do f_id = 0, nfld - 1
+  call field_get_type(f_id, f_type)
+  ! Is the field of type FIELD_VARIABLE?
+  if (iand(f_type, FIELD_VARIABLE).eq.FIELD_VARIABLE) then
+    call field_get_key_struct_var_cal_opt(f_id, vcopt)
+    if (vcopt%iswdyn.eq.-1.and. vcopt%iconv.eq.0) then
+      vcopt%iswdyn = 2
+      call field_set_key_struct_var_cal_opt(f_id, vcopt)
+    endif
+  endif
+enddo
 
 !===============================================================================
 ! 5. ELEMENTS DE albase
@@ -1025,8 +1079,6 @@ endif
 !===============================================================================
 
 if (ivofmt.gt.0) then
-  call field_get_key_id("min_scalar_clipping", kscmin)
-  call field_get_key_id("max_scalar_clipping", kscmax)
   call field_get_key_double(ivarfl(ivolf2), kscmin, clvfmn)
   call field_get_key_double(ivarfl(ivolf2), kscmax, clvfmx)
 

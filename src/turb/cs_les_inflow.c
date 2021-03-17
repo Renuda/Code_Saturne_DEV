@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -668,10 +668,9 @@ void CS_PROCF(synthe, SYNTHE)
       }
     }
 
-    else if (inlet->type == CS_INFLOW_RANDOM || inlet->type == CS_INFLOW_BATTEN){
-      cs_les_rescale_fluctuations(n_elts,
-                                  rij_l,
-                                  fluctuations);
+    else if (   inlet->type == CS_INFLOW_RANDOM
+             || inlet->type == CS_INFLOW_BATTEN) {
+      cs_les_rescale_fluctuations(n_elts, rij_l, fluctuations);
     }
 
     BFT_FREE(rij_l);

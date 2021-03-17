@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -48,6 +48,7 @@
 #include "cs_matrix_util.h"
 #include "cs_multigrid.h"
 #include "cs_multigrid_smoother.h"
+#include "cs_param_sles.h"
 #include "cs_sles_default.h"
 #include "cs_sles.h"
 #include "cs_sles_it.h"
@@ -56,9 +57,6 @@
 #if defined(HAVE_AMGX)
 #include "cs_sles_amgx.h"
 #endif
-
-// Avoid extra warnings by not including this by default...
-// #include "cs_sles_petsc.h"
 
 /*----------------------------------------------------------------------------*/
 

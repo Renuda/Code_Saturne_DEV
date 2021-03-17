@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -86,9 +86,15 @@ cs_user_radiative_transfer_parameters(void)
 
   cs_glob_rad_transfer_params->restart = (cs_restart_present()) ? 1 : 0;
 
-  /* period of the radiation module */
+  /* Update period of the radiation module */
 
-  cs_glob_rad_transfer_params->nfreqr = 1;
+  cs_time_control_init_by_time_step
+    (&( cs_glob_rad_transfer_params->time_control),
+     - 1,     /* nt_start */
+     -1,      /* nt_end */
+     5,       /* interval */
+     true,    /* at start */
+     false);  /* at end */
 
   /* Quadrature Sn (n(n+2) directions)
 

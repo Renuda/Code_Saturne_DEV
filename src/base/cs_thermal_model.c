@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -117,6 +117,7 @@ BEGIN_C_DECLS
         case of the compressible module, \ref iscalt does not correspond to
         the temperature nor enthalpy but to the total energy}.
 
+        \deprecated
         This should only be used to set Fortran mappings. In C, use of
         \ref cs_thermal_model_field is recommended instead.
 
@@ -278,10 +279,12 @@ cs_thermal_model_log_setup(void)
                 _("    itpscl:    %d (%s)\n"),
                 itpscl, _(itpscl_value_str[itpscl]));
 
-  cs_log_printf
-    (CS_LOG_SETUP,
-     _("    iscalt:    %5d (thermal scalar number)\n"),
-     cs_glob_thermal_model->iscalt);
+  cs_field_t *tf = cs_thermal_model_field();
+  if (tf != NULL)
+    cs_log_printf
+      (CS_LOG_SETUP,
+       _("    Thermal variable solved: %s (field id %d)\n"),
+       tf->name, tf->id);
 }
 
 /*----------------------------------------------------------------------------*/

@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -48,7 +48,6 @@
 #include "cs_cdo_bc.h"
 #include "cs_cdo_diffusion.h"
 #include "cs_cdo_local.h"
-#include "cs_cdo_time.h"
 #include "cs_cdovb_priv.h"
 #include "cs_equation_bc.h"
 #include "cs_equation_common.h"
@@ -1573,7 +1572,7 @@ cs_cdovb_scaleq_solve_steady_state(bool                        cur2prev,
 
       /* Compute a cellwise norm of the RHS for the normalization of the
          residual during the resolution of the linear system */
-      rhs_norm += _svb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _svb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                             cm, csys);
 
       /* Apply boundary conditions (those which are weakly enforced) */
@@ -1616,15 +1615,14 @@ cs_cdovb_scaleq_solve_steady_state(bool                        cur2prev,
   /* ======================= */
 
   /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      eqc->n_dofs,
                                      rhs,
                                      &rhs_norm);
 
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(eqc->n_dofs,
-                                  eqp->name,
                                   eqp->sles_param,
                                   matrix,
                                   rs,
@@ -1848,7 +1846,7 @@ cs_cdovb_scaleq_solve_implicit(bool                        cur2prev,
 
       /* Compute a norm of the RHS for the normalization of the residual
          of the linear system to solve */
-      rhs_norm += _svb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _svb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                             cm, csys);
 
       /* Enforce values if needed (internal or Dirichlet) */
@@ -1886,15 +1884,14 @@ cs_cdovb_scaleq_solve_implicit(bool                        cur2prev,
   /* ======================= */
 
   /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      eqc->n_dofs,
                                      rhs,
                                      &rhs_norm);
 
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(eqc->n_dofs,
-                                  eqp->name,
                                   eqp->sles_param,
                                   matrix,
                                   rs,
@@ -2191,7 +2188,7 @@ cs_cdovb_scaleq_solve_theta(bool                        cur2prev,
 
       /* Compute a norm of the RHS for the normalization of the residual
          of the linear system to solve */
-      rhs_norm += _svb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _svb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                             cm, csys);
 
       /* Enforce values if needed (internal or Dirichlet) */
@@ -2229,15 +2226,14 @@ cs_cdovb_scaleq_solve_theta(bool                        cur2prev,
   /* ======================= */
 
   /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      eqc->n_dofs,
                                      rhs,
                                      &rhs_norm);
 
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(eqc->n_dofs,
-                                  eqp->name,
                                   eqp->sles_param,
                                   matrix,
                                   rs,
@@ -2488,7 +2484,7 @@ cs_cdovb_scaleq_balance(const cs_equation_param_t     *eqp,
           p_theta[v] = eqp->theta*p_cur[v] + (1-eqp->theta)*p_prev[v];
         break;
 
-      default:
+      default: /* Implicit (Euler or BDF2) */
         for (short int v = 0; v < cm->n_vc; v++)
           p_theta[v] = p_cur[v];
         break;
@@ -2638,11 +2634,13 @@ cs_cdovb_scaleq_balance(const cs_equation_param_t     *eqp,
   } /* OpenMP Block */
 
   for (cs_lnum_t v_id = 0; v_id < quant->n_vertices; v_id++)
-    eb->balance[v_id] = eb->unsteady_term[v_id] +
-      eb->reaction_term[v_id]  + eb->diffusion_term[v_id] +
-      eb->advection_term[v_id] + eb->source_term[v_id];
+    eb->balance[v_id] =   eb->unsteady_term[v_id]
+                        + eb->reaction_term[v_id]
+                        + eb->diffusion_term[v_id]
+                        + eb->advection_term[v_id]
+                        + eb->source_term[v_id];
 
-  /* Parallel synchronisation */
+  /* Parallel or periodic synchronisation */
   cs_equation_balance_sync(connect, eb);
 
   cs_timer_t  t1 = cs_timer_time();

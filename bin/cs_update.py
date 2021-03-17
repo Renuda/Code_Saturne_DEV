@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -53,6 +53,7 @@ except Exception:
 from code_saturne import cs_exec_environment
 from code_saturne import cs_runcase
 from code_saturne import cs_run_conf
+from code_saturne.cs_case import get_case_dir
 from code_saturne.cs_create import set_executable, unset_executable
 from code_saturne.cs_create import create_local_launcher
 
@@ -130,7 +131,12 @@ def update_case(options, pkg):
         os.chdir(topdir)
 
         if case == ".":
-            casename = os.path.split(topdir)[-1]
+            case, staging_dir = get_case_dir()
+            if not case:
+                sys.stderr.write("  o Skipping '%s', which  does not seem "
+                                 "to be a case directory\n" % topdir)
+                continue
+            casename = os.path.basename(case)
         else:
             casename = case
 
@@ -157,9 +163,10 @@ def update_case(options, pkg):
             shutil.copy(abs_f, user)
             unset_executable(user)
 
-        old_gui_script = os.path.join(data, pkg.guiname)
-        if os.path.isfile(old_gui_script):
-            os.remove(old_gui_script)
+        for s in ("SaturneGUI", "NeptuneGUI"):
+            old_gui_script = os.path.join(data, s)
+            if os.path.isfile(old_gui_script):
+                os.remove(old_gui_script)
 
         # Rebuild launch script
         create_local_launcher(pkg, data)

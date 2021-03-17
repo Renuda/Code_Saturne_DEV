@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -20,30 +20,30 @@
 # this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
 # Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 """
 This module contains the following class:
 - InitializationView
 """
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Standard modules
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 import logging
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Third-party modules
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
-from code_saturne.Base.QtCore    import *
-from code_saturne.Base.QtGui     import *
+from code_saturne.Base.QtCore import *
+from code_saturne.Base.QtGui import *
 from code_saturne.Base.QtWidgets import *
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Application modules import
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 from code_saturne.Pages.SourceTermsForm import Ui_SourceTermsForm
 
@@ -58,82 +58,47 @@ from code_saturne.model.OutputVolumicVariablesModel import OutputVolumicVariable
 from code_saturne.model.GroundwaterModel import GroundwaterModel
 from code_saturne.model.NotebookModel import NotebookModel
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # log config
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 logging.basicConfig()
 log = logging.getLogger("InitializationView")
 log.setLevel(GuiParam.DEBUG)
 
-#-------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------
 # Main class
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 class SourceTermsView(QWidget, Ui_SourceTermsForm):
     """
     """
-    def __init__(self, parent, case, zone_name, stbar):
+
+    def __init__(self, parent=None):
         """
         Constructor
         """
         QWidget.__init__(self, parent)
-
         Ui_SourceTermsForm.__init__(self)
         self.setupUi(self)
-
-        self.case = case
-        self.case.undoStopGlobal()
         self.parent = parent
-
-        self.mdl = SourceTermsModel(self.case)
-        self.notebook = NotebookModel(self.case)
-        self.therm = ThermalScalarModel(self.case)
-        self.th_sca = DefineUserScalarsModel(self.case)
-
-        self.zoneLabel.setText(zone_name)
+        self.case = None
+        self.mdl = None
+        self.notebook = None
         self.zone = None
         self.zone_id = None
-        for zone in LocalizationModel('VolumicZone', self.case).getZones():
-            if zone.getLabel() == zone_name:
-                self.zone = zone
-                self.zone_id = str(zone.getCodeNumber())
+        self.therm = None
+        self.th_sca = None
+        self.th_sca_name = None
+        self.scalar = None
 
-        # Thermal scalar
-        scalar_name, unit = self.getThermalLabelAndUnit()
-        self.th_sca_name = scalar_name
-
-        # 1/ Combo box models
         # FIXME really useful to duplicate this comboBox for ground water flow?
         self.modelSpecies = ComboModel(self.comboBoxSpecies, 1, 1)
         self.modelSpecies2 = ComboModel(self.comboBoxSpecies2, 1, 1)
+        self.setConnections()
 
-        if GroundwaterModel(self.case).getGroundwaterModel() != "off":
-            self.groupBoxStandard.hide()
-            # FIXME really useful to duplicate this groupBox for ground water flow?
-            self.groupBoxTransport.show()
-            if (zone.getNature()['momentum_source_term'] == "on"):
-                self.groupBoxRichards.show()
-            else:
-                self.groupBoxRichards.hide()
-        else:
-            self.groupBoxStandard.show()
-            self.groupBoxRichards.hide()
-            self.groupBoxTransport.hide()
-
-        scalar_list = self.th_sca.getUserScalarNameList()
-        for s in self.th_sca.getScalarsVarianceList():
-            if s in scalar_list: scalar_list.remove(s)
-        if scalar_list != []:
-            for scalar in scalar_list:
-                self.scalar = scalar
-                self.modelSpecies.addItem(self.tr(scalar), self.scalar)
-                self.modelSpecies2.addItem(self.tr(scalar), self.scalar)
-            self.modelSpecies.setItem(str_model=self.scalar)
-            self.modelSpecies2.setItem(str_model = self.scalar)
-
-        # 2/ Connections
-
+    def setConnections(self):
         self.comboBoxSpecies.activated[str].connect(self.slotSpeciesChoice)
         self.pushButtonMomentum.clicked.connect(self.slotMomentumFormula)
         self.pushButtonThermal.clicked.connect(self.slotThermalFormula)
@@ -142,11 +107,64 @@ class SourceTermsView(QWidget, Ui_SourceTermsForm):
         self.pushButtonSpecies2.clicked.connect(self.slotSpeciesGroundWaterFormula)
         self.pushButtonRichards.clicked.connect(self.slotRichardsFormula)
 
-        # 3/ Initialize widget
+    def setup(self, case, zone_name):
+        self.case = case
+        self.mdl = SourceTermsModel(self.case)
+        self.notebook = NotebookModel(self.case)
+        self.therm = ThermalScalarModel(self.case)
+        self.th_sca = DefineUserScalarsModel(self.case)
+        self.case.undoStopGlobal()
+        for zone in LocalizationModel('VolumicZone', self.case).getZones():
+            if zone.getLabel() == zone_name:
+                self.zone = zone
+                self.zone_id = str(zone.getCodeNumber())
 
-        self.initialize()
-
+        if self.zone.isNatureActivated("source_term"):
+            self.setViewFromCase()
+        else:
+            self.displayDefaultView()
+            self.setEnabled(False)
         self.case.undoStartGlobal()
+
+    def displayDefaultView(self):
+        if GroundwaterModel(self.case).getGroundwaterModel() != "off":
+            self.groupBoxStandard.hide()
+            self.groupBoxTransport.show()
+            if self.zone.getNature()['momentum_source_term'] == "on":
+                self.groupBoxRichards.show()
+            else:
+                self.groupBoxRichards.hide()
+        else:
+            self.groupBoxStandard.show()
+            self.groupBoxRichards.hide()
+            self.groupBoxTransport.hide()
+
+    def setViewFromCase(self):
+        # Thermal scalar
+        scalar_name, unit = self.getThermalLabelAndUnit()
+        self.th_sca_name = scalar_name
+        if GroundwaterModel(self.case).getGroundwaterModel() != "off":
+            self.groupBoxStandard.hide()
+            self.groupBoxTransport.show()
+            if self.zone.getNature()['momentum_source_term'] == "on":
+                self.groupBoxRichards.show()
+            else:
+                self.groupBoxRichards.hide()
+        else:
+            self.groupBoxStandard.show()
+            self.groupBoxRichards.hide()
+            self.groupBoxTransport.hide()
+        scalar_list = self.th_sca.getUserScalarNameList()
+        for s in self.th_sca.getScalarsVarianceList():
+            if s in scalar_list: scalar_list.remove(s)
+        if scalar_list:
+            for scalar in scalar_list:
+                self.scalar = scalar
+                self.modelSpecies.addItem(self.tr(scalar), self.scalar)
+                self.modelSpecies2.addItem(self.tr(scalar), self.scalar)
+            self.modelSpecies.setItem(str_model=self.scalar)
+            self.modelSpecies2.setItem(str_model=self.scalar)
+        self.initialize()
 
     def initialize(self):
         """
@@ -236,7 +254,6 @@ class SourceTermsView(QWidget, Ui_SourceTermsForm):
             self.pushButtonSpecies.setToolTip("Use the formula editor to define a source term for this species.")
             self.pushButtonSpecies.setStyleSheet("background-color: red")
 
-
     @pyqtSlot()
     def slotMomentumFormula(self):
         """
@@ -245,22 +262,23 @@ class SourceTermsView(QWidget, Ui_SourceTermsForm):
         exa = """#example:\n
 tau = 10.; # relaxation time (s)\n
 vel_x_imp = 1.5; #target velocity (m/s)\n
-Su = rho * (vel_x_imp - velocity[0]) / tau;\n
+Su = rho * (vel_x_imp - u) / tau;\n
 dSudu = - rho / tau; # Jacobian of the source term"""
 
         exp, req, sym = self.mdl.getMomentumFormulaComponents(self.zone_id)
-
+        knf = [('rho', 'density')]
         zone_name = self.zone.getLabel()
 
-        dialog = QMegEditorView(parent        = self,
-                                function_type = 'src',
-                                zone_name     = zone_name,
-                                variable_name = "momentum",
-                                expression    = exp,
-                                required      = req,
-                                symbols       = sym,
-                                examples      = exa,
-                                source_type   = 'momentum_source_term')
+        dialog = QMegEditorView(parent=self,
+                                function_type='src',
+                                zone_name=zone_name,
+                                variable_name="momentum",
+                                expression=exp,
+                                required=req,
+                                symbols=sym,
+                                known_fields=knf,
+                                examples=exa,
+                                source_type='momentum_source_term')
 
         if dialog.exec_():
             result = dialog.get_result()
@@ -269,7 +287,6 @@ dSudu = - rho / tau; # Jacobian of the source term"""
             self.pushButtonMomentum.setToolTip(result)
             self.pushButtonMomentum.setStyleSheet("background-color: green")
 
-
     @pyqtSlot()
     def slotSpeciesFormula(self):
         """
@@ -277,18 +294,20 @@ dSudu = - rho / tau; # Jacobian of the source term"""
         exa = """#example: """
 
         exp, req, sym = self.mdl.getSpeciesFormulaComponents(self.zone_id, self.scalar)
+        knf = [(self.scalar, self.scalar), ('rho', 'density')]
 
         zone_name = self.zone.getLabel()
 
-        dialog = QMegEditorView(parent        = self,
-                                function_type = 'src',
-                                zone_name     = zone_name,
-                                variable_name = self.scalar,
-                                expression    = exp,
-                                required      = req,
-                                symbols       = sym,
-                                examples      = exa,
-                                source_type   = 'scalar_source_term')
+        dialog = QMegEditorView(parent=self,
+                                function_type='src',
+                                zone_name=zone_name,
+                                variable_name=self.scalar,
+                                expression=exp,
+                                required=req,
+                                symbols=sym,
+                                known_fields=knf,
+                                examples=exa,
+                                source_type='scalar_source_term')
 
         if dialog.exec_():
             result = dialog.get_result()
@@ -296,7 +315,6 @@ dSudu = - rho / tau; # Jacobian of the source term"""
             self.mdl.setSpeciesFormula(self.zone_id, self.scalar, str(result))
             self.pushButtonSpecies.setToolTip(result)
             self.pushButtonSpecies.setStyleSheet("background-color: green")
-
 
     @pyqtSlot()
     def slotSpeciesGroundWaterFormula(self):
@@ -306,17 +324,19 @@ dSudu = - rho / tau; # Jacobian of the source term"""
 
         exp, req, sym = self.mdl.getGroundWaterSpeciesFormulaComponents(self.zone_id,
                                                                         self.scalar)
+        knf = [(self.scalar, self.scalar), ('rho', 'density')]
         zone_name = self.zone.getLabel()
 
-        dialog = QMegEditorView(parent        = self,
-                                function_type = 'src',
-                                zone_name     = zone_name,
-                                variable_name = self.scalar,
-                                expression    = exp,
-                                required      = req,
-                                symbols       = sym,
-                                examples      = exa,
-                                source_type   = 'scalar_source_term')
+        dialog = QMegEditorView(parent=self,
+                                function_type='src',
+                                zone_name=zone_name,
+                                variable_name=self.scalar,
+                                expression=exp,
+                                required=req,
+                                symbols=sym,
+                                known_fields=knf,
+                                examples=exa,
+                                source_type='scalar_source_term')
 
         if dialog.exec_():
             result = dialog.get_result()
@@ -324,7 +344,6 @@ dSudu = - rho / tau; # Jacobian of the source term"""
             self.mdl.setGroundWaterSpeciesFormula(self.zone_id, self.scalar, str(result))
             self.pushButtonSpecies2.setToolTip(result)
             self.pushButtonSpecies2.setStyleSheet("background-color: green")
-
 
     @pyqtSlot()
     def slotRichardsFormula(self):
@@ -336,15 +355,15 @@ dSudu = - rho / tau; # Jacobian of the source term"""
 
         zone_name = self.zone.getLabel()
 
-        dialog = QMegEditorView(parent        = self,
-                                function_type = 'src',
-                                zone_name     = zone_name,
-                                variable_name = "richards",
-                                expression    = exp,
-                                required      = req,
-                                symbols       = sym,
-                                examples      = exa,
-                                source_type   = 'momentum_source_term')
+        dialog = QMegEditorView(parent=self,
+                                function_type='src',
+                                zone_name=zone_name,
+                                variable_name="richards",
+                                expression=exp,
+                                required=req,
+                                symbols=sym,
+                                examples=exa,
+                                source_type='momentum_source_term')
 
         if dialog.exec_():
             result = dialog.get_result()
@@ -362,16 +381,19 @@ dSudu = - rho / tau; # Jacobian of the source term"""
 
         exp, req, sym = self.mdl.getThermalFormulaComponents(self.zone_id,
                                                              self.th_sca_name)
+        knf = [(self.th_sca_name, self.th_sca_name),
+               ('rho', 'density')]
 
         zone_name = self.zone.getLabel()
 
-        dialog = QMegEditorView(parent        = self,
-                                function_type = 'src',
-                                zone_name     = zone_name,
-                                variable_name = self.th_sca_name,
-                                expression    = exp,
-                                required      = req,
-                                symbols       = sym,
+        dialog = QMegEditorView(parent=self,
+                                function_type='src',
+                                zone_name=zone_name,
+                                variable_name=self.th_sca_name,
+                                expression=exp,
+                                required=req,
+                                symbols=sym,
+                                known_fields=knf,
                                 examples=exa,
                                 source_type='thermal_source_term')
 
@@ -415,15 +437,16 @@ dSudu = - rho / tau; # Jacobian of the source term"""
             return zone_info[source_term] == "on"
         else:
             return False
-#-------------------------------------------------------------------------------
+
+
+# -------------------------------------------------------------------------------
 # Testing part
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 if __name__ == "__main__":
     pass
 
-
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # End
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------

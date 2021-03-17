@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -33,6 +33,7 @@
 #include "cs_cdo_turbulence.h"
 #include "cs_equation_param.h"
 #include "cs_math.h"
+#include "cs_param_sles.h"
 #include "cs_physical_constants.h"
 
 /*----------------------------------------------------------------------------*/
@@ -196,19 +197,12 @@ typedef enum {
  * Associated keyword: "additive_gmres"
  *
  * Available choice when a monolithic approach is used (i.e. with the parameter
- * CS_NAVSTO_COUPLING_MONOLITHIC is set as coupling algorithm) The Navier-Stokes
- * system of equations is solved an additive preconditioner (block diagonal
- * matrix where the block 00 is A_{00}) and the block 11 is set to the identity.
- * Preconditioner/solver for the block 00 is set using the momentum equation.
- * This option is only available with the support to the PETSc library up to now.
- *
- *
- * \var CS_NAVSTO_SLES_BY_BLOCKS
- * Associated keyword: "blocks"
- *
- * The Navier-Stokes system is split into a 3x3 block matrix for the velocity
- * unknows and in a non-assembly way for the divergence/pressure gradient
- * operators.
+ * CS_NAVSTO_COUPLING_MONOLITHIC is set as coupling algorithm) The
+ * Navier-Stokes system of equations is solved an additive preconditioner
+ * (block diagonal matrix where the block 00 is A_{00}) and the block 11 is set
+ * to the identity.  Preconditioner/solver for the block 00 is set using the
+ * momentum equation.  This option is only available with the support to the
+ * PETSc library up to now.
  *
  *
  * \var CS_NAVSTO_SLES_BLOCK_MULTIGRID_CG
@@ -237,6 +231,28 @@ typedef enum {
  * library up to now.
  *
  *
+ * \var CS_NAVSTO_SLES_DIAG_SCHUR_GCR
+ * Associated keyword: "diag_schur_gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm with a
+ * block diagonal preconditioner using a Schur approximation for the pressure
+ * block (the block 22). The system is stored using a hybrid
+ * assembled/unassembled blocks. The velocity block is assembled (with
+ * potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
+ *
+ *
+ * \var CS_NAVSTO_SLES_DIAG_SCHUR_MINRES
+ * Associated keyword: "diag_schur_minres"
+ *
+ * The Stokes or Navier-Stokes system with an explicit advection is solved
+ * using a MINRES algorithm with a block diagonal preconditioner using a Schur
+ * approximation for the pressure block (the block 22). The system is stored
+ * using a hybrid assembled/unassembled blocks. The velocity block is assembled
+ * (with potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
+ *
+ *
  * \var CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK
  * Associated keyword: "no_block"
  *
@@ -245,6 +261,16 @@ typedef enum {
  * options for solving a linear system such as the choice of the iterative
  * solver or the choice of the preconditioner or the type of residual
  * normalization
+ *
+ *
+ * \var CS_NAVSTO_SLES_GCR
+ * Associated keyword: "gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm without
+ * preconditioning. The system is stored using a hybrid assembled/unassembled
+ * blocks. The velocity block is assembled (with potentially sub-blocks for
+ * each component) and the velocity divergence/pressure gradient operators are
+ * unassembled.
  *
  *
  * \var CS_NAVSTO_SLES_GKB_PETSC
@@ -286,6 +312,27 @@ typedef enum {
  * The residual is computed in the energy norm.
  *
  *
+ * \var CS_NAVSTO_SLES_LOWER_SCHUR_GCR
+ * Associated keyword: "lower_schur_gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm with an
+ * lower triangular block preconditioner using a Schur approximation for the
+ * pressure block (the block 22). The system is stored using a hybrid
+ * assembled/unassembled blocks. The velocity block is assembled (with
+ * potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
+ *
+ *
+ * \var CS_NAVSTO_SLES_MINRES
+ * Associated keyword: "minres"
+ *
+ * The Stokes or Navier-Stokes system with an explicit advection is solved
+ * using a MINRES algorithm without preconditioning. The system is stored using
+ * a hybrid assembled/unassembled blocks. The velocity block is assembled (with
+ * potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
+ *
+ *
  * \var CS_NAVSTO_SLES_MULTIPLICATIVE_GMRES_BY_BLOCK
  * Associated keyword: "multiplicative_gmres"
  *
@@ -298,12 +345,32 @@ typedef enum {
  * This option is only available with the support to the PETSc library up to
  * now.
  *
- *
  * \var CS_NAVSTO_SLES_MUMPS
  * Associated keyword: "mumps"
  *
  * Direct solver to solve systems arising from the discretization of the
  * Navier-Stokes equations
+ *
+ * \var CS_NAVSTO_SLES_SGS_SCHUR_GCR
+ * Associated keyword: "sgs_schur_gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm with a
+ * symmetric Gauss-Seidel block preconditioner using a Schur approximation for
+ * the pressure block (the block 22). The system is stored using a hybrid
+ * assembled/unassembled blocks. The velocity block is assembled (with
+ * potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
+ *
+ *
+ * \var CS_NAVSTO_SLES_UPPER_SCHUR_GCR
+ * Associated keyword: "upper_schur_gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm with an
+ * upper triangular block preconditioner using a Schur approximation for the
+ * pressure block (the block 22). The system is stored using a hybrid
+ * assembled/unassembled blocks. The velocity block is assembled (with
+ * potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
  *
  *
  * \var CS_NAVSTO_SLES_UPPER_SCHUR_GMRES
@@ -318,26 +385,60 @@ typedef enum {
  * GMRES. This option is only available with the support to the PETSc
  * library up to now.
  *
+ * \var CS_NAVSTO_SLES_USER
+ * Associated keyword: "user"
+ *
+ * Resolution using a user-defined function. This function fulfills a
+ * pre-defined prototype
  *
  * \var CS_NAVSTO_SLES_UZAWA_AL
  * Associated keyword: "uzawa_al"
+ *
  * Resolution using an uzawa algorithm with an Augmented Lagrangian approach
+ *
+ * \var CS_NAVSTO_SLES_UZAWA_CG
+ * Associated keyword: "uzawa_cg"
+ *
+ * Resolution using an uzawa algorithm optimized using a conjugate gradient
+ * reformulation. Two systems are solved at each iteration (one related to the
+ * velocity block, one related to the Schur complement approximation - size of
+ * the pressure space).
+ *
+ * \var CS_NAVSTO_SLES_UZAWA_SCHUR_GCR
+ * Associated keyword: "uza_schur_gcr"
+ *
+ * The Stokes or Navier-Stokes system is solved using a GCR algorithm with an
+ * Uzawa algorithm tuned for block preconditioning and using a Schur
+ * approximation for the pressure block (the block 22). The system is stored
+ * using a hybrid assembled/unassembled blocks. The velocity block is assembled
+ * (with potentially sub-blocks for each component) and the velocity
+ * divergence/pressure gradient operators are unassembled.
  */
 
 typedef enum {
 
   CS_NAVSTO_SLES_ADDITIVE_GMRES_BY_BLOCK,
   CS_NAVSTO_SLES_BLOCK_MULTIGRID_CG,
-  CS_NAVSTO_SLES_BY_BLOCKS,
+  CS_NAVSTO_SLES_BY_BLOCKS,     /* deprecated */
+  CS_NAVSTO_SLES_DIAG_SCHUR_GCR,
   CS_NAVSTO_SLES_DIAG_SCHUR_GMRES,
+  CS_NAVSTO_SLES_DIAG_SCHUR_MINRES,
   CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK,
+  CS_NAVSTO_SLES_GCR,
   CS_NAVSTO_SLES_GKB_PETSC,
   CS_NAVSTO_SLES_GKB_GMRES,
   CS_NAVSTO_SLES_GKB_SATURNE,
+  CS_NAVSTO_SLES_LOWER_SCHUR_GCR,
+  CS_NAVSTO_SLES_MINRES,
   CS_NAVSTO_SLES_MULTIPLICATIVE_GMRES_BY_BLOCK,
   CS_NAVSTO_SLES_MUMPS,
+  CS_NAVSTO_SLES_SGS_SCHUR_GCR,
+  CS_NAVSTO_SLES_UPPER_SCHUR_GCR,
   CS_NAVSTO_SLES_UPPER_SCHUR_GMRES,
+  CS_NAVSTO_SLES_USER,
+  CS_NAVSTO_SLES_UZAWA_SCHUR_GCR,
   CS_NAVSTO_SLES_UZAWA_AL,
+  CS_NAVSTO_SLES_UZAWA_CG,
 
   CS_NAVSTO_SLES_N_TYPES
 
@@ -373,6 +474,11 @@ typedef struct {
    */
   cs_navsto_sles_t              strategy;
 
+  /*! \var schur_strategy
+   *  Choice of the way of preconditioning the schur approximation
+   */
+  cs_param_schur_approx_t       schur_approximation;
+
   /*!
    * @name Inner and linear algorithm
    * Set of parameters to drive the resolution of the (inner) linear system
@@ -399,6 +505,12 @@ typedef struct {
    */
   cs_real_t                     il_algo_dtol;
 
+  /*! \var il_algo_restart
+   *  Number of iterations before restarting the iterative solver associated to
+   *  the inner linear system
+   */
+  int                           il_algo_restart;
+
   /*! \var n_max_il_algo_iter
    *  Maximal number of iterations to solve the inner linear system
    */
@@ -407,7 +519,7 @@ typedef struct {
   /*! \var il_algo_verbosity
    *  Level of verbosity related to the inner linear system
    */
-  cs_real_t                     il_algo_verbosity;
+  int                           il_algo_verbosity;
 
   /*!
    * @}
@@ -449,7 +561,19 @@ typedef struct {
   /*! \var il_algo_verbosity
    *  Level of verbosity related to the non-linear algorithm
    */
-  cs_real_t                     nl_algo_verbosity;
+  int                           nl_algo_verbosity;
+
+  /*! @} */
+
+  /*!
+   * @}
+   * @name Block preconditioning or Schur complement approximation
+   * Set of parameters to drive the resolution of the pressure-related
+   * block. This is often a Schur complement approximation to B.A^-1.Bt
+   * @{
+   */
+
+  cs_param_sles_t             *schur_sles_param;
 
   /*! @} */
 
@@ -515,7 +639,7 @@ typedef struct {
    * @{
    */
   /*! \var phys_constants
-   * Main physical constants (gravity vector and coriolis source term). This
+   * Main physical constants (gravity vector and Coriolis source term). This
    * structure is shared with the legacy part.
    */
   cs_physical_constants_t       *phys_constants;
@@ -606,7 +730,7 @@ typedef struct {
   /*! \var sles_param
    * Set of choices to control the resolution of the Navier--Stokes system
    */
-  cs_navsto_param_sles_t         sles_param;
+  cs_navsto_param_sles_t        *sles_param;
 
   /*! \var delta_thermal_tolerance
    * Value under which one considers that the thermal equation is converged
@@ -630,12 +754,12 @@ typedef struct {
    * \var verbosity
    * Level of display of the information related to the Navier-Stokes system
    */
-  int                           verbosity;
+  int                            verbosity;
 
   /*! \var post_flag
    * Flag storing which predefined post-processing has to be done
    */
-  cs_navsto_param_post_flag_t   post_flag;
+  cs_navsto_param_post_flag_t    post_flag;
 
   /*!
    * @}
@@ -811,6 +935,10 @@ typedef struct {
  * Navier-Stokes system since one has to handle the non-linearity in addition as
  * an outer process.
  *
+ * \var CS_NSKEY_IL_ALGO_RESTART
+ * Number of iterations before restarting a Krylov solver as the main solver
+ * (useful if the strategy implied a GMRES, flexible GMRES or GCR)
+ *
  * \var CS_NSKEY_IL_ALGO_VERBOSITY
  * Level of verbosity related to the inner linear algorithm (cf. \ref
  * CS_NSKEY_SLES_STRATEGY)
@@ -849,6 +977,10 @@ typedef struct {
  * Set the type to use in all routines involving quadrature (similar to \ref
  * CS_EQKEY_BC_QUADRATURE)
  *
+ * \var CS_NSKEY_SCHUR_STRATEGY
+ * Set the way to define the Schur complement approximation
+ * (cf. \ref cs_param_schur_approx_t)
+ *
  * \var CS_NSKEY_SLES_STRATEGY
  * Strategy for solving the SLES arising from the discretization of the
  * Navier-Stokes system
@@ -885,6 +1017,7 @@ typedef enum {
   CS_NSKEY_IL_ALGO_ATOL,
   CS_NSKEY_IL_ALGO_DTOL,
   CS_NSKEY_IL_ALGO_RTOL,
+  CS_NSKEY_IL_ALGO_RESTART,
   CS_NSKEY_IL_ALGO_VERBOSITY,
   CS_NSKEY_MAX_IL_ALGO_ITER,
   CS_NSKEY_MAX_NL_ALGO_ITER,
@@ -895,6 +1028,7 @@ typedef enum {
   CS_NSKEY_NL_ALGO_RTOL,
   CS_NSKEY_NL_ALGO_VERBOSITY,
   CS_NSKEY_QUADRATURE,
+  CS_NSKEY_SCHUR_STRATEGY,
   CS_NSKEY_SLES_STRATEGY,
   CS_NSKEY_SPACE_SCHEME,
   CS_NSKEY_THERMAL_TOLERANCE,

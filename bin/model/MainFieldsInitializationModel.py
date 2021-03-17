@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -294,7 +294,8 @@ class MainFieldsInitializationModel(MainFieldsModel, Variables, Model):
 
         node = self.XMLvariables.xmlGetNode('variable', field_id=fieldId, name="enthalpy")
         if not node:
-            msg = "There is an error: this node " + str(node) + " should be present"
+            node_string = '<variable field_id={0} name="enthalpy">'.format(fieldId)
+            msg = "There is an error: the node " + node_string + " should be present"
             raise ValueError(msg)
 
         nodem = node.xmlGetChildNode('initial_type', zone_id=zone)

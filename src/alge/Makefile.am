@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -70,19 +70,27 @@ libcsalge_amgx_la_CPPFLAGS =\
 -I$(top_srcdir)/src/mesh \
 $(AMGX_CPPFLAGS) $(MPI_CPPFLAGS)
 
+libcsalge_extension_la_CPPFLAGS =\
+-I$(top_srcdir)/src/base \
+-I$(top_srcdir)/src/bft \
+-I$(top_srcdir)/src/fvm \
+-I$(top_srcdir)/src/mesh \
+$(PETSC_CPPFLAGS)  $(MUMPS_CPPFLAGS) $(MPI_CPPFLAGS)
+
 # Public header files (to be installed)
 
 pkginclude_HEADERS = \
 cs_alge_headers.h \
+cs_bad_cells_regularisation.h \
 cs_balance.h \
+cs_balance_by_zone.h \
 cs_benchmark.h \
 cs_benchmark_matrix.h \
 cs_blas.h \
-cs_balance_by_zone.h \
 cs_cell_to_vertex.h \
 cs_convection_diffusion.h \
-cs_face_viscosity.h \
 cs_divergence.h \
+cs_face_viscosity.h \
 cs_gradient.h \
 cs_gradient_perio.h \
 cs_grid.h \
@@ -96,7 +104,7 @@ cs_matrix_tuning.h \
 cs_matrix_util.h \
 cs_multigrid.h \
 cs_multigrid_smoother.h \
-cs_bad_cells_regularisation.h \
+cs_param_sles.h \
 cs_sles.h \
 cs_sles_default.h \
 cs_sles_it.h \
@@ -124,16 +132,17 @@ libcsalge_la_FCFLAGS = \
 $(FCMODINCLUDE)$(top_builddir)/src \
 $(FCFLAGS_DBG) $(FCFLAGS_HOT)
 libcsalge_la_SOURCES = \
+cs_bad_cells_regularisation.c \
 cs_balance.c \
+cs_balance_by_zone.c \
 cs_benchmark.c \
 cs_benchmark_matrix.c \
 cs_blas.c \
 cs_bw_time_diff.c \
-cs_balance_by_zone.c \
 cs_cell_to_vertex.c \
 cs_convection_diffusion.c \
-cs_face_viscosity.c \
 cs_divergence.c \
+cs_face_viscosity.c \
 cs_gradient.c \
 cs_gradient_perio.c \
 cs_grid.c \
@@ -145,7 +154,6 @@ cs_matrix_tuning.c \
 cs_matrix_util.c \
 cs_multigrid.c \
 cs_multigrid_smoother.c \
-cs_bad_cells_regularisation.c \
 cs_sles.c \
 cs_sles_default.c \
 cs_sles_it.c \
@@ -155,16 +163,23 @@ libcsalge_la_LDFLAGS = -no-undefined
 
 libcsalge_la_LIBADD =
 
+noinst_LTLIBRARIES += libcsalge_extension.la
+libcsalge_la_LIBADD += libcsalge_extension.la
+libcsalge_extension_la_SOURCES = \
+cs_param_sles.c
+
 if HAVE_PETSC
 noinst_LTLIBRARIES += libcsalge_petsc.la
 libcsalge_la_LIBADD += libcsalge_petsc.la
-libcsalge_petsc_la_SOURCES = cs_sles_petsc.c
+libcsalge_petsc_la_SOURCES = \
+cs_sles_petsc.c
 endif
 
 if HAVE_MUMPS
 noinst_LTLIBRARIES += libcsalge_mumps.la
 libcsalge_la_LIBADD += libcsalge_mumps.la
-libcsalge_mumps_la_SOURCES = cs_sles_mumps.c
+libcsalge_mumps_la_SOURCES = \
+cs_sles_mumps.c
 libcsalge_mumps_la_LIBADD = \
 $(MUMPS_LDFLAGS) $(MUMPSRUNPATH) $(MUMPS_LIBS)
 libcsalge_mumps_la_LDFLAGS = -no-undefined

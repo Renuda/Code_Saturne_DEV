@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -210,13 +210,19 @@ class TreeModel(QAbstractItemModel):
                 elif page_name == self.tr('Calculation features'):
                     img_path = ":/icons/22x22/calculation_features.png"
                     icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
-                elif page_name == self.tr('Fluid properties'):
-                    img_path = ":/icons/22x22/physical_properties.png"
-                    icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
+#                elif page_name == self.tr('Fluid properties'):
+#                    img_path = ":/icons/22x22/physical_properties.png"
+#                    icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
                 elif page_name == self.tr('Volume zones'):
                     img_path = ":/icons/22x22/volume_zones.png"
                     icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
+                elif page_name == self.tr('Volume conditions'):
+                    img_path = ":/icons/22x22/volume_zones.png"
+                    icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
                 elif page_name == self.tr('Boundary zones'):
+                    img_path = ":/icons/22x22/boundary_conditions.png"
+                    icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
+                elif page_name == self.tr('Boundary conditions'):
                     img_path = ":/icons/22x22/boundary_conditions.png"
                     icon.addPixmap(QPixmap(_fromUtf8(img_path)), QIcon.Normal, QIcon.Off)
                 elif page_name == self.tr('Time settings'):
@@ -466,10 +472,12 @@ class BrowserView(QWidget, Ui_BrowserForm):
 
     def _getSectionList(self):
 
+#              'Closure modeling', 'Fluid properties',
         sl = ['Calculation environment', 'Mesh', 'Calculation features',
-              'Closure modeling', 'Fluid properties',
-              'Particles and droplets tracking', 'Volume zones',
-              'Boundary zones', 'Time settings', 'Numerical parameters',
+              'Closure modeling',
+              'Particles and droplets tracking', 'Volume conditions',
+              'Boundary conditions', 'Coupling parameters', 'Time settings',
+              'Numerical parameters',
               'Postprocessing', 'Performance settings']
 
         return sl
@@ -479,31 +487,29 @@ class BrowserView(QWidget, Ui_BrowserForm):
         if section == 'Calculation environment':
             return ['Notebook']
         elif section == 'Mesh':
-            return ['Preprocessing']
+            return ['Preprocessing', "Volume zones", "Boundary zones"]
         elif section == 'Calculation features':
             return ['Main fields', 'Deformable mesh', 'Turbulence models',
                     'Gas combustion', 'Thermal model', 'Body forces',
                     'Pulverized fuel combustion', 'Electrical models',
-                    'Conjugate heat transfer', 'Atmospheric flows',
+                    'Atmospheric flows',
                     'Species transport', 'Turbomachinery', 'Groundwater flows',
-                    'Fans', 'Non condensable gases', 'Thermodynamics']
+                    'Fans', 'Non condensable gases']
         elif section == 'Closure modeling':
             return ['Interfacial area',
                     'Interfacial enthalpy transfer',
-                    'Nucleate boiling parameters',
-                    'Droplet condensation-evaporation',
+                    'Wall transfer parameters',
                     'Particles interactions']
-        elif section == 'Fluid properties':
-            return []
+#        elif section == 'Fluid properties':
+#            return []
         elif section == 'Particles and droplets tracking':
             return ['Statistics']
-        elif section == 'Volume zones':
-            return ['Initialization', 'Head losses', 'Porosity',
-                    'Source terms', 'Groundwater laws']
-        elif section == 'Boundary zones':
-            return ['Boundary conditions', 'Particle boundary conditions',
-                    'Fluid structure interaction', 'Cathare Coupling',
-                    'Immersed Boundaries']
+        elif section == 'Volume conditions':
+            return []
+        elif section == "Boundary conditions":
+            return []
+        elif section == 'Coupling parameters':
+            return ['Immersed Boundaries']
         elif section == 'Time settings':
             return ['Start/Restart']
         elif section == 'Numerical parameters':
@@ -764,30 +770,28 @@ class BrowserView(QWidget, Ui_BrowserForm):
         self.setRowClose(self.tr('Groundwater flows'))
         self.setRowClose(self.tr('Fans'))
         self.setRowClose(self.tr('Non condensable gases'))
-        self.setRowClose(self.tr('Thermodynamics'))
         """
 
         self.setRowClose(self.tr('Closure modeling'))
         """
         self.setRowClose(self.tr('Interfacial area'))
         self.setRowClose(self.tr('Interfacial enthalpy transfer'))
-        self.setRowClose(self.tr('Nucleate boiling parameters'))
-        self.setRowClose(self.tr('Droplet condensation-evaporation'))
+        self.setRowClose(self.tr('Wall transfer parameters'))
         self.setRowClose(self.tr('Particles interactions'))
         """
 
-        self.setRowClose(self.tr('Fluid properties'))
-        """
-        self.setRowClose(self.tr('Fluid properties'))
-        self.setRowClose(self.tr('Body forces'))
-        """
+#        self.setRowClose(self.tr('Fluid properties'))
+#        """
+#        self.setRowClose(self.tr('Fluid properties'))
+#        self.setRowClose(self.tr('Body forces'))
+#        """
 
         self.setRowClose(self.tr('Particles and droplets tracking'))
         """
         self.setRowClose(self.tr('Statistics'))
         """
 
-        self.setRowShow(self.tr('Volume zones'), False)
+        self.setRowShow(self.tr('Volume conditions'), False)
         """
         self.setRowClose(self.tr('Initialization'))
         self.setRowClose(self.tr('Head losses'))
@@ -795,14 +799,8 @@ class BrowserView(QWidget, Ui_BrowserForm):
         self.setRowClose(self.tr('Source terms'))
         self.setRowClose(self.tr('Groundwater laws'))
         """
-
-        self.setRowShow(self.tr('Boundary zones'), False)
-
         """
         self.setRowClose(self.tr('Boundary_conditions'))
-        self.setRowClose(self.tr('Particle boundary conditions'))
-        self.setRowClose(self.tr('Fluid structure interaction'))
-        self.setRowClose(self.tr('Cathare Coupling'))
         self.setRowClose(self.tr('Immersed Boundaries'))
         """
 
@@ -850,6 +848,7 @@ class BrowserView(QWidget, Ui_BrowserForm):
         m_elec = False
         m_atmo = False
         m_gwf = False
+        m_icm = False
 
         node_pm = case.xmlGetNode('thermophysical_models')
 
@@ -910,6 +909,16 @@ class BrowserView(QWidget, Ui_BrowserForm):
             if m_thermal > 0:
                 m_cht = True
 
+            if not m_icm:
+                node = node_pm.xmlGetChildNode("internal_coupling")
+                if node:
+                    node = node.xmlGetChildNode("solid_zones")
+                    if node:
+                        if len(node.xmlGetChildNodeList("zone")) > 0:
+                            m_icm = True
+                        else:
+                            m_icm = False
+
         node = case.xmlGetNode('lagrangian', 'model')
         if node and node['model'] != "off":
             m_lagr = True
@@ -918,11 +927,10 @@ class BrowserView(QWidget, Ui_BrowserForm):
 
         m_ncfd = {}
         m_ncfd['non_condens'] = False
-        m_ncfd['nucleate_boiling'] = False
-        m_ncfd['droplet_condens'] = False
         m_ncfd['particles_interactions'] = False
         m_ncfd['itf_area'] = False
         m_ncfd['itf_h_transfer'] = False
+        m_ncfd['wall_transfer'] = False
 
         ncfd_fields = 0
 
@@ -939,28 +947,23 @@ class BrowserView(QWidget, Ui_BrowserForm):
             from code_saturne.model.MainFieldsModel import MainFieldsModel
             from code_saturne.model.InterfacialForcesModel import InterfacialForcesModel
             predefined_flow = MainFieldsModel(case).getPredefinedFlow()
+            heat_mass_transfer = MainFieldsModel(case).getHeatMassTransferStatus()
 
             if (len(MainFieldsModel(case).getSolidFieldIdList()) > 0):
                 m_ncfd['particles_interactions'] = True
-            if (len(MainFieldsModel(case).getDispersedFieldList()) > 0
-                    or InterfacialForcesModel(case).getBubblesForLIMStatus() == 'on'):
-                m_ncfd['itf_area'] = True
+
+            m_ncfd['itf_area'] = True
+            m_ncfd['non_condens'] = True
+            m_ncfd["itf_h_transfer"] = {"on": True, "off": False}[heat_mass_transfer]
+            m_ncfd['wall_transfer'] = {"on": True, "off": False}[heat_mass_transfer]
 
             if predefined_flow == "free_surface":
-                m_ncfd['non_condens'] = True
-                m_ncfd['nucleate_boiling'] = True
-                m_ncfd['itf_h_transfer'] = True
-            elif predefined_flow == "boiling_flow":
-                m_ncfd['non_condens'] = True
-                m_ncfd['nucleate_boiling'] = True
-                m_ncfd['itf_h_transfer'] = True
-            elif predefined_flow == "droplet_flow":
-                m_ncfd['non_condens'] = True
-                m_ncfd['droplet_condens'] = True
-                m_ncfd['itf_h_transfer'] = True
+                m_ncfd['itf_area'] = False
             elif predefined_flow == "particles_flow":
                 m_ncfd['particles_interactions'] = True
-                m_ncfd['itf_h_transfer'] = True
+                m_ncfd['wall_transfer'] = False
+            elif predefined_flow == "None":
+                m_ncfd['particles_interactions'] = True
 
         is_ncfd = (p_module == 'neptune_cfd')
 
@@ -984,7 +987,6 @@ class BrowserView(QWidget, Ui_BrowserForm):
         self.setRowShow(self.tr('Gas combustion'), m_gas_comb)
         self.setRowShow(self.tr('Pulverized fuel combustion'), m_sf_comb)
         self.setRowShow(self.tr('Electrical models'), m_elec)
-        self.setRowShow(self.tr('Conjugate heat transfer'), m_cht)
         self.setRowShow(self.tr('Atmospheric flows'), m_atmo)
         self.setRowShow(self.tr('Species transport'))
         self.setRowShow(self.tr('Turbomachinery'), m_tbm)
@@ -992,20 +994,18 @@ class BrowserView(QWidget, Ui_BrowserForm):
         self.setRowShow(self.tr('Fans'), m_fans)
 
         self.setRowShow(self.tr('Non condensable gases'), m_ncfd['non_condens'])
-        self.setRowShow(self.tr('Thermodynamics'), is_ncfd)
 
         # Closure modeling
 
         self.setRowShow(self.tr('Closure modeling'), (ncfd_fields > 1))
         self.setRowShow(self.tr('Interfacial enthalpy transfer'), m_ncfd['itf_h_transfer'])
         self.setRowShow(self.tr('Interfacial area'), m_ncfd['itf_area'])
-        self.setRowShow(self.tr('Nucleate boiling parameters'), m_ncfd['nucleate_boiling'])
-        self.setRowShow(self.tr('Droplet condensation-evaporation'), m_ncfd['droplet_condens'])
+        self.setRowShow(self.tr('Wall transfer parameters'), m_ncfd['wall_transfer'])
         self.setRowShow(self.tr('Particles interactions'), m_ncfd['particles_interactions'])
 
         # Fluid properties
 
-        self.setRowShow(self.tr('Fluid properties'), (not (m_gwf or is_ncfd)))
+#        self.setRowShow(self.tr('Fluid properties'), (not (m_gwf or is_ncfd)))
 
         # Particles and droplets tracking
 
@@ -1015,46 +1015,17 @@ class BrowserView(QWidget, Ui_BrowserForm):
         # Volume zones
 
         self.setRowShow(self.tr('Volume zones'), True)
+        self.setRowShow(self.tr('Volume conditions'), True)
 
         node_domain = case.xmlGetNode('solution_domain')
-        node_vol = node_domain.xmlGetNode('volumic_conditions')
-        init = False
-        z_st = False
-        z_head_loss = False
-        z_porosity = False
-        z_groundwater = False
-
-        for node in node_vol.xmlGetChildNodeList('zone'):
-            if (node['initialization'] == 'on'):
-                init = True
-            if (node['momentum_source_term'] == 'on'
-                or node['mass_source_term'] == 'on'
-                or node['thermal_source_term'] == 'on'
-                or node['scalar_source_term'] == 'on'):
-                z_st = True
-            if node['head_losses'] == 'on':
-                z_head_loss = True
-            if node['porosity'] == 'on':
-                z_porosity = True
-            if node['groundwater_law'] == 'on':
-                z_groundwater = True
-
-        self.setRowShow(self.tr('Initialization'), init)
-        self.setRowShow(self.tr('Head losses'), z_head_loss)
-        self.setRowShow(self.tr('Porosity'), z_porosity)
-        self.setRowShow(self.tr('Source terms'), z_st)
-        self.setRowShow(self.tr('Groundwater laws'), z_groundwater)
 
         # Boundary zones
 
-        self.setRowShow(self.tr('Boundary zones'))
         self.setRowShow(self.tr('Boundary conditions'))
-        self.setRowShow(self.tr('Particle boundary conditions'), m_lagr)
-        self.setRowShow(self.tr('Fluid structure interaction'), m_ale)
-        self.setRowShow(self.tr('Cathare Coupling'), is_ncfd)
         # Immersed boundaries is deactivated for the moment. Will be
         # reactivated following v6.1 once Page is updated in NCFD
         self.setRowShow(self.tr('Immersed Boundaries'), False)
+        self.setRowShow(self.tr("Coupling parameters"), m_lagr or m_ale or is_ncfd or m_cht or m_icm)
 
         # Time settings
 
@@ -1082,48 +1053,14 @@ class BrowserView(QWidget, Ui_BrowserForm):
         self.setRowShow(self.tr('Prepare batch calculation'), True)
 
         # Update boundary zones display
-        boundary_zone_labels = self._getSortedZoneLabels(case, "BoundaryZone")
+        boundary_zone_labels = LocalizationModel("BoundaryZone", case).getSortedZoneLabels()
         self.updateBrowserZones(boundary_zone_labels, "Boundary conditions")
 
         # Update volume zones display
-        # TODO split code into smaller methods
-        volume_zones = LocalizationModel("VolumicZone", case).getZones()
-        if volume_zones:
-
-            model2ViewDictionary = volume_zones[0].getModel2ViewDictionary()
-            zonelist_per_treatment = {}
-            for nature, page_name in model2ViewDictionary.items():
-                # TODO remove unelegant fixes for page_name
-                if "source_term" in nature:
-                    page_name = "Source terms"
-                if "groundwater" in nature:
-                    page_name = "Groundwater laws"
-                # Initialize dictionary the first time
-                if page_name not in zonelist_per_treatment:
-                    zonelist_per_treatment[page_name] = []
-
-                # Loop over zones and match them to the corresponding page name
-                zone_labels = []
-                for zone in volume_zones:
-                    zone_info = zone.getNature()
-                    if zone_info[nature] != "off":
-                        zone_labels.append(zone.getLabel())
-                zonelist_per_treatment[page_name] += zone_labels
-
-            # Add zones to browser
-            for page_name, zonelist in zonelist_per_treatment.items():
-                self.updateBrowserZones(set(zonelist), page_name)
+        volume_zone_labels = LocalizationModel("VolumicZone", case).getSortedZoneLabels()
+        self.updateBrowserZones(volume_zone_labels, "Volume conditions")
 
         self.__hideRow()
-
-    def _getSortedZoneLabels(self, case, zone_type):
-        boundary_labels = LocalizationModel(zone_type, case).getLabelsZonesList()
-        boundary_ids = LocalizationModel(zone_type, case).getCodeNumbersList()
-        boundary_ids = map(int, boundary_ids)
-        sorted_labels = [None for i in range(len(boundary_labels))]
-        for unsorted_id, sorted_id in enumerate(boundary_ids):
-            sorted_labels[sorted_id - 1] = boundary_labels[unsorted_id]
-        return sorted_labels
 
     def __hideRow(self):
         """Only for developement purpose"""

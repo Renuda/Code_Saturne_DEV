@@ -3,7 +3,7 @@
 !     This file is part of the Code_Saturne Kernel, element of the
 !     Code_Saturne CFD tool.
 
-!     Copyright (C) 1998-2020 EDF S.A., France
+!     Copyright (C) 1998-2021 EDF S.A., France
 
 !     contact: saturne-support@edf.fr
 
@@ -78,6 +78,7 @@ integer nscal
 integer          ii, ivar
 integer          nfld
 integer          f_id
+integer          kturt, turb_flux_model, turb_flux_model_type
 
 integer          ifvar(nvarmx)
 
@@ -299,10 +300,22 @@ if (f_id.ne.-1) then
   endif
 endif
 
+call field_get_id_try("meteo_pressure", f_id)
+
+if (f_id.ne.-1) then
+  if (ipass .eq. 1) then
+    call field_allocate_bc_coeffs(f_id, .true., .false., .false., .false.)
+    call field_init_bc_coeffs(f_id)
+  endif
+endif
+
 ! User variables
 !---------------
 
 nscal = nscaus + nscapp
+
+! Get the turbulent flux model
+call field_get_key_id('turbulent_flux_model', kturt)
 
 do ii = 1, nscal
   if (isca(ii) .gt. 0) then
@@ -310,6 +323,9 @@ do ii = 1, nscal
     has_exch_bc = .false.
     call field_get_key_struct_var_cal_opt(ivarfl(ivar), vcopt)
     if (vcopt%icoupl.gt.0) has_exch_bc = .true.
+
+    call field_get_key_int(ivarfl(isca(ii)), kturt, turb_flux_model)
+    turb_flux_model_type = turb_flux_model / 10
 
     if (ipass .eq. 1) then
       if (ippmod(icompf).ge.0 .and. ii.eq.ienerg) then
@@ -319,7 +335,7 @@ do ii = 1, nscal
       endif
       call field_init_bc_coeffs(ivarfl(ivar))
       ! Boundary conditions of the turbulent fluxes T'u'
-      if (ityturt(ii).eq.3) then
+      if (turb_flux_model_type.eq.3) then
         call field_get_name(ivarfl(ivar), fname)
         ! Index of the corresponding turbulent flux
         call field_get_id(trim(fname)//'_turbulent_flux', f_id)
@@ -327,7 +343,7 @@ do ii = 1, nscal
         call field_init_bc_coeffs(f_id)
       endif
       ! Elliptic Blending (AFM or DFM)
-      if (iturt(ii).eq.11 .or. iturt(ii).eq.21 .or. iturt(ii).eq.31) then
+      if (turb_flux_model.eq.11 .or. turb_flux_model.eq.21 .or. turb_flux_model.eq.31) then
         call field_get_name(ivarfl(ivar), fname)
         call field_get_id(trim(fname)//'_alpha', f_id)
         call field_allocate_bc_coeffs(f_id, .true., .false., .false., .false.)

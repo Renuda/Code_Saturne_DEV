@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1910,6 +1910,7 @@ cs_join_split_faces(cs_join_param_t          param,
   for (fid = 0, block_id = 0; fid < n_init_faces; fid++) {
 
     int  block_rank = (w->face_gnum[fid] - 1)/(cs_gnum_t)(bi.block_size);
+    block_rank *= bi.rank_step;
 
     if (block_rank == local_rank) { /* This face is a "main" face for the
                                        local rank */

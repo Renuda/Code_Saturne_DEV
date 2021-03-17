@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -296,7 +296,7 @@ _sat_add_mpi(int builder_id,
   cs_sat_coupling_t *sat_coupling = NULL;
   _cs_sat_coupling_builder_t *scb = _sat_coupling_builder + builder_id;
 
-  /* Similarly to SYRTHES 4, we might be able to add
+  /* Similarly to SYRTHES, we might be able to add
      Code_Saturne couplings directly (without resorting
      to a temporary builder), then match communications */
 

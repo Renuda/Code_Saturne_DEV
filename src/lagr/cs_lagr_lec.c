@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -484,7 +484,7 @@ cs_restart_lagrangian_checkpoint_read(void)
 
       }
 
-      /* From here on we assume the restart contains volum statistics */
+      /* From here on we assume the restart contains volume statistics */
       else {
 
         {
@@ -506,6 +506,8 @@ cs_restart_lagrangian_checkpoint_read(void)
             sprintf(car8, "k-eps");
           if (jtytur == 3)
             sprintf(car8, "Rij-eps");
+          if (jtytur == 4)
+            sprintf(car8, "LES");
           if (jturb == 50)
             sprintf(car8, "v2f");
           if (jturb == 60)
@@ -514,6 +516,8 @@ cs_restart_lagrangian_checkpoint_read(void)
             sprintf(kar8, "k-eps");
           if (extra->itytur == 3)
             sprintf(kar8, "Rij-eps");
+          if (extra->itytur == 4)
+            sprintf(kar8, "LES");
           if (extra->iturb == 50)
             sprintf(kar8, "v2f");
           if (extra->iturb == 60)
@@ -578,7 +582,8 @@ cs_restart_lagrangian_checkpoint_read(void)
           sprintf(nomtsl[cs_glob_lagr_source_terms->itsli],
                   "terme_source_vitesse_implicite");
 
-          if (extra->itytur == 2 || extra->iturb == 50 || extra->iturb == 60)
+          if (extra->itytur == 2 || extra->itytur == 4 ||
+              extra->iturb == 50 || extra->iturb == 60)
             sprintf(nomtsl[cs_glob_lagr_source_terms->itske],
                     "terme_source_turbulence_keps");
 
@@ -704,6 +709,9 @@ cs_lagr_restart_read_p(void)
   int  mvls, jphyla, jtpvar, jdpvar, jmpvar;
 
   cs_lagr_particle_counter_t *pc = cs_lagr_get_particle_counter();
+
+  if (cs_restart_present() < 1)
+    cs_glob_lagr_time_scheme->isuila = 0;
 
   if (cs_glob_lagr_time_scheme->isuila == 0)
     return;
@@ -1366,7 +1374,8 @@ cs_restart_lagrangian_checkpoint_write(void)
       if (cs_glob_lagr_source_terms->ltsdyn == 1) {
         sprintf(nomtsl[cs_glob_lagr_source_terms->itsli],
                 "terme_source_vitesse_implicite");
-        if (extra->itytur == 2 || extra->iturb == 50 || extra->iturb == 60) {
+        if (extra->itytur == 2 || extra->itytur == 4 ||
+            extra->iturb == 50 || extra->iturb == 60) {
           sprintf(nomtsl[cs_glob_lagr_source_terms->itske],
                   "terme_source_turbulence_keps");
         }

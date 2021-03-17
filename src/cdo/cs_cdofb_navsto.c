@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -670,7 +670,7 @@ cs_cdofb_navsto_init_pressure(const cs_navsto_param_t     *nsp,
    *    and definitions that do not cover all the domain. Moreover, we need
    *    information (e.g. cs_cdo_quantities_t) which we do not know here
    */
-  cs_cdofb_navsto_set_zero_mean_pressure(quant, values);
+  cs_cdofb_navsto_rescale_pressure_to_ref(nsp, quant, values);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -804,8 +804,7 @@ cs_cdofb_navsto_rescale_pressure_to_ref(const cs_navsto_param_t    *nsp,
 
   cs_real_t  intgr = cs_weighted_sum(n_cells, quant->cell_vol, values);
 
-  if (cs_glob_n_ranks > 1)
-    cs_parall_sum(1, CS_REAL_TYPE, &intgr);
+  cs_parall_sum(1, CS_REAL_TYPE, &intgr);
 
   assert(quant->vol_tot > 0.);
   const cs_real_t  g_avg = intgr / quant->vol_tot;
@@ -850,8 +849,7 @@ cs_cdofb_navsto_set_zero_mean_pressure(const cs_cdo_quantities_t  *quant,
 
   cs_real_t  intgr = cs_weighted_sum(n_cells, quant->cell_vol, values);
 
-  if (cs_glob_n_ranks > 1)
-    cs_parall_sum(1, CS_REAL_TYPE, &intgr);
+  cs_parall_sum(1, CS_REAL_TYPE, &intgr);
 
   assert(quant->vol_tot > 0.);
   const cs_real_t  g_avg = intgr / quant->vol_tot;
@@ -1142,18 +1140,7 @@ cs_cdofb_navsto_extra_op(const cs_navsto_param_t     *nsp,
 
     cs_equation_t  *eq = cs_equation_by_name(CS_NAVSTO_STREAM_EQNAME);
     assert(eq != NULL);
-    if (cs_equation_uses_new_mechanism(eq))
-      cs_equation_solve_steady_state(mesh, eq);
-
-    else { /* Deprecated */
-
-      /* Define the algebraic system */
-      cs_equation_build_system(mesh, eq);
-
-      /* Solve the algebraic system */
-      cs_equation_solve_deprecated(eq);
-
-    }
+    cs_equation_solve_steady_state(mesh, eq);
 
     cs_equation_param_t  *eqp = cs_equation_get_param(eq);
     if (eqp->n_bc_defs == 0) {

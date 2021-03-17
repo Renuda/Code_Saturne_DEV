@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -58,6 +58,7 @@ from code_saturne.Pages.BoundaryConditionsNeptune import Ui_BoundaryConditions
 from code_saturne.model.BoundaryNeptune import *
 from code_saturne.model.BoundaryConditionsModelNeptune import *
 from code_saturne.model.MainFieldsModel import MainFieldsModel
+from code_saturne.model.LagrangianModel import LagrangianModel
 
 #-------------------------------------------------------------------------------
 # log config
@@ -184,6 +185,9 @@ class BoundaryConditionsView(QWidget, Ui_BoundaryConditions):
         self.__nature = self.zone.getNature()
         self.__label = self.zone.getLabel()
 
+        # Set the case for custom widgets
+        self.particlesWidget.setup(self.case)
+
         self.__hideAllWidgets()
         self.__slotSelectBoundary()
 
@@ -258,6 +262,9 @@ class BoundaryConditionsView(QWidget, Ui_BoundaryConditions):
                 self.tableViewFields.show()
             self.__selectWallBoundary(boundary)
 
+        if LagrangianModel(self.case).getLagrangianModel() != 'off':
+            self.particlesWidget.showWidget(self.zone)
+
     def __selectInletBoundary(self, boundary):
         """
         Shows widgets for inlet.
@@ -331,6 +338,7 @@ class BoundaryConditionsView(QWidget, Ui_BoundaryConditions):
         self.InterfacialAreaWidget.hideWidget()
         self.ScalarWidget.hideWidget()
         self.WallWidget.hideWidget()
+        self.particlesWidget.hideWidget()
 
 
 #-------------------------------------------------------------------------------

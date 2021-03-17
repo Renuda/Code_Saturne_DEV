@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -331,9 +331,9 @@ _solve_steady_state_domain(cs_domain_t  *domain)
   /* 1. Thermal module */
   if (_needs_solving_steady_state_thermal())
     cs_thermal_system_compute_steady_state(domain->mesh,
-                                           domain->time_step,
                                            domain->connect,
-                                           domain->cdo_quantities);
+                                           domain->cdo_quantities,
+                                           domain->time_step);
 
   /* 2. Groundwater flow module */
   if (cs_gwf_is_activated())
@@ -352,9 +352,9 @@ _solve_steady_state_domain(cs_domain_t  *domain)
   /* 4. Navier-Stokes module */
   if (cs_navsto_system_is_activated())
     cs_navsto_system_compute_steady_state(domain->mesh,
-                                          domain->time_step,
                                           domain->connect,
-                                          domain->cdo_quantities);
+                                          domain->cdo_quantities,
+                                          domain->time_step);
 
   /* User-defined equations */
   _compute_steady_user_equations(domain);
@@ -444,9 +444,9 @@ _solve_domain(cs_domain_t  *domain)
   if (cs_solidification_is_activated()) {
 
     cs_solidification_compute(domain->mesh,
-                              domain->time_step,
                               domain->connect,
-                              domain->cdo_quantities);
+                              domain->cdo_quantities,
+                              domain->time_step);
 
   }
   else {
@@ -455,9 +455,9 @@ _solve_domain(cs_domain_t  *domain)
     if (_needs_solving_thermal())
       cs_thermal_system_compute(true, /* current to previous */
                                 domain->mesh,
-                                domain->time_step,
                                 domain->connect,
-                                domain->cdo_quantities);
+                                domain->cdo_quantities,
+                                domain->time_step);
 
     /* 2. Groundwater flow module */
     if (cs_gwf_is_activated())
@@ -476,9 +476,9 @@ _solve_domain(cs_domain_t  *domain)
     /* 4. Navier-Stokes module */
     if (cs_navsto_system_is_activated())
       cs_navsto_system_compute(domain->mesh,
-                               domain->time_step,
                                domain->connect,
-                               domain->cdo_quantities);
+                               domain->cdo_quantities,
+                               domain->time_step);
 
   }
 
@@ -770,9 +770,6 @@ cs_cdo_finalize(cs_domain_t    *domain)
 
   /* Free memory related to advection fields */
   cs_advection_field_destroy_all();
-
-  /* Free memory related to properties */
-  cs_property_destroy_all();
 
   /* Free memory related to the thermal module */
   cs_thermal_system_destroy();

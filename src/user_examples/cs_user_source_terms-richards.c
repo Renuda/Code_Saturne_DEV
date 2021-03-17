@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -104,10 +104,9 @@ cs_user_source_terms(cs_domain_t  *domain,
 
   /* logging */
   /*! [richards_leaching_log] */
-  const cs_var_cal_opt_t  *var_cal_opt
-    = cs_field_get_key_struct_const_ptr(f,
-                                        cs_field_key_id("var_cal_opt"));
-  if (var_cal_opt->verbosity >= 1)
+  const cs_equation_param_t *eqp = cs_field_get_equation_param(f);
+
+  if (eqp->verbosity >= 1)
     bft_printf(" User source terms for variable %s\n",
                cs_field_get_label(f));
   /*! [richards_leaching_log] */

@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -101,6 +101,7 @@
 #include "cs_preprocess.h"
 #include "cs_preprocessor_data.h"
 #include "cs_probe.h"
+#include "cs_property.h"
 #include "cs_prototypes.h"
 #include "cs_random.h"
 #include "cs_restart.h"
@@ -453,6 +454,10 @@ _run(void)
 
       }
 
+      /* Finalize linear system resolution */
+
+      cs_sles_default_finalize();
+
       /* Finalize sparse linear systems resolution */
 
       cs_matrix_finalize();
@@ -473,10 +478,6 @@ _run(void)
   /* Finalize user extra operations */
   if (opts.verif == false)
     cs_user_extra_operations_finalize(cs_glob_domain);
-
-  /* Finalize linear system resolution */
-
-  cs_sles_default_finalize();
 
   /* Switch logging back to C (may be moved depending on Fortran dependencies) */
 
@@ -521,8 +522,9 @@ _run(void)
 
   cs_internal_coupling_finalize();
 
-  /* Free thermal physical properties */
+  /* Free memory related to properties */
 
+  cs_property_destroy_all();
   cs_thermal_table_finalize();
 
   /* Free turbomachinery related structures */

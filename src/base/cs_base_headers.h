@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -91,7 +91,6 @@
 #include "cs_runaway_check.h"
 #include "cs_sat_coupling.h"
 #include "cs_selector.h"
-#include "cs_stokes_model.h"
 #include "cs_syr_coupling.h"
 #include "cs_thermal_model.h"
 #include "cs_time_moment.h"
@@ -101,6 +100,7 @@
 #include "cs_timer_stats.h"
 #include "cs_tree.h"
 #include "cs_turbomachinery.h"
+#include "cs_velocity_pressure.h"
 #include "cs_volume_mass_injection.h"
 #include "cs_volume_zone.h"
 #include "cs_vof.h"

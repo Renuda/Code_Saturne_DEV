@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -206,10 +206,9 @@ void CS_PROCF (csnum2, CSNUM2) (double  *relaxp,
  * subroutine cssca2
  * *****************
  *
- * integer          iturt    -->  turbulent flux model
  *----------------------------------------------------------------------------*/
 
-void CS_PROCF (cssca2, CSSCA2) (int        *iturt);
+void CS_PROCF (cssca2, CSSCA2) (void);
 
 /*----------------------------------------------------------------------------
  * Read reference dynamic and user scalar viscosity
@@ -410,7 +409,7 @@ cs_gui_finalize(void);
  * cku11, cku22, cku33, cku12, cku13, cku23.
  *
  * \param[in]       zone       pointer to zone structure
- * \param[in]       cvara_vel  pointer to the velocity values of the previous time step
+ * \param[in]       cvara_vel  velocity values at the  previous time step
  * \param[in, out]  cku        head loss coefficients
  */
 /*----------------------------------------------------------------------------*/
@@ -591,6 +590,13 @@ cs_gui_error_estimator(int *iescal,
 
 void
 cs_gui_zones(void);
+
+/*----------------------------------------------------------------------------
+ * Define internal coupling through the GUI.
+ *----------------------------------------------------------------------------*/
+
+void
+cs_gui_internal_coupling(void);
 
 /*----------------------------------------------------------------------------*/
 

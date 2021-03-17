@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -756,8 +756,8 @@ cs_selector_get_perio_face_list(int         perio_num,
  *
  * \param[in]   criteria     selection criteria string
  * \param[out]  n_families   number of selected families
- * \param[out]  family_list  list of selected families faces (0 to n-1,
- *                           preallocated to cs_glob_mesh->n_families + 1)
+ * \param[out]  family_list  list of selected family ids (preallocated to
+ *                           cs_glob_mesh->n_families + 1)
  */
 /*----------------------------------------------------------------------------*/
 
@@ -786,6 +786,11 @@ cs_selector_get_family_list(const char  *criteria,
                  " is not present in the mesh.\n"),
                missing, criteria);
   }
+
+  /* Families seen in mesh are 1-based, while selector is 0-based */
+
+  for (int i = 0; i < *n_families; i++)
+    family_list[i] += 1;
 }
 
 /*----------------------------------------------------------------------------*/

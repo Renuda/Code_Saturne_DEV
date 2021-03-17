@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -368,7 +368,7 @@ cs_user_model(void)
    */
 
   cs_thermal_model_t *thermal_model = cs_get_glob_thermal_model();
-  thermal_model->itherm = 1;
+  thermal_model->itherm = CS_THERMAL_MODEL_TEMPERATURE;
 
   /*! [thermal_model_choice] */
 
@@ -511,58 +511,13 @@ cs_user_parameters(cs_domain_t *domain)
   /* Example: set options for Stokes solving */
   /*-----------------------------------------*/
 
-  /* Members of the structure cs_glob_stokes_model:
-   *  ivisse: take viscous term of transposed velocity
-   *          gradient into account in momentum equation
-   *                   - 1: true (default)
-   *                   - 0: false
-   *  arak: Arakawa multiplicator for the Rhie and Chow
-   *        filter (1 by default)
-   *  ipucou: pseudo coupled pressure-velocity solver
-   *                   - 0: false (default)
-   *                   - 1: true
-   *  irevmc: reconstruct the velocity field after correction step
-   *                   - 0: with the pressure increment gradient (default)
-   *                   - 1: with an RT0 like formula using the mass fluxes
-   *  iccvfg: calculation with a fixed velocity field
-   *                   - 0: false (default)
-   *                   - 1: true
-   *  idilat: algorithm to take into account the density
-   *          variation in time
-   *                   - 0: Boussinesq approximation
-   *                   - 1: dilatable steady algorithm (default)
-   *                   - 2: dilatable unsteady algorithm
-   *                   - 3: low-Mach algorithm
-   *                   - 4: algorithm for fire
-   *                   - 0: boussinesq algorithm with constant
-   *                   density (not yet available)
-   *  iphydr: improve hydrostatic pressure algorithm
-   *                   - 0: no treatment (default)
-   *                   - 1: impose the equilibrium of the hydrostaic
-   *                     part of the pressure with any external force,
-   *                     even head losses
-   *                   - 2: compute an hydrostatic pressure due to
-   *                     buoyancy forces before the prediction step
-   *  igprij: improve static pressure algorithm
-   *                   - 0: no treatment (default)
-   *                   - 1: take -div(rho R) in the static pressure
-   *                     treatment IF iphydr=1
-   *  igpust: improve static pressure algorithm
-   *                   - 0: no treatment
-   *                   - 1: take user momemtum source terms in the
-   *                     static pressure treatment IF iphydr=1 (default)
-   *  fluid_solid: Has a solid zone where dynamics must be killed?
-   *                   - false (default)
-   *                   - true
-   *
-   */
-
-  /*! [param_stokes_model] */
+  /*! [param_vp_arak] */
   {
-    cs_stokes_model_t *stokes = cs_get_glob_stokes_model();
-    stokes->arak = 0.;
+    cs_velocity_pressure_param_t *vp_param
+      = cs_get_glob_velocity_pressure_param();
+    vp_param->arak = 0.;
   }
-  /*! [param_stokes_model] */
+  /*! [param_vp_arak] */
 
   /* Example: change Reference fluid properties options */
   /*----------------------------------------------------*/
@@ -736,12 +691,12 @@ cs_user_parameters(cs_domain_t *domain)
    * - epsup: relative precision (default 10e-5)
    *------------------------------------*/
 
-  /*! [param_piso] */
+  /*! [param_vp_netrup] */
   {
-    cs_piso_t *piso = cs_get_glob_piso();
-    piso->nterup = 3;
+    cs_velocity_pressure_param_t *vp_param = cs_get_glob_velocity_pressure_param();
+    vp_param->nterup = 3;
   }
-  /*! [param_piso] */
+  /*! [param_vp_netrup] */
 
   /* Example: activate the porous model
    * - 0 No porosity taken into account (Default)
@@ -793,9 +748,10 @@ cs_user_parameters(cs_domain_t *domain)
         may thus choose in this case:
 
         cs_field_t *f = cs_thermal_model_field();
-        cs_var_cal_opt_t *vcopt
-           = cs_field_get_key_struct_ptr(f, cs_field_key_id("var_cal_opt"));
-        vcopt->blencv = 1.;
+        cs_equation_param_t *eqp
+           =
+           = cs_field_get_equation_param(f);
+        eqp->blencv = 1.;
 
       For non-user scalars relative to specific physics
         implicitly defined by the model,
@@ -804,16 +760,15 @@ cs_user_parameters(cs_domain_t *domain)
 
   {
     int n_fields = cs_field_n_fields();
-    int key_cal_opt_id = cs_field_key_id("var_cal_opt");
 
     for (int f_id = 0; f_id < n_fields; f_id++) {
 
-      cs_field_t  *f = cs_field_by_id(f_id);
+      cs_field_t *f = cs_field_by_id(f_id);
 
       if (f->type & CS_FIELD_VARIABLE) {
-        cs_var_cal_opt_t *vcopt
-          = cs_field_get_key_struct_ptr(f, key_cal_opt_id);
-        vcopt->blencv = 1.;
+        cs_equation_param_t *eqp
+          = cs_field_get_equation_param(f);
+        eqp->blencv = 1.;
       }
     }
   }
@@ -822,16 +777,14 @@ cs_user_parameters(cs_domain_t *domain)
      epsilo: relative precision for the solution of the linear system. */
   {
     int n_fields = cs_field_n_fields();
-    int key_cal_opt_id = cs_field_key_id("var_cal_opt");
 
     for (int f_id = 0; f_id < n_fields; f_id++) {
 
       cs_field_t  *f = cs_field_by_id(f_id);
 
       if (f->type & CS_FIELD_VARIABLE) {
-        cs_var_cal_opt_t *vcopt
-          = cs_field_get_key_struct_ptr(f, key_cal_opt_id);
-        vcopt->epsilo = 1.e-6;
+        cs_equation_param_t *eqp = cs_field_get_equation_param(f);
+        eqp->epsilo = 1.e-6;
       }
     }
   }
@@ -839,17 +792,12 @@ cs_user_parameters(cs_domain_t *domain)
   /* Dynamic reconstruction sweeps to handle non-orthogonlaities
      This parameter computes automatically a dynamic relax factor,
      and can be activated for any variable.
+      - iswdyn = 0: no relaxation
       - iswdyn = 1: means that the last increment is relaxed
-      - iswdyn = 2: means that the last two increments are used to
-                         relax
-     NB: when iswdyn is greater than 1, then the number of
-         non-orthogonality sweeps is increased to 20. */
+      - iswdyn = 2: means that the last two increments are used to relax. (default) */
   {
-    int key_cal_opt_id = cs_field_key_id("var_cal_opt");
-
-    cs_var_cal_opt_t *vcopt
-      = cs_field_get_key_struct_ptr(CS_F_(p), key_cal_opt_id);
-    vcopt->iswdyn = 2;
+    cs_equation_param_t *eqp = cs_field_get_equation_param(CS_F_(p));
+    eqp->iswdyn = 2;
   }
 
   /* Stabilization in turbulent regime
@@ -859,14 +807,13 @@ cs_user_parameters(cs_domain_t *domain)
     of the turbulence model, that is for k-epsilon models:
     */
   {
-    cs_var_cal_opt_t  *vcopt;
-    int key_cal_opt_id = cs_field_key_id("var_cal_opt");
+    cs_equation_param_t *eqp;
 
-    vcopt = cs_field_get_key_struct_ptr(CS_F_(k), key_cal_opt_id);
-    vcopt->ircflu = 0;
+    eqp = cs_field_get_equation_param(CS_F_(k));
+    eqp->ircflu = 0;
 
-    vcopt = cs_field_get_key_struct_ptr(CS_F_(eps), key_cal_opt_id);
-    vcopt->ircflu = 0;
+    eqp = cs_field_get_equation_param(CS_F_(eps));
+    eqp->ircflu = 0;
   }
 
   /* Example: choose a convective scheme and
@@ -890,13 +837,11 @@ cs_user_parameters(cs_domain_t *domain)
       1: slope test disabled (default)
       2: continuous limiter ensuring boundedness (beta limiter) enabled */
 
-    cs_var_cal_opt_t vcopt;
-    int key_cal_opt_id = cs_field_key_id("var_cal_opt");
+    cs_equation_param_t *eqp;
 
-    cs_field_get_key_struct(sca1, key_cal_opt_id, &vcopt);
-    vcopt.ischcv = 1;
-    vcopt.isstpc = 0;
-    cs_field_set_key_struct(sca1, key_cal_opt_id, &vcopt);
+    eqp = cs_field_get_equation_param(sca1);
+    eqp->ischcv = 1;
+    eqp->isstpc = 0;
 
     /* Min/Max limiter or NVD/TVD limiters
      * then "limiter_choice" keyword must be set:
@@ -966,12 +911,8 @@ cs_user_parameters(cs_domain_t *domain)
       0: full upwind (default)
       1: scheme without upwind */
 
-    cs_var_cal_opt_t vcopt;
-    int key_cal_opt_id = cs_field_key_id("var_cal_opt");
-
-    cs_field_get_key_struct(sca1, key_cal_opt_id, &vcopt);
-    vcopt.blend_st = 0.1;
-    cs_field_set_key_struct(sca1, key_cal_opt_id, &vcopt);
+    cs_equation_param_t *eqp = cs_field_get_equation_param(sca1);
+    eqp->blend_st = 0.1;
 
   }
   /*! [param_var_blend_st] */
@@ -1317,8 +1258,9 @@ cs_user_internal_coupling(void)
                                   "x<.5"); /* Solid volume criterion */
 
   /* Activate fluid-solid mode to kill dynamic in the solid */
-  cs_stokes_model_t *stokes = cs_get_glob_stokes_model();
-  stokes->fluid_solid = true;
+  cs_velocity_pressure_model_t *vp_model
+    = cs_get_glob_velocity_pressure_model();
+  vp_model->fluid_solid = true;
 
   /*! [param_internal_coupling_add_volume] */
 

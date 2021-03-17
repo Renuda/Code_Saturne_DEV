@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -638,7 +638,7 @@ class DefineUserScalarsModel(Variables, Model):
 
 
     @Variables.noUndo
-    def getDiffFormula(self, scalar):
+    def getDiffFormula(self, scalar, zone="all_cells"):
         """
         Return a formula for I{tag} 'density', 'molecular_viscosity',
         'specific_heat' or 'thermal_conductivity'
@@ -647,6 +647,14 @@ class DefineUserScalarsModel(Variables, Model):
         self.isInList(scalar, self.getUserScalarNameList())
         n = self.scalar_node.xmlGetNode('variable', name = scalar)
         node = n.xmlGetNode('property')
+
+        if zone != "all_cells":
+            if node.xmlGetChildNode("zone", name=zone):
+                node = node.xmlGetChildNode("zone", name=zone)
+            else:
+                node = node.xmlInitChildNode("zone")
+                node["name"] = zone
+
         formula = node.xmlGetString('formula')
         if not formula:
             formula = self.getDefaultFormula(scalar)
@@ -670,7 +678,7 @@ class DefineUserScalarsModel(Variables, Model):
 
 
     @Variables.undoLocal
-    def setDiffFormula(self, scalar, str):
+    def setDiffFormula(self, scalar, formula, zone="all_cells"):
         """
         Gives a formula for 'density', 'molecular_viscosity',
         'specific_heat'or 'thermal_conductivity'
@@ -679,7 +687,13 @@ class DefineUserScalarsModel(Variables, Model):
         self.isInList(scalar, self.getUserScalarNameList())
         n = self.scalar_node.xmlGetNode('variable', name = scalar)
         node = n.xmlGetNode('property')
-        node.xmlSetData('formula', str)
+        if zone != "all_cells":
+            if node.xmlGetChildNode("zone", name=zone):
+                node = node.xmlGetChildNode("zone", name=zone)
+            else:
+                node = node.xmlInitChildNode("zone")
+                node["name"] = zone
+        node.xmlSetData('formula', formula)
 
 
     @Variables.undoGlobal

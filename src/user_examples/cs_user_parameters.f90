@@ -4,7 +4,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -389,6 +389,7 @@ integer nmodpp
 logical       inoprv
 integer       ii, jj, ivar, kscmin, kscmax, keydri, kbfid, kccmin, kccmax
 integer       f_id, idim1, itycat, ityloc, iscdri, iscal, ifcvsl, b_f_id
+integer        kturt, turb_flux_model
 
 type(var_cal_opt) :: vcopt
 
@@ -561,12 +562,18 @@ enddo
 !      30 DFM
 !      31 EB-DFM (Elliptic Blending)
 
+call field_get_key_id('turbulent_flux_model', kturt)
+
 ! GGDH for thermal scalar:
-if (iscalt.gt.0) iturt(iscalt) = 10
+if (iscalt.gt.0) then
+  turb_flux_model = 10
+  call field_set_key_int(ivarfl(isca(iscalt)), kturt, turb_flux_model)
+endif
 
 ! GGDH for all the scalars:
 do jj = 1, nscaus
-  iturt(jj) = 10
+  turb_flux_model = 10
+  call field_set_key_int(ivarfl(isca(jj)), kturt, turb_flux_model)
 enddo
 
 ! Error estimators for Navier-Stokes (non-frozen velocity field)

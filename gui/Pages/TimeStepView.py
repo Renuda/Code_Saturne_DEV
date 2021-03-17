@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -79,13 +79,21 @@ class TimeStepView(QWidget, Ui_TimeStepForm):
         self.mdl = TimeStepModel(self.case)
         self.browser = tree
 
-       # Combo model
+        # Check if xml contains deprecated steady algorithme
+        has_deprecated_steady = False
+        if str(self.mdl.getTimePassing()) == '-1':
+            has_deprecated_steady = True
 
-        self.modelTimeOptions = ComboModel(self.comboBoxOptions,4,1)
+       # Combo model
+        if has_deprecated_steady:
+            self.modelTimeOptions = ComboModel(self.comboBoxOptions,4,1)
+        else:
+            self.modelTimeOptions = ComboModel(self.comboBoxOptions,3,1)
         self.modelTimeOptions.addItem(self.tr("Constant"), '0')
         self.modelTimeOptions.addItem(self.tr("Time varying (adaptive)"), '1')
-        self.modelTimeOptions.addItem(self.tr("Space & time varying (pseudo-steady)"), '2')
-        self.modelTimeOptions.addItem(self.tr("Steady (constant relaxation coefficient)"), '-1')
+        self.modelTimeOptions.addItem(self.tr("Steady (local time step)"), '2')
+        if has_deprecated_steady:
+            self.modelTimeOptions.addItem(self.tr("Deprecated: steady (constant relaxation coefficient)"), '-1')
 
         self.modelNTERUP = ComboModel(self.comboBoxNTERUP,3,1)
         self.modelNTERUP.addItem(self.tr("SIMPLE"), 'simple')
@@ -154,9 +162,11 @@ class TimeStepView(QWidget, Ui_TimeStepForm):
 
         if model in ('LES_Smagorinsky', 'LES_dynamique', 'LES_WALE'):
             idtvar = 0
-            self.modelTimeOptions.disableItem(str_model='1')
-            self.modelTimeOptions.disableItem(str_model='2')
-            self.modelTimeOptions.disableItem(str_model='-1')
+
+            # Deactivate all modes except constant time step
+            for itm in self.modelTimeOptions.getItems():
+                if str(itm) != "0":
+                    self.modelTimeOptions.disableItem(str_model=itm)
 
         # Constraints on time step from Lagrangian model
 
@@ -165,11 +175,13 @@ class TimeStepView(QWidget, Ui_TimeStepForm):
         if model in ['one_way', 'two_way']:
             if idtvar not in [0, 1]:
                 idtvar = 0
-            self.modelTimeOptions.disableItem(str_model='2')
-            self.modelTimeOptions.disableItem(str_model='-1')
-            if model == 'two_way':
-                idtvar = 0
-                self.modelTimeOptions.disableItem(str_model='1')
+
+            # Deactivate certain modes
+            for itm in self.modelTimeOptions.getItems():
+                if str(itm) == "2":
+                    self.modelTimeOptions.disableItem(str_model=itm)
+                elif str(itm) == "1" and model == 'two_way':
+                    self.modelTimeOptions.disableItem(str_model=itm)
 
         # Constraints on time step from compressible model
 
@@ -178,8 +190,13 @@ class TimeStepView(QWidget, Ui_TimeStepForm):
         if model != 'off':
             if idtvar not in [0, 1]:
                 idtvar = 0
-            self.modelTimeOptions.disableItem(str_model='2')
-            self.modelTimeOptions.disableItem(str_model='-1')
+
+            # Deactivate steady time step
+            # Using list to allow additions in the future
+            for itm in self.modelTimeOptions.getItems():
+                if str(itm) in ["2"]:
+                    self.modelTimeOptions.disableItem(str_model=itm)
+
             self.labelNTERUP.setText("Velocity-Pressure algorithm\nsub-iterations on Navier-Stokes")
             self.comboBoxNTERUP.hide()
             self.spinBoxNTERUP.show()
@@ -191,9 +208,11 @@ class TimeStepView(QWidget, Ui_TimeStepForm):
         if model != 'off':
             if idtvar not in [0, 1]:
                 idtvar = 0
-            self.modelTimeOptions.disableItem(str_model='1')
-            self.modelTimeOptions.disableItem(str_model='2')
-            self.modelTimeOptions.disableItem(str_model='-1')
+
+            # Deactivate all modes except constant time step
+            for itm in self.modelTimeOptions.getItems():
+                if str(itm) != "0":
+                    self.modelTimeOptions.disableItem(str_model=itm)
 
         # Change time step option if required by model constraints
 
@@ -260,7 +279,7 @@ class TimeStepView(QWidget, Ui_TimeStepForm):
         else:
             self.spinBoxNTERUP.hide()
 
-        value = self.mdl.getPisoSweepNumber()
+        value = self.mdl.getVelocityPressureParamSweepNumber()
         self.spinBoxNTERUP.setValue(value)
 
         if idtvar == -1:
@@ -406,7 +425,7 @@ class TimeStepView(QWidget, Ui_TimeStepForm):
         self.mdl.setVelocityPressureAlgorithm(NTERUP)
         if NTERUP == 'piso':
             self.spinBoxNTERUP.show()
-            value = self.mdl.getPisoSweepNumber()
+            value = self.mdl.getVelocityPressureParamSweepNumber()
             self.spinBoxNTERUP.setValue(value)
         else:
             self.spinBoxNTERUP.hide()
@@ -417,9 +436,9 @@ class TimeStepView(QWidget, Ui_TimeStepForm):
     @pyqtSlot(int)
     def slotNTERUP2(self, var):
         """
-        Set value for parameter piso sweep number
+        Set value for velocity-pressure parameter sweep number
         """
-        self.mdl.setPisoSweepNumber(var)
+        self.mdl.setVelocityPressureParamSweepNumber(var)
         log.debug("slotNTERUP2-> %s" % var)
 
 

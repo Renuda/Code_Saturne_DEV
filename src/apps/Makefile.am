@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -164,9 +164,7 @@ $(HDF5_LDFLAGS) $(HDF5_LIBS) $(HDF5RUNPATH) \
 $(LDADD_MUMPS) \
 $(METIS_LDFLAGS) $(METIS_LIBS) $(METISRUNPATH) \
 $(SCOTCH_LDFLAGS) $(SCOTCH_LIBS) $(SCOTCHRUNPATH) \
-$(EOS_LDFLAGS) $(EOS_LIBS) $(EOSRUNPATH) \
 $(FREESTEAM_LDFLAGS) $(FREESTEAM_LIBS) $(FREESTEAMRUNPATH) \
-$(COOLPROP_LDFLAGS) $(COOLPROP_LIBS) $(COOLPROPRUNPATH) \
 $(LDADD_CATALYST) $(LDADD_MEDCOUPLING) $(LDADD_MELISSA) \
 $(LDADD_COOLPROP) \
 $(MPI_LDFLAGS) $(MPI_LIBS) \
@@ -174,7 +172,7 @@ $(LDADD_BLAS) \
 $(CUDA_LDFLAGS) $(CUDA_LIBS) \
 $(LTLIBINTL) \
 $(FCLIBS)
-libsaturne_la_LDFLAGS = -no-undefined -release 6.3
+libsaturne_la_LDFLAGS = -no-undefined -release 7.1
 
 libcs_solver_la_SOURCES = cs_solver.c
 libcs_solver_la_LIBADD = libsaturne.la \
@@ -187,9 +185,7 @@ $(HDF5_LDFLAGS) $(HDF5_LIBS) $(HDF5RUNPATH) \
 $(LDADD_MUMPS) \
 $(METIS_LDFLAGS) $(METIS_LIBS) $(METISRUNPATH) \
 $(SCOTCH_LDFLAGS) $(SCOTCH_LIBS) $(SCOTCHRUNPATH) \
-$(EOS_LDFLAGS) $(EOS_LIBS) $(EOSRUNPATH) \
 $(FREESTEAM_LDFLAGS) $(FREESTEAM_LIBS) $(FREESTEAMRUNPATH) \
-$(COOLPROP_LDFLAGS) $(COOLPROP_LIBS) $(COOLPROPRUNPATH) \
 $(LDADD_CATALYST) $(LDADD_MEDCOUPLING) $(LDADD_MELISSA) \
 $(LDADD_COOLPROP) \
 $(MPI_LDFLAGS) $(MPI_LIBS) \
@@ -197,7 +193,7 @@ $(LDADD_BLAS) \
 $(CUDA_LDFLAGS) $(CUDA_LIBS) \
 $(LTLIBINTL) \
 $(FCLIBS)
-libcs_solver_la_LDFLAGS = -no-undefined -release 6.3
+libcs_solver_la_LDFLAGS = -no-undefined -release 7.1
 
 endif
 

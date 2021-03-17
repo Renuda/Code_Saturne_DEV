@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -241,8 +241,8 @@ cs_selector_get_perio_face_list(int         perio_num,
  * parameters:
  *   criteria    <-- selection criteria string
  *   n_families  --> number of selected families
- *   family_list --> list of selected families faces
- *                   (0 to n-1, preallocated to cs_glob_mesh->n_families + 1)
+ *   family_list --> list of selected family ids
+ *                   (preallocated to cs_glob_mesh->n_families + 1)
  *----------------------------------------------------------------------------*/
 
 void

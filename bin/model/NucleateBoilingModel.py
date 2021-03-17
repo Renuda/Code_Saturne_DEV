@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -55,9 +55,9 @@ class NucleateBoilingModel(NonCondensableModel, Variables, Model):
 
     def defaultValues(self):
         default = {}
-        default['wallmodel']                = "nucleate_boiling"
-        default['wallfunction']             = "standard"
-        default['heatmodel']                = "extended_kurul-podowski"
+        default['wallmodel'] = "nucleate_boiling"
+        default['wallfunction'] = "mimouni"
+        default['heatmodel'] = "extended_kurul-podowski"
         default['yplusmodel']               = "diameter"
         default['yplusvalue']               = 250.
         default['cavities_radius']          = 0.0001
@@ -326,7 +326,6 @@ class NucleateBoilingModel(NonCondensableModel, Variables, Model):
            self.setThicknessValue(value)
         return value
 
-
     @Variables.undoLocal
     def setThicknessValue(self, value):
         """
@@ -334,6 +333,21 @@ class NucleateBoilingModel(NonCondensableModel, Variables, Model):
         """
         self.isGreater(value, 0.)
         self.XMLnucleate.xmlSetData('thicknessvalue', value)
+
+    def resetToDefaultValues(self):
+        default = self.defaultValues()
+        self.setWallFunctionModel(default["wallfunction"])
+        self.setHeatTransferModel(default["heatmodel"])
+        self.setYPlusModel(default["yplusmodel"])
+        self.setYPlusValue(default["yplusvalue"])
+        self.setMaxRadius(default["cavities_radius"])
+        self.setMaxDiameter(default["bubbles_diameter"])
+        self.setMaxOverSaturation(default["oversaturate_temperature"])
+        self.setThermalConductivity(default["thermal_cond"])
+        self.setDensity(default["density"])
+        self.setSpecificHeat(default["cp"])
+        self.setThicknessStatus(default["thicknessmodel"])
+        self.setThicknessValue(default["thicknessvalue"])
 
 
 #-------------------------------------------------------------------------------

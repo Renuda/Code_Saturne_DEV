@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -98,7 +98,6 @@ class DropletCondensationEvaporationModel(NonCondensableModel, Variables, Model)
            self.setYPlusValue(value)
         return value
 
-
     @Variables.undoLocal
     def setYPlusValue(self, value):
         """
@@ -106,6 +105,11 @@ class DropletCondensationEvaporationModel(NonCondensableModel, Variables, Model)
         """
         self.isGreater(value, 0.)
         self.XMLMassTrans.xmlSetData('yplusvalue', value)
+
+    def resetToDefaultValues(self):
+        default = self.defaultValues()
+        self.setYPlusModel(default["yplusmodel"])
+        self.setYPlusValue(default["yplusvalue"])
 
 
 #-------------------------------------------------------------------------------

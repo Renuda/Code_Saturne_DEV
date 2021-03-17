@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1576,7 +1576,7 @@ cs_advection_field_in_cells(const cs_adv_field_t   *adv,
         if (cs_flag_test(cx->loc, cs_flag_primal_face) == false)
           bft_error(__FILE__, __LINE__, 0,
                     "%s: Invalid location for definition by DoFs.\n", __func__);
-        assert(cs_equation_get_tmpbuf_size() <= cdoq->n_faces);
+        assert(cs_equation_get_tmpbuf_size() <= (size_t)cdoq->n_faces);
 
         /* Values of the function are defined at the primal faces */
         cx->func(cdoq->n_faces, NULL, true, /* dense output */
@@ -1706,8 +1706,8 @@ cs_advection_field_at_vertices(const cs_adv_field_t    *adv,
     /* Compute the vector-valued vector at each vertex */
     _compute_adv_vector_at_vertices(cdoq, connect, def, vtx_values);
 
-    /* Parallel synchronization of values at vertices */
-    if (cs_glob_n_ranks > 1)
+    /* Synchronization of values at vertices */
+    if (connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL)
       cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                            cdoq->n_vertices,
                            3,             /* stride */
@@ -1719,7 +1719,7 @@ cs_advection_field_at_vertices(const cs_adv_field_t    *adv,
     BFT_MALLOC(dual_vol, cdoq->n_vertices, cs_real_t);
     cs_cdo_quantities_compute_dual_volumes(cdoq, connect->c2v, dual_vol);
 
-    if (cs_glob_n_ranks > 1)
+    if (connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL)
       cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                            cdoq->n_vertices,
                            1,             /* stride */
@@ -3463,8 +3463,8 @@ cs_advection_field_divergence_at_vertices(const cs_adv_field_t     *adv,
 
   } /* Boundary part */
 
-#if defined(HAVE_MPI) /* Parallel synchronisation if needed */
-  if (cs_glob_n_ranks > 1)
+#if defined(HAVE_MPI) /* Synchronization if needed */
+  if (connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL)
     cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                          cdoq->n_vertices,
                          1,             /* stride */

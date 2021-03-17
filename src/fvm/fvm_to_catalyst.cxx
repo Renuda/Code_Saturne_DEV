@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1321,8 +1321,6 @@ _export_field_values_e(const fvm_nodal_t         *mesh,
     (f->GetCellData()->GetArray(fieldname))
     ->WritePointer(0, dest_dim*f->GetNumberOfCells());
 
-  assert(values != NULL);
-
   /* Distribute partition to block values */
 
   cs_lnum_t start_id = 0;
@@ -1338,6 +1336,8 @@ _export_field_values_e(const fvm_nodal_t         *mesh,
 
     if (section->entity_dim < elt_dim)
       continue;
+
+    assert(values != NULL || section->n_elements == 0);
 
     fvm_convert_array(dim,
                       0,
@@ -1364,6 +1364,9 @@ _export_field_values_e(const fvm_nodal_t         *mesh,
   if (dim == 6) {
 
     cs_lnum_t n_elts = f->GetNumberOfCells();
+
+    assert(values != NULL || n_elts == 0);
+
     for (cs_lnum_t i = 0; i < n_elts; i++) {
       values[9*i + 8] = values[9*i + 2];
       values[9*i + 7] = values[9*i + 4];

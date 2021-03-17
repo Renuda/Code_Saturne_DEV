@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -183,9 +183,9 @@ else if (ippmod(icfuel).ge.0) then
 
 else if (ippmod(ielarc).ge.1) then
 
-  allocate(cvar_ycoel(ngazg-1))
+  allocate(cvar_ycoel(ngazge-1))
 
-  do iesp = 1, ngazg-1
+  do iesp = 1, ngazge-1
     write(f_name,'(a13,i2.2)') 'esl_fraction_',iesp
     call field_get_val_prev_s_by_name(trim(f_name), cvar_ycoel(iesp)%p)
   enddo

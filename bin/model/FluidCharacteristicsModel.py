@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -396,7 +396,7 @@ class FluidCharacteristicsModel(Variables, Model):
         Get reference temperature.
         """
         value = self.node_fluid.xmlGetDouble('reference_temperature')
-        if not value :
+        if value == None:
            t_str = 'reference_temperature'
            value = self.defaultFluidCharacteristicsValues()[t_str]
            self.setTemperature(value)
@@ -418,7 +418,7 @@ class FluidCharacteristicsModel(Variables, Model):
         Get reference temperaturefor Oxydant.
         """
         value = self.node_fluid.xmlGetDouble('reference_oxydant_temperature')
-        if not value :
+        if value == None:
            ot_str = 'reference_oxydant_temperature'
            value = self.defaultFluidCharacteristicsValues()[ot_str]
            self.setTempOxydant(value)
@@ -440,7 +440,7 @@ class FluidCharacteristicsModel(Variables, Model):
         Get reference temperature.
         """
         value = self.node_fluid.xmlGetDouble('reference_fuel_temperature')
-        if not value :
+        if value == None:
            ft_str = 'reference_fuel_temperature'
            value = self.defaultFluidCharacteristicsValues()[ft_str]
            self.setTempFuel(value)
@@ -462,7 +462,7 @@ class FluidCharacteristicsModel(Variables, Model):
         Get reference molar mass.
         """
         value = self.node_fluid.xmlGetDouble('reference_molar_mass')
-        if not value :
+        if value == None:
            mm_str = 'reference_molar_mass'
            value = self.defaultFluidCharacteristicsValues()[mm_str]
            self.setMassemol(value)
@@ -823,7 +823,7 @@ class FluidCharacteristicsModel(Variables, Model):
 
 
     @Variables.noUndo
-    def getFormula(self, tag):
+    def getFormula(self, tag, zone="1"):
         """
         Return a formula for I{tag} 'density', 'molecular_viscosity',
         'specific_heat' or 'thermal_conductivity'
@@ -832,10 +832,15 @@ class FluidCharacteristicsModel(Variables, Model):
                             'specific_heat', 'thermal_conductivity',
                             'volume_viscosity'))
         node = self.node_fluid.xmlGetNode('property', name=tag)
-        formula = node.xmlGetString('formula')
+        if zone != "1":
+            if node.xmlGetChildNode("zone", zone_id=zone):
+                node = node.xmlGetChildNode("zone", zone_id=zone)
+            else:
+                node = node.xmlInitChildNode("zone", zone_id=zone)
+        formula = node.xmlGetChildString('formula')
         if not formula:
             formula = self.getDefaultFormula(tag)
-            self.setFormula(tag, formula)
+            self.setFormula(tag, formula, zone)
         return formula
 
 
@@ -860,7 +865,7 @@ class FluidCharacteristicsModel(Variables, Model):
 
 
     @Variables.undoLocal
-    def setFormula(self, tag, str):
+    def setFormula(self, tag, formula, zone="1"):
         """
         Gives a formula for 'density', 'molecular_viscosity',
         'specific_heat'or 'thermal_conductivity'
@@ -869,7 +874,12 @@ class FluidCharacteristicsModel(Variables, Model):
                             'specific_heat', 'thermal_conductivity',
                             'volume_viscosity'))
         node = self.node_fluid.xmlGetNode('property', name=tag)
-        node.xmlSetData('formula', str)
+        if zone != "1":
+            if node.xmlGetChildNode("zone", zone_id=zone):
+                node = node.xmlGetChildNode("zone", zone_id=zone)
+            else:
+                node = node.xmlInitChildNode("zone", zone_id=zone)
+        node.xmlSetData('formula', formula)
 
 
     @Variables.noUndo
@@ -909,25 +919,25 @@ class FluidCharacteristicsModel(Variables, Model):
                 node.xmlRemoveChild('postprocessing_recording')
 
     # MEG Generation related functions
-    def getFormulaComponents(self, tag, scalar=None):
+    def getFormulaComponents(self, tag, scalar=None, zone="1"):
         """
         Get the formula components for a given tag
         """
 
         if tag == 'density':
-            return self.getFormulaRhoComponents()
+            return self.getFormulaRhoComponents(zone)
 
         elif tag == 'molecular_viscosity':
-            return self.getFormulaMuComponents()
+            return self.getFormulaMuComponents(zone)
 
         elif tag == 'specific_heat':
-            return self.getFormulaCpComponents()
+            return self.getFormulaCpComponents(zone)
 
         elif tag == 'thermal_conductivity':
-            return self.getFormulaAlComponents()
+            return self.getFormulaAlComponents(zone)
 
         elif tag == 'volume_viscosity':
-            return self.getFormulaViscv0Components()
+            return self.getFormulaViscv0Components(zone)
 
         elif tag == 'scalar_diffusivity' and scalar != None:
             return self.getFormulaDiffComponents(scalar)
@@ -937,12 +947,12 @@ class FluidCharacteristicsModel(Variables, Model):
             raise Exception(msg)
 
 
-    def getFormulaRhoComponents(self):
+    def getFormulaRhoComponents(self, zone="1"):
         """
         User formula for density
         """
 
-        exp = self.getFormula('density')
+        exp = self.getFormula('density', zone)
         req = [('density', 'Density')]
 
         symbols = []
@@ -963,12 +973,12 @@ class FluidCharacteristicsModel(Variables, Model):
         return exp, req, self.list_scalars, symbols;
 
 
-    def getFormulaMuComponents(self):
+    def getFormulaMuComponents(self, zone="1"):
         """
         User formula for molecular viscosity
         """
 
-        exp = self.getFormula('molecular_viscosity')
+        exp = self.getFormula('molecular_viscosity', zone)
         req = [('molecular_viscosity', 'Molecular Viscosity')]
 
         symbols = []
@@ -1000,11 +1010,11 @@ class FluidCharacteristicsModel(Variables, Model):
         return exp, req, self.list_scalars, symbols;
 
 
-    def getFormulaCpComponents(self):
+    def getFormulaCpComponents(self, zone="1"):
         """
         User formula for specific heat
         """
-        exp = self.getFormula('specific_heat')
+        exp = self.getFormula('specific_heat', zone)
         req = [('specific_heat', 'Specific heat')]
 
         symbols = []
@@ -1025,11 +1035,11 @@ class FluidCharacteristicsModel(Variables, Model):
         return exp, req, self.list_scalars, symbols;
 
 
-    def getFormulaViscv0Components(self):
+    def getFormulaViscv0Components(self, zone="1"):
         """
         User formula for volumic viscosity
         """
-        exp = self.getFormula('volume_viscosity')
+        exp = self.getFormula('volume_viscosity', zone)
         req = [('volume_viscosity', 'Volume viscosity')]
 
         symbols = []
@@ -1052,11 +1062,11 @@ class FluidCharacteristicsModel(Variables, Model):
         return exp, req, self.list_scalars, symbols;
 
 
-    def getFormulaAlComponents(self):
+    def getFormulaAlComponents(self, zone="1"):
         """
         User formula for thermal conductivity
         """
-        exp = self.getFormula('thermal_conductivity')
+        exp = self.getFormula('thermal_conductivity', zone)
         req = [('thermal_conductivity', 'Thermal conductivity')]
 
         symbols = []
@@ -1076,7 +1086,7 @@ class FluidCharacteristicsModel(Variables, Model):
         return exp, req, self.list_scalars, symbols;
 
 
-    def getFormulaDiffComponents(self, scalar):
+    def getFormulaDiffComponents(self, scalar, zone="1"):
         """
         User formula for the diffusion coefficient
         """

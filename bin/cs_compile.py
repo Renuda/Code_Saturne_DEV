@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -510,12 +510,6 @@ class cs_compile(object):
         cmd += ["-o", exec_name]
         if o_files:
             cmd += o_files
-
-        # If present, address sanitizer needs to come first
-
-        if '-lasan' in p_libs:
-            p_libs.remove('-lasan')
-            cmd += ['-lasan']
 
         if os.path.basename(exec_name) in self.pkg.config.exec_libs:
             cmd += [self.pkg.config.exec_libs[os.path.basename(exec_name)]]

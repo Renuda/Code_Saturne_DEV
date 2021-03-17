@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -369,7 +369,7 @@ _inlet_bc(cs_lnum_t   face_id,
       rcodcl[_turb_bc_id.alp_bl*n_b_faces + face_id] = 1.;
 
     /* Initialization of the turbulent fluxes to 0 if DFM or
-     * EB-DFM are used for scalars (iturt = 30 or 31)
+     * EB-DFM are used for scalars (turbulence_flux_model = 30 or 31)
      * Alpha_theta for EB-DFM / EB-AFM / EB-GGDH is
      * initialize to 1 */
 
@@ -485,7 +485,7 @@ _set_uninit_inlet_bc(cs_lnum_t   face_id,
         rcodcl[_turb_bc_id.alp_bl*n_b_faces + face_id] = 1.;
 
     /* Initialization of the turbulent fluxes to 0 if DFM or
-     * EB-DFM are used for scalars (iturt = 30 or 31)
+     * EB-DFM are used for scalars (turbulence_flux_model = 30 or 31)
      * Alpha_theta for EB-DFM / EB-AFM / EB-GGDH is
      * initialize to 1 */
 
@@ -700,9 +700,9 @@ cs_turbulence_model_init_bc_ids(void)
   int n_sca_alp_bl = 0;
 
   /* For scalar turbulent fluxes, loop over all scalars to determine:
-   *  - number of scalars  with (EB)DFM (iturt=30 or 31)
+   *  - number of scalars  with (EB)DFM (turbulence_flux_model = 30 or 31)
    *  - number of scalars using an elliptic blending model
-   *    (iturt = 11 or 21 or 31) */
+   *    (turbulence_flux_model = 11 or 21 or 31) */
 
   for (int f_id = 0; f_id < n_fields; f_id++) {
     const cs_field_t *f = cs_field_by_id(f_id);

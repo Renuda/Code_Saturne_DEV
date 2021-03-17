@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -717,6 +717,7 @@ _implicit_euler_build(const cs_navsto_param_t  *nsp,
       cs_cdofb_vecteq_init_cell_system(cm, mom_eqp, mom_eqb,
                                        dir_values, forced_ids,
                                        vel_f_pre, vel_c_pre,
+                                       NULL, NULL, /* no n-1 state is given */
                                        csys, cb);
 
       /* 1- SETUP THE NAVSTO LOCAL BUILDER *
@@ -986,13 +987,13 @@ cs_cdofb_ac_init_scheme_context(const cs_navsto_param_t   *nsp,
   }
 
   /* Iterative algorithm to handle the non-linearity (Picard by default) */
-  const cs_navsto_param_sles_t  nslesp = nsp->sles_param;
+  const cs_navsto_param_sles_t  *nslesp = nsp->sles_param;
 
-  sc->algo_info = cs_iter_algo_define(nslesp.nl_algo_verbosity,
-                                      nslesp.n_max_nl_algo_iter,
-                                      nslesp.nl_algo_atol,
-                                      nslesp.nl_algo_rtol,
-                                      nslesp.nl_algo_dtol);
+  sc->algo_info = cs_iter_algo_define(nslesp->nl_algo_verbosity,
+                                      nslesp->n_max_nl_algo_iter,
+                                      nslesp->nl_algo_atol,
+                                      nslesp->nl_algo_rtol,
+                                      nslesp->nl_algo_dtol);
 
   /* Monitoring */
   CS_TIMER_COUNTER_INIT(sc->timer);
@@ -1048,13 +1049,13 @@ cs_cdofb_ac_set_sles(const cs_navsto_param_t    *nsp,
 
   assert(nsp != NULL && nsc != NULL);
 
-  const cs_navsto_param_sles_t  nslesp = nsp->sles_param;
+  const cs_navsto_param_sles_t  *nslesp = nsp->sles_param;
   cs_equation_param_t  *mom_eqp = cs_equation_get_param(nsc->momentum);
   int  field_id = cs_equation_get_field_id(nsc->momentum);
 
-  mom_eqp->sles_param.field_id = field_id;
+  mom_eqp->sles_param->field_id = field_id;
 
-  switch (nslesp.strategy) {
+  switch (nslesp->strategy) {
 
   case CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK: /* "Classical" way to set SLES */
     cs_equation_param_set_sles(mom_eqp);
@@ -1062,11 +1063,11 @@ cs_cdofb_ac_set_sles(const cs_navsto_param_t    *nsp,
 
   case CS_NAVSTO_SLES_BLOCK_MULTIGRID_CG:
 #if defined(HAVE_PETSC)
-    if (mom_eqp->sles_param.amg_type == CS_PARAM_AMG_NONE) {
+    if (mom_eqp->sles_param->amg_type == CS_PARAM_AMG_NONE) {
 #if defined(PETSC_HAVE_HYPRE)
-      mom_eqp->sles_param.amg_type = CS_PARAM_AMG_HYPRE_BOOMER;
+      mom_eqp->sles_param->amg_type = CS_PARAM_AMG_HYPRE_BOOMER;
 #else
-      mom_eqp->sles_param.amg_type = CS_PARAM_AMG_PETSC_GAMG;
+      mom_eqp->sles_param->amg_type = CS_PARAM_AMG_PETSC_GAMG;
 #endif
     }
 
@@ -1075,7 +1076,7 @@ cs_cdofb_ac_set_sles(const cs_navsto_param_t    *nsp,
                          NULL,
                          MATMPIAIJ,
                          cs_navsto_sles_amg_block_hook,
-                         (void *)mom_eqp);
+                         (void *)nsp);
 #else
     bft_error(__FILE__, __LINE__, 0,
               "%s: Invalid strategy for solving the linear system %s\n"
@@ -1192,10 +1193,9 @@ cs_cdofb_ac_compute_implicit(const cs_mesh_t              *mesh,
   /* Solve the linear system (treated as a scalar-valued system
    * with 3 times more DoFs) */
   cs_real_t  normalization = 1.0; /* TODO */
-  cs_sles_t  *sles = cs_sles_find_or_add(mom_eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(mom_eqp->sles_param->field_id, NULL);
 
   int  n_solver_iter = cs_equation_solve_scalar_system(3*n_faces,
-                                                       mom_eqp->name,
                                                        mom_eqp->sles_param,
                                                        matrix,
                                                        rs,
@@ -1353,11 +1353,10 @@ cs_cdofb_ac_compute_implicit_nl(const cs_mesh_t              *mesh,
   /* Solve the linear system (treated as a scalar-valued system
    * with 3 times more DoFs) */
   cs_real_t  normalization = 1.0; /* TODO */
-  cs_sles_t  *sles = cs_sles_find_or_add(mom_eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(mom_eqp->sles_param->field_id, NULL);
 
   nl_info->n_inner_iter = (nl_info->last_inner_iter =
                            cs_equation_solve_scalar_system(3*n_faces,
-                                                           mom_eqp->name,
                                                            mom_eqp->sles_param,
                                                            matrix,
                                                            rs,
@@ -1432,12 +1431,11 @@ cs_cdofb_ac_compute_implicit_nl(const cs_mesh_t              *mesh,
     t_solve_start = cs_timer_time();
 
     /* Redo the setup since the matrix is modified */
-    sles = cs_sles_find_or_add(mom_eqp->sles_param.field_id, NULL);
+    sles = cs_sles_find_or_add(mom_eqp->sles_param->field_id, NULL);
     cs_sles_setup(sles, matrix);
 
     nl_info->n_inner_iter += (nl_info->last_inner_iter =
                          cs_equation_solve_scalar_system(3*n_faces,
-                                                         mom_eqp->name,
                                                          mom_eqp->sles_param,
                                                          matrix,
                                                          rs,

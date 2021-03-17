@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -748,7 +748,7 @@ _bdy_mass_flux_update(const void                 *input,
 
           cs_real_t face_area = cs_glob_mesh_quantities->b_face_surf[face_id];
 
-          vals[face_id] += sign * (   p_weight *cur_mass
+          vals[face_id] += sign * (   p_weight * cur_mass
                                    / (face_area * dt_val[0]));
 
         }
@@ -5721,6 +5721,10 @@ cs_lagr_stat_get_moment(int                    stat_type,
   assert(class_id >= 0);
   assert(m_type == CS_LAGR_MOMENT_MEAN || m_type == CS_LAGR_MOMENT_VARIANCE);
 
+  /* Even if the field whose moment is computed is event-based,
+     if was defined as associated to the particles group
+     (see cs_lagr_stat_time_moment_define), so adjust check here. */
+
   for (int m_id = 0; m_id < _n_lagr_moments; m_id++) {
 
     cs_lagr_moment_t *mt = _lagr_moments + m_id;
@@ -5728,7 +5732,8 @@ cs_lagr_stat_get_moment(int                    stat_type,
 
     if (   mt->m_type       == m_type
         && mt->stat_type    == stat_type
-        && mwa->group       == stat_group
+        && (   mwa->group   == stat_group
+            || mwa->group   == CS_LAGR_STAT_GROUP_PARTICLE)
         && mt->class        == class_id
         && mt->component_id == component_id)
       return cs_field_by_id(mt->f_id);

@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -457,6 +457,9 @@ _bucket_sampling(int                            n_ranks,
     lsum_weight = n_elts;
 
   MPI_Allreduce(&lsum_weight, &gsum_weight, 1, CS_MPI_GNUM, MPI_SUM, comm);
+
+  if (gsum_weight == 0)  /* Avoid divisions by zero for empty set */
+    return 0;
 
   double optim = (double)gsum_weight / (double)n_ranks;
 

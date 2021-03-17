@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -259,7 +259,10 @@ class ThermalView(QWidget, Ui_ThermalForm):
         # Soot model
         #----------------
 
-        self.__setSoot__()
+        # Only activate soot for code_saturne (for which it is available).
+        # Otherwise it may lead to the spurious apparition of pages for NCFD
+        if self.case.module_name() == 'code_saturne':
+            self.__setSoot__()
 
         # Undo/redo part
 

@@ -3,7 +3,7 @@
 !     This file is part of the Code_Saturne Kernel, element of the
 !     Code_Saturne CFD tool.
 
-!     Copyright (C) 1998-2020 EDF S.A., France
+!     Copyright (C) 1998-2021 EDF S.A., France
 
 !     contact: saturne-support@edf.fr
 
@@ -84,6 +84,7 @@ integer          ii, ivar
 integer          iflid, kcvlim, ifctsl, clip_id
 integer          kdflim
 integer          kturt, kfturt, kislts, keyvar, kclipp, kfturt_alpha
+integer          turb_flux_model, turb_flux_model_type
 integer          itycat, ityloc, idim1, idim3, idim6
 logical          iprev, inoprv
 integer          f_id, kscavr, f_type
@@ -155,8 +156,11 @@ do ii = 1, nscal
     ivar = isca(ii)
     call field_get_key_struct_var_cal_opt(ivarfl(ivar), vcopt)
 
-    if (ityturt(ii).gt.0) then
-      if (ityturt(ii).eq.3) then
+    call field_get_key_int(ivarfl(ivar), kturt, turb_flux_model)
+    turb_flux_model_type = turb_flux_model / 10
+
+    if (turb_flux_model_type.gt.0) then
+      if (turb_flux_model_type.eq.3) then
         idfm = 1
       endif
 
@@ -199,6 +203,39 @@ if (itytur.eq.4 .and. idries.eq.1) then
   call field_find_or_create('ustar', itycat, ityloc, idim1, f_id)
 endif
 
+! Interior face head loss field
+!-------------------------
+
+itycat = FIELD_PROPERTY
+ityloc = 2 ! inner faces
+
+! Head loss on interior faces
+f_name = 'inner_face_head_loss'
+
+call field_create(f_name, itycat, ityloc, idim1, inoprv, f_id)
+
+! Boundary face head loss field
+!-------------------------
+
+itycat = FIELD_PROPERTY
+ityloc = 3 ! boundary faces
+
+! Head loss on interior faces
+f_name = 'boundary_face_head_loss'
+
+call field_create(f_name, itycat, ityloc, idim1, inoprv, f_id)
+
+! Interior face source term field
+!-------------------------
+
+itycat = FIELD_PROPERTY
+ityloc = 2 ! inner faces
+
+! Source term on interior faces
+f_name = 'inner_face_source_term'
+
+call field_create(f_name, itycat, ityloc, idim1, inoprv, f_id)
+
 ! Interior mass flux field
 !-------------------------
 
@@ -208,7 +245,7 @@ ityloc = 2 ! inner faces
 ! Mass flux for the class on interior faces
 f_name = 'inner_mass_flux'
 
-if (istmpf.ne.1) then
+if (istmpf.ne.1 .or. staggered.eq.1) then
   call field_create(f_name, itycat, ityloc, idim1, iprev, f_id)
 else
   call field_create(f_name, itycat, ityloc, idim1, inoprv, f_id)
@@ -228,7 +265,8 @@ ityloc = 3 ! boundary faces
 
 ! Mass flux for the class on interior faces
 f_name = 'boundary_mass_flux'
-if (istmpf.ne.1) then
+
+if (istmpf.ne.1 .or. staggered.eq.1) then
   call field_create(f_name, itycat, ityloc, idim1, iprev, f_id)
 else
   call field_create(f_name, itycat, ityloc, idim1, inoprv, f_id)
@@ -751,7 +789,7 @@ endif
 
 ! Check if scalars are buoyant and set n_buoyant_scal accordingly.
 ! It is then used in tridim to update buoyant scalars and density in U-P loop
-call cs_parameters_set_n_buoyant_scalars
+call cs_velocity_pressure_set_n_buoyant_scalars
 
 ! For Low Mach and compressible (increment) algorithms, a particular care
 ! must be taken when dealing with density in the unsteady term in the velocity

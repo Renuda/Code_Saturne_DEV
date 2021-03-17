@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -64,11 +64,13 @@ typedef enum {
   CS_SLES_BICGSTAB,            /*!< Preconditioned BiCGstab
                                     (biconjugate gradient stabilized) */
   CS_SLES_BICGSTAB2,           /*!< Preconditioned BiCGstab2 */
+  CS_SLES_GCR,                 /*!< Generalized conjugate residual  */
   CS_SLES_GMRES,               /*!< Preconditioned GMRES
                                     (generalized minimal residual) */
   CS_SLES_P_GAUSS_SEIDEL,      /*!< Process-local Gauss-Seidel */
   CS_SLES_P_SYM_GAUSS_SEIDEL,  /*!< Process-local symmetric Gauss-Seidel */
   CS_SLES_PCR3,                /*!< 3-layer conjugate residual */
+  CS_SLES_USER_DEFINED,        /*!< User-defined iterative solver */
 
   CS_SLES_N_IT_TYPES,          /*!< Number of resolution algorithms
                                     excluding smoother only*/
@@ -96,6 +98,41 @@ typedef struct _cs_sles_it_convergence_t  cs_sles_it_convergence_t;
 /* Names for iterative solver types */
 
 extern const char *cs_sles_it_type_name[];
+
+/*=============================================================================
+ * User function prototypes
+ *============================================================================*/
+
+/*----------------------------------------------------------------------------
+ * Solution of A.vx = Rhs using a user-defined iterative solver
+ *
+ * On entry, vx is considered initialized.
+ *
+ * parameters:
+ *   c               <-- pointer to solver context info
+ *   a               <-- matrix
+ *   diag_block_size <-- diagonal block size (unused here)
+ *   rotation_mode   <-- halo update option for rotational periodicity
+ *   convergence     <-- convergence information structure
+ *   rhs             <-- right hand side
+ *   vx              <-> system solution
+ *   aux_size        <-- number of elements in aux_vectors (in bytes)
+ *   aux_vectors     --- optional working area (allocation otherwise)
+ *
+ * returns:
+ *   convergence state
+ *----------------------------------------------------------------------------*/
+
+cs_sles_convergence_state_t
+cs_user_sles_it_solver(cs_sles_it_t              *c,
+                       const cs_matrix_t         *a,
+                       cs_lnum_t                  diag_block_size,
+                       cs_halo_rotation_t         rotation_mode,
+                       cs_sles_it_convergence_t  *convergence,
+                       const cs_real_t           *rhs,
+                       cs_real_t                 *restrict vx,
+                       size_t                     aux_size,
+                       void                      *aux_vectors);
 
 /*=============================================================================
  * Public function prototypes
@@ -439,6 +476,20 @@ cs_sles_it_assign_order(cs_sles_it_t   *context,
 void
 cs_sles_it_set_fallback_threshold(cs_sles_it_t                 *context,
                                   cs_sles_convergence_state_t   threshold);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Define the number of iterations to be done before restarting the
+ *        solver. Useful only for GCR or GMRES algorithms.
+ *
+ * \param[in, out]  context    pointer to iterative solver info and context
+ * \param[in]       interval   convergence level under which fallback is used
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_sles_it_set_restart_interval(cs_sles_it_t                 *context,
+                                int                           interval);
 
 /*----------------------------------------------------------------------------
  * Query mean number of rows under which Conjugate Gradient algorithm

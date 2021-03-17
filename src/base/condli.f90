@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -189,7 +189,7 @@ implicit none
 ! Arguments
 
 integer          nvar   , nscal , iterns, isvhb
-integer          itrale , italim , itrfin , ineefl , itrfup
+integer          itrale , italim , itrfin , ineefl , itrfup, nbt2h
 
 double precision, pointer, dimension(:) :: xprale
 double precision, pointer, dimension(:,:) :: cofale
@@ -213,6 +213,7 @@ integer          f_id, iut, ivt, iwt, ialt, iflmab
 integer          kbfid, b_f_id
 integer          keyvar
 integer          dimrij, f_dim
+integer          kturt, turb_flux_model, turb_flux_model_type
 
 double precision sigma , cpp   , rkl   , visls_0
 double precision hint  , hext  , pimp  , dimp, cfl
@@ -226,7 +227,6 @@ double precision visci(3,3), fikis, viscis, distfi
 double precision temp, exchange_coef
 double precision turb_schmidt
 double precision, allocatable, dimension(:) :: pimpts, hextts, qimpts, cflts
-double precision, allocatable, dimension(:) :: tb_save
 double precision sigmae
 
 character(len=80) :: fname
@@ -264,6 +264,9 @@ double precision, dimension(:,:), pointer :: bvar_v
 double precision, dimension(:), pointer :: cpro_visma_s
 double precision, dimension(:,:), pointer :: cvar_ts, cvara_ts, cpro_visma_v
 
+integer, allocatable, dimension(:) :: lbt2h
+double precision, allocatable, dimension(:) :: vbt2h
+
 ! darcy arrays
 double precision, dimension(:), pointer :: permeability
 double precision, dimension(:,:), pointer :: tensor_permeability
@@ -289,6 +292,18 @@ interface
     double precision, dimension(nfabor), intent(out), target :: t_b
 
   end subroutine b_h_to_t
+
+  subroutine b_t_to_h(nlst, lstfac, t_b, h_b)
+
+    use mesh, only: nfabor
+    implicit none
+
+    integer :: nlst
+    integer, dimension(nlst) :: lstfac
+    double precision, dimension(nfabor), intent(in) :: t_b
+    double precision, dimension(nfabor), intent(out), target :: h_b
+
+  end subroutine b_t_to_h
 
   subroutine clptur(nscal, isvhb, icodcl, rcodcl, velipb, rijipb, &
                     visvdr, hbord, theipb)
@@ -326,6 +341,17 @@ interface
     double precision, pointer, dimension(:,:) :: rijipb
 
   end subroutine clsyvt
+
+  subroutine cs_boundary_conditions_complete(nvar, itypfb, icodcl, rcodcl) &
+    bind(C, name='cs_boundary_conditions_complete')
+
+    use, intrinsic :: iso_c_binding
+    implicit none
+    integer(c_int), value :: nvar
+    integer(c_int), dimension(*), intent(inout) :: itypfb, icodcl
+    real(kind=c_double), dimension(*), intent(inout) :: rcodcl
+
+  end subroutine cs_boundary_conditions_complete
 
   subroutine cs_syr_coupling_recv_boundary(nvar, bc_type, icodcl, rcodcl) &
     bind(C, name = 'cs_syr_coupling_recv_boundary')
@@ -394,42 +420,31 @@ if (ippmod(iphpar).eq.0.or.ippmod(igmix).ge.0.or.ippmod(icompf).ge.0) then
 
 endif
 
-!     - Sous-programme utilisateur
-!       ==========================
+call cs_boundary_conditions_complete(nvar, itypfb, icodcl, rcodcl)
+
+! User-defined functions
+! ==========================
 
 call cs_f_user_boundary_conditions &
-  ( nvar   , nscal  ,                                              &
-  icodcl , itrifb , itypfb , izfppp ,                            &
-  dt     ,                                                       &
-  rcodcl )
+  (nvar, nscal, icodcl, itrifb, itypfb, izfppp, dt, rcodcl )
 
 call user_boundary_conditions(nvar, itypfb, icodcl, rcodcl)
 
-!     - Interface Code_Saturne
-!       ======================
+! Check consistency with GUI definitions
 
 call uiclve(nozppm, itypfb, izfppp)
 
-! --- Couplage code/code entre deux instances (ou plus) de Code_Saturne
-!       On s'occupe ici du couplage via les faces de bord, et de la
-!       transformation de l'information recue en condition limite.
+! BC'based coupling with other code_saturne instances.
 
 if (nbrcpl.gt.0) then
-
-  call cscfbr &
-    ( nscal  ,                                                       &
-    icodcl , itypfb ,                                              &
-    dt     ,                                                       &
-    rcodcl )
-
+  call cscfbr(nscal, icodcl, itypfb, dt, rcodcl)
 endif
 
-! -- Synthetic Eddy Method en L.E.S. :
-!    (Transfert des structures dans les tableaux rcodcl)
+! Synthetic Eddy Method for L.E.S.
 
 call synthe(ttcabs, dt, rcodcl)
 
-! -- Methode ALE (CL de vitesse de maillage et deplacement aux noeuds)
+! ALE method (mesh velocity BC and vertices displacement)
 
 if (iale.ge.1) then
 
@@ -443,23 +458,17 @@ if (iale.ge.1) then
   ! - Interface Code_Saturne
   !   ======================
 
-  call uialcl &
-    ( ibfixe, igliss, ivimpo, ifresf,    &
-      ialtyb,                            &
-      impale,                            &
-      disale,                            &
-      iuma, ivma, iwma,                  &
-      rcodcl)
+  call uialcl(ibfixe, igliss, ivimpo, ifresf,   &
+             ialtyb, impale, disale,            &
+             iuma, ivma, iwma,                  &
+             rcodcl)
 
-  ! TODO in the future version: remove xyzno0, and disale because they are fields
+  ! TODO in the future version: remove dt, xyzno0, and disale
+  ! because they are avaliable as fields.
 
-  call usalcl &
-    ( itrale ,                                                       &
-    nvar   , nscal  ,                                              &
-    icodcl , itypfb , ialtyb ,                                     &
-    impale ,                                                       &
-    dt     ,                                                       &
-    rcodcl , xyzno0 , disale )
+  call usalcl(itrale, nvar, nscal,              &
+              icodcl, itypfb, ialtyb, impale,   &
+              dt, rcodcl, xyzno0, disale)
 
   !     Au cas ou l'utilisateur aurait touche disale sans mettre impale=1, on
   !     remet le deplacement initial
@@ -506,7 +515,7 @@ if (itrfin.eq.1 .and. itrfup.eq.1) then
 
 endif
 
-!Radiative transfer: add contribution to energy BCs.
+! Radiative transfer: add contribution to energy BCs.
 if (iirayo.gt.0 .and. itrfin.eq.1 .and. itrfup.eq.1) then
   call cs_rad_transfer_bcs(nvar, itypfb, icodcl, dt, rcodcl)
 endif
@@ -514,6 +523,33 @@ endif
 ! For internal coupling, set itypfb to wall function by default
 ! if not set by the user
 call cs_internal_coupling_bcs(itypfb)
+
+! Convert temperature to enthalpy for Dirichlet conditions
+
+if (itherm.eq.2) then
+
+  nbt2h = 0
+  allocate(lbt2h(nfabor))
+  allocate(vbt2h(nfabor))
+
+  ivar = isca(iscalt)
+
+  ! Filter Dirichlet/imposed value faces
+
+  do ii = 1, nfabor
+    if (icodcl(ii,ivar).lt.0) then
+      nbt2h = nbt2h + 1
+      lbt2h(nbt2h) = ii
+      icodcl(ii,ivar) = -icodcl(ii,ivar)
+      vbt2h(ii) = rcodcl(ii,ivar,1)
+    else
+      vbt2h(ii) = 0.d0
+    endif
+  enddo
+
+  call b_t_to_h(nbt2h, lbt2h, vbt2h, rcodcl(:,ivar,1))
+
+endif
 
 !===============================================================================
 ! 1. initializations
@@ -619,17 +655,6 @@ call field_get_coefbf_v(ivarfl(iu), cofbfu)
 
 call field_get_key_id("boundary_value_id", kbfid)
 
-! In case of radiative model, save boundary temperature
-! to reduce enthalpy -> temperature conversion error.
-
-if (itherm.eq.2 .and. iirayo.ge.1) then
-  allocate(tb_save(nfabor))
-  call field_get_val_s(itempb, btemp_s)
-  do ifac = 1, nfabor
-    tb_save(ifac) = btemp_s(ifac)
-  enddo
-endif
-
 !===============================================================================
 ! 2. treatment of types of bcs given by itypfb
 !===============================================================================
@@ -727,6 +752,11 @@ do ii = 1, nscal
   call field_get_key_int(f_id, kbfid, b_f_id)
   call field_get_dim(f_id, f_dim)
 
+  ! if thermal variable has no boundary but temperature does, use it
+  if (b_f_id .lt. 0 .and. ii.eq.iscalt .and. itherm.eq.2) then
+    b_f_id = itempb
+  endif
+
   if (b_f_id .ge. 0) then
     if (f_dim.eq.1) then
       call field_get_val_s(b_f_id, bvar_s)
@@ -734,12 +764,7 @@ do ii = 1, nscal
       call field_get_val_v(b_f_id, bvar_v)
     endif
   else if (ii.eq.iscalt) then
-    bvar_s => null()
-    ! if thermal variable has no boundary but temperature does, use it
-    if (itempb.ge.0) then
-      b_f_id = itempb
-      call field_get_val_s(b_f_id, bvar_s)
-    endif
+    bvar_s => null()   ! no boundary field, but may need theipb
   else
     cycle ! nothing to do for this scalar
   endif
@@ -803,26 +828,14 @@ do ii = 1, nscal
 
     endif
 
-    ! Special case for first time step (TODO check why)
-
-    if (ntcabs.eq.1 .and. ii.eq.iscalt) then
-
-      call field_get_val_prev_s(ivarfl(ivar), cvara_s)
-
-      do ifac = 1 , nfabor
-        iel = ifabor(ifac)
-        theipb(ifac) = cvara_s(iel)
-      enddo
-
     ! Copy bvar_s to theipb if both theipb and bvar_s present
 
-    else if (b_f_id .ge. 0 .and. ii.eq.iscalt) then
-
+    if (b_f_id .ge. 0 .and. ii.eq.iscalt) then
       do ifac = 1 , nfabor
         theipb(ifac) = bvar_s(ifac)
       enddo
-
     endif
+
   elseif (b_f_id.ge.0) then
     if (itbrrb.eq.1 .and. vcopt%ircflu.eq.1) then
       call field_get_val_v(ivarfl(ivar), cvar_v)
@@ -2583,6 +2596,8 @@ if (nscal.ge.1) then
     call field_get_val_s(icv, cpro_cv)
   endif
 
+  call field_get_key_id('turbulent_flux_model', kturt)
+
   do ii = 1, nscal
 
     ivar   = isca(ii)
@@ -2598,6 +2613,11 @@ if (nscal.ge.1) then
     endif
 
     call field_get_key_int(ivarfl(ivar), kscacp, iscacp)
+
+
+    ! Get the turbulent flux model for the scalar
+    call field_get_key_int(ivarfl(isca(ii)), kturt, turb_flux_model)
+    turb_flux_model_type = turb_flux_model / 10
 
     ! --- Indicateur de prise en compte de Cp ou non
     !       (selon si le scalaire (scalaire associe pour une fluctuation)
@@ -2625,8 +2645,8 @@ if (nscal.ge.1) then
 
     call field_get_key_struct_var_cal_opt(ivarfl(ivar), vcopt)
 
-    if (iand(vcopt%idften, ANISOTROPIC_DIFFUSION).ne.0.or.ityturt(ii).eq.3) then
-      if (iturb.ne.32.or.ityturt(ii).eq.3) then
+    if (iand(vcopt%idften, ANISOTROPIC_DIFFUSION).ne.0.or.turb_flux_model_type.eq.3) then
+      if (iturb.ne.32.or.turb_flux_model_type.eq.3) then
         call field_get_val_v(ivsten, visten)
       else ! EBRSM and (GGDH or AFM)
         call field_get_val_v(ivstes, visten)
@@ -2646,7 +2666,16 @@ if (nscal.ge.1) then
       call field_get_coefaf_s(ivarfl(ivar), cofafp)
       call field_get_coefbf_s(ivarfl(ivar), cofbfp)
 
-      if (b_f_id .ge. 0) call field_get_val_s(b_f_id, bvar_s)
+      ! if thermal variable has no boundary but temperature does, use it
+      if (b_f_id .lt. 0 .and. ii.eq.iscalt .and. itherm.eq.2) then
+        b_f_id = itempb
+      endif
+
+      if (b_f_id .ge. 0) then
+        call field_get_val_s(b_f_id, bvar_s)
+      else
+        bvar_s => null()
+      endif
 
       do ifac = 1, nfabor
 
@@ -2872,7 +2901,7 @@ if (nscal.ge.1) then
         endif
 
         ! Thermal heat flux boundary conditions
-        if (ityturt(ii).eq.3) then
+        if (turb_flux_model_type.eq.3) then
 
           ! Name of the scalar ivar !TODO move outside of the loop
           call field_get_name(ivarfl(ivar), fname)
@@ -3081,7 +3110,8 @@ if (nscal.ge.1) then
             do isou = 1, 3
               b_pvari(isou) = 0.d0
               do jsou = 1, 3
-                b_pvari(isou) = b_pvari(isou)  +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
+                b_pvari(isou) =    b_pvari(isou)    &
+                                +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
               enddo
             enddo
             do isou = 1, 3
@@ -3110,7 +3140,8 @@ if (nscal.ge.1) then
             do isou = 1, 3
               b_pvari(isou) = 0.d0
               do jsou = 1, 3
-                b_pvari(isou) = b_pvari(isou)  +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
+                b_pvari(isou) =    b_pvari(isou)    &
+                                +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
               enddo
             enddo
             do isou = 1, 3
@@ -3141,7 +3172,8 @@ if (nscal.ge.1) then
             do isou = 1, 3
               b_pvari(isou) = 0.d0
               do jsou = 1, 3
-                b_pvari(isou) = b_pvari(isou)  +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
+                b_pvari(isou) =    b_pvari(isou)    &
+                                +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
               enddo
             enddo
             do isou = 1, 3
@@ -3172,7 +3204,8 @@ if (nscal.ge.1) then
             do isou = 1, 3
               b_pvari(isou) = 0.d0
               do jsou = 1, 3
-                b_pvari(isou) = b_pvari(isou)  +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
+                b_pvari(isou) =    b_pvari(isou)    &
+                                +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
               enddo
             enddo
             do isou = 1, 3
@@ -3180,8 +3213,9 @@ if (nscal.ge.1) then
             enddo
           endif
 
-        ! convective boundary for Marangoni effects (generalized symmetry condition)
-        !---------------------------------------------------------------------------
+        ! convective boundary for Marangoni effects
+        !(generalized symmetry condition)
+        !------------------------------------------
 
         elseif (icodcl(ifac,ivar).eq.14) then
 
@@ -3210,7 +3244,8 @@ if (nscal.ge.1) then
             do isou = 1, 3
               b_pvari(isou) = 0.d0
               do jsou = 1, 3
-                b_pvari(isou) = b_pvari(isou)  +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
+                b_pvari(isou) =    b_pvari(isou)    &
+                                +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
               enddo
             enddo
             do isou = 1, 3
@@ -3250,7 +3285,8 @@ if (nscal.ge.1) then
             do isou = 1, 3
               b_pvari(isou) = 0.d0
               do jsou = 1, 3
-                b_pvari(isou) = b_pvari(isou)  +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
+                b_pvari(isou) =    b_pvari(isou)    &
+                                +  coefbv(jsou, isou, ifac) * bvar_v(jsou,ifac)
               enddo
             enddo
             do isou = 1, 3
@@ -3265,7 +3301,7 @@ if (nscal.ge.1) then
     endif ! End of vector transported quantities
 
     ! EB-GGDH/AFM/DFM alpha boundary conditions
-    if (iturt(ii).eq.11 .or. iturt(ii).eq.21 .or. iturt(ii).eq.31) then
+    if (turb_flux_model.eq.11 .or. turb_flux_model.eq.21 .or. turb_flux_model.eq.31) then
 
       ! Name of the scalar ivar
       call field_get_name(ivarfl(ivar), fname)
@@ -3328,8 +3364,9 @@ if (nscal.ge.1) then
               coefbp(ifac), cofbfp(ifac),                        &
               pimp              , cfl               , hint )
 
-          ! Imposed value for the convection operator, imposed flux for diffusion
-          !----------------------------------------------------------------------
+          ! Imposed value for the convection operator,
+          ! imposed flux for diffusion
+          !-------------------------------------------
 
         elseif (icodcl(ifac,ialt).eq.13) then
 
@@ -3487,41 +3524,50 @@ if (associated(rijipb)) deallocate(rijipb)
 ! 16. Update of boundary temperature when saved and not a variable.
 !===============================================================================
 
-if (itherm.eq.2 .and. itempb.ge.0) then
+if (itherm.eq.2) then
 
-  call field_get_val_s(itempb, btemp_s)
+  if (itempb.ge.0) then
 
-  ! If we also have a boundary value field for the thermal
-  ! scalar, copy its values first.
-
-  ! If we do not have a boundary value field for the thermal scalar,
-  ! then boundary values for the thermal scalar were directly
-  ! saved to the boundary temperature field, so no copy is needed.
-
-  f_id = ivarfl(isca(iscalt))
-  call field_get_key_int(f_id, kbfid, b_f_id)
-
-  if (b_f_id .ge. 0) then
-    call field_get_val_s(b_f_id, bvar_s)
-    call b_h_to_t(bvar_s, btemp_s)
-  else
-    call b_h_to_t(btemp_s, btemp_s)
-  endif
-
-  ! In case of radiative model, restore saved boundary temperature
-  ! for prescribed wall values so as to reduce
-  ! enthalpy -> temperature conversion error.
-
-  if (itherm.eq.2 .and. iirayo.ge.1) then
-    ii = isca(iscalt)
     call field_get_val_s(itempb, btemp_s)
-    do ifac = 1, nfabor
-      if (icodcl(ifac,ii).eq.iparoi .or. icodcl(ifac,ii).eq.iparug) then
-        btemp_s(ifac) = tb_save(ifac)
-      endif
+
+    ! If we also have a boundary value field for the thermal
+    ! scalar, copy its values first.
+
+    ! If we do not have a boundary value field for the thermal scalar,
+    ! then boundary values for the thermal scalar were directly
+    ! saved to the boundary temperature field, so no copy is needed.
+
+    f_id = ivarfl(isca(iscalt))
+    call field_get_key_int(f_id, kbfid, b_f_id)
+
+    if (b_f_id .ge. 0) then
+      call field_get_val_s(b_f_id, bvar_s)
+    else
+      allocate(bvar_s(nfabor))
+      do ii = 1, nfabor
+        bvar_s(ii) = btemp_s(ii)
+      enddo
+    endif
+
+    call b_h_to_t(bvar_s, btemp_s)
+
+    if (b_f_id .lt. 0) then
+      deallocate(bvar_s)
+    endif
+
+    ! In case of assigned temperature values, overwrite computed
+    ! wall temperature with prescribed one to avoid issues due to
+    ! enthalpy -> temperature conversion precision
+    ! (T -> H -> T at the boundary does not preserve T)
+    do ii = 1, nbt2h
+      ifac = lbt2h(ii)
+      btemp_s(ifac) = vbt2h(ifac)
     enddo
-    deallocate(tb_save)
+
   endif
+
+  deallocate(lbt2h)
+  deallocate(vbt2h)
 
 endif
 
@@ -4170,11 +4216,11 @@ integer          isou  , jsou
 do isou = 1, 3
 
   ! Gradient BCs
-  coefa(isou) = pimpv(isou)*normal(isou)                    &
+  coefa(isou) = - qimpv(isou)/max(hint, 1.d-300)
     ! "[1 -n(x)n] Qimp / hint" is divided into two
-              - qimpv(isou)/max(hint, 1.d-300)
   do jsou = 1, 3
-    coefa(isou) = coefa(isou) + normal(isou)*normal(jsou)*qimpv(jsou)/max(hint, 1.d-300)
+    coefa(isou) = coefa(isou) &
+      + normal(isou)*normal(jsou)*(pimpv(jsou)+qimpv(jsou)/max(hint, 1.d-300))
     if (jsou.eq.isou) then
       coefb(isou,jsou) = 1.d0 - normal(isou)*normal(jsou)
     else
@@ -4183,11 +4229,11 @@ do isou = 1, 3
   enddo
 
   ! Flux BCs
-  cofaf(isou) = -hint*pimpv(isou)*normal(isou)              &
+  cofaf(isou) = qimpv(isou)
     ! "[1 -n(x)n] Qimp" is divided into two
-              + qimpv(isou)
   do jsou = 1, 3
-    cofaf(isou) = cofaf(isou) - normal(isou)*normal(jsou)*qimpv(jsou)
+    cofaf(isou) = cofaf(isou) &
+      - normal(isou)*normal(jsou)*(hint*pimpv(jsou)+qimpv(jsou))
     cofbf(isou,jsou) = hint*normal(isou)*normal(jsou)
   enddo
 
@@ -4272,11 +4318,11 @@ hintnm(3) = hint(6)*normal(1) + hint(5)*normal(2) + hint(3)*normal(3)
 do isou = 1, 3
 
   ! Gradient BCs
-  coefa(isou) = pimpv(isou)*normal(isou)                    &
+  coefa(isou) = - qshint(isou)
     ! "[1 -n(x)n] Qimp / hint" is divided into two
-              - qshint(isou)
   do jsou = 1, 3
-    coefa(isou) = coefa(isou) + normal(isou)*normal(jsou)*qshint(jsou)
+    coefa(isou) = coefa(isou) &
+      + normal(isou)*normal(jsou)*(pimpv(jsou)+qshint(jsou))
     if (jsou.eq.isou) then
       coefb(isou,jsou) = 1.d0 - normal(isou)*normal(jsou)
     else
@@ -4285,11 +4331,11 @@ do isou = 1, 3
   enddo
 
   ! Flux BCs
-  cofaf(isou) = -hintpv(isou)*normal(isou)              &
+  cofaf(isou) = qimpv(isou)
     ! "[1 -n(x)n] Qimp" is divided into two
-              + qimpv(isou)
   do jsou = 1, 3
-    cofaf(isou) = cofaf(isou) - normal(isou)*normal(jsou)*qimpv(jsou)
+    cofaf(isou) = cofaf(isou) &
+      - normal(isou)*normal(jsou)*(hintpv(jsou)+qimpv(jsou))
     cofbf(isou,jsou) = hintnm(isou)*normal(jsou)
   enddo
 
@@ -4309,10 +4355,10 @@ end subroutine set_generalized_sym_vector_aniso
 !> \param[out]    cofaf         explicit BC coefficient for diffusive flux
 !> \param[out]    coefb         implicit BC coefficient for gradients
 !> \param[out]    cofbf         implicit BC coefficient for diffusive flux
-!> \param[in]     pimpv         Dirichlet value to impose on the normal
-!>                              component
+!> \param[in]     pimpv         Dirichlet value to impose on the tangential
+!>                              components
 !> \param[in]     qimpv         Flux value to impose on the
-!>                              tangential components
+!>                              normal component
 !> \param[in]     hint          Internal exchange coefficient
 !> \param[in]     normal        normal
 !_______________________________________________________________________________
@@ -4346,22 +4392,23 @@ do isou = 1, 3
 
   ! Gradient BCs
   ! "[1 -n(x)n] Pimp" is divided into two
-  coefa(isou) = pimpv(isou)                                    &
-              - normal(isou)*qimpv(isou)/max(hint, 1.d-300)
+  coefa(isou) = pimpv(isou)
   do jsou = 1, 3
-    coefa(isou) = coefa(isou) - normal(isou)*normal(jsou)*pimpv(jsou)
+    coefa(isou) = coefa(isou) &
+      - normal(isou)*normal(jsou)*(pimpv(jsou)+qimpv(jsou)/max(hint, 1.d-300))
     coefb(isou,jsou) = normal(isou)*normal(jsou)
   enddo
 
   ! Flux BCs
   ! "[1 -n(x)n] Pimp" is divided into two
-  cofaf(isou) = -hint*pimpv(isou)            &
-              + normal(isou)*qimpv(isou)
+  cofaf(isou) = -hint*pimpv(isou)
   do jsou = 1, 3
-    cofaf(isou) = cofaf(isou) + normal(isou)*normal(jsou)*pimpv(jsou)*hint
+    cofaf(isou) = cofaf(isou) &
+      + normal(isou)*normal(jsou)*(qimpv(jsou)+pimpv(jsou)*hint)
     if (jsou.eq.isou) then
-      cofbf(isou,jsou) = hint*normal(isou)*normal(jsou)
+      cofbf(isou,jsou) = hint*(1.d0-normal(isou)*normal(jsou))
     else
+      cofbf(isou,jsou) = -hint*normal(isou)*normal(jsou)
     endif
   enddo
 
@@ -4381,10 +4428,10 @@ end subroutine set_generalized_dirichlet_vector
 !> \param[out]    cofaf         explicit BC coefficient for diffusive flux
 !> \param[out]    coefb         implicit BC coefficient for gradients
 !> \param[out]    cofbf         implicit BC coefficient for diffusive flux
-!> \param[in]     pimpv         Dirichlet value to impose on the normal
-!>                              component
+!> \param[in]     pimpv         Dirichlet value to impose on the tangential
+!>                              components
 !> \param[in]     qimpv         Flux value to impose on the
-!>                              tangential components
+!>                              normal component
 !> \param[in]     hint          Internal exchange coefficient
 !> \param[in]     normal        normal
 !_______________________________________________________________________________
@@ -4447,22 +4494,23 @@ do isou = 1, 3
 
   ! Gradient BCs
   ! "[1 -n(x)n] Pimp" is divided into two
-  coefa(isou) = pimpv(isou)                                    &
-              - normal(isou)*qshint(isou)
+  coefa(isou) = pimpv(isou)
   do jsou = 1, 3
-    coefa(isou) = coefa(isou) - normal(isou)*normal(jsou)*pimpv(jsou)
+    coefa(isou) = coefa(isou) &
+      - normal(isou)*normal(jsou)*(pimpv(jsou)+qshint(jsou))
     coefb(isou,jsou) = normal(isou)*normal(jsou)
   enddo
 
   ! Flux BCs
   ! "[1 -n(x)n] Pimp" is divided into two
-  cofaf(isou) = -hintpv(isou)            &
-              + normal(isou)*qimpv(isou)
+  cofaf(isou) = -hintpv(isou)
   do jsou = 1, 3
-    cofaf(isou) = cofaf(isou) + normal(isou)*normal(jsou)*hintpv(jsou)
+    cofaf(isou) = cofaf(isou) &
+      + normal(isou)*normal(jsou)*(qimpv(jsou)+hintpv(jsou))
     if (jsou.eq.isou) then
-      cofbf(isou,jsou) = hintnm(isou)*normal(jsou)
+      cofbf(isou,jsou) = hint(isou)-hintnm(isou)*normal(jsou)
     else
+      cofbf(isou,jsou) = -hintnm(isou)*normal(jsou)
     endif
   enddo
 

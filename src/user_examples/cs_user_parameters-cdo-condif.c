@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -418,9 +418,9 @@ cs_user_linear_solvers(void)
 
     /* In case of a in-house K-cylcle multigrid as a preconditioner of a
        linear iterative solver */
-    if (eqp->sles_param.precond == CS_PARAM_PRECOND_AMG) {
+    if (eqp->sles_param->precond == CS_PARAM_PRECOND_AMG) {
       /* If multigrid is the chosen preconditioner */
-      if (eqp->sles_param.amg_type == CS_PARAM_AMG_HOUSE_K) {
+      if (eqp->sles_param->amg_type == CS_PARAM_AMG_HOUSE_K) {
         /* If this is a K-cycle multigrid */
 
         /* Retrieve the different context structures to apply additional
@@ -521,7 +521,7 @@ cs_user_finalize_setup(cs_domain_t   *domain)
      -> eq is the structure related to the equation to set
      -> type of boundary condition:
         CS_PARAM_BC_DIRICHLET, CS_PARAM_BC_HMG_DIRICHLET,
-        CS_PARAM_BC_NEUMANN, CS_PARAM_BC_HMG_NEUMANN, CS_PARAM_BC_ROBIN
+        CS_PARAM_BC_NEUMANN_FULL, CS_PARAM_BC_HMG_NEUMANN, CS_PARAM_BC_ROBIN
 
      >> cs_equation_add_bc_by_value(eqp,
                                     bc_type,
@@ -582,7 +582,7 @@ cs_user_finalize_setup(cs_domain_t   *domain)
      * equation (in this case, do not copy the associated field id since these
      * are two different equations with their own variable field) */
     bool  copy_field_id = false;
-    cs_equation_param_copy_from(eqp_ref, eqp, copy_field_id);
+    cs_equation_copy_param_from(eqp_ref, eqp, copy_field_id);
 
     /* Keep all the settings from "AdvDiff.Upw and then only change the
        advection scheme for the second equation */

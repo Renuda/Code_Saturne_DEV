@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -832,9 +832,15 @@ cs_field_gradient_vector(const cs_field_t          *f,
 
   const cs_real_3_t *bc_coeff_a = NULL;
   const cs_real_33_t *bc_coeff_b = NULL;
+
   if (f->bc_coeffs != NULL) {
-    bc_coeff_a = (const cs_real_3_t *)f->bc_coeffs->a;
-    bc_coeff_b = (const cs_real_33_t *)f->bc_coeffs->b;
+    int coupled_key_id = cs_field_key_id_try("coupled");
+    if (coupled_key_id > 1) {
+      if (cs_field_get_key_int(f, coupled_key_id) > 0) {
+        bc_coeff_a = (const cs_real_3_t *)f->bc_coeffs->a;
+        bc_coeff_b = (const cs_real_33_t *)f->bc_coeffs->b;
+      }
+    }
   }
 
   cs_gradient_vector(f->name,
@@ -902,8 +908,13 @@ cs_field_gradient_tensor(const cs_field_t          *f,
   const cs_real_6_t *bc_coeff_a = NULL;
   const cs_real_66_t *bc_coeff_b = NULL;
   if (f->bc_coeffs != NULL) {
-    bc_coeff_a = (const cs_real_6_t *)f->bc_coeffs->a;
-    bc_coeff_b = (const cs_real_66_t *)f->bc_coeffs->b;
+    int coupled_key_id = cs_field_key_id_try("coupled");
+    if (coupled_key_id > 1) {
+      if (cs_field_get_key_int(f, coupled_key_id) > 0) {
+        bc_coeff_a = (const cs_real_6_t *)f->bc_coeffs->a;
+        bc_coeff_b = (const cs_real_66_t *)f->bc_coeffs->b;
+      }
+    }
   }
 
   cs_gradient_tensor(f->name,

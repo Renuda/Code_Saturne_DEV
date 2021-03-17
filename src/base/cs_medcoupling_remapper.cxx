@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -165,7 +165,7 @@ _cs_medcoupling_read_field_real(const char  *medfile_path,
                                                                order));
   MCAuto<MEDFileMesh> mesh(MEDFileMesh::New(medfile_path,f->getMeshName()));
 
-  /* Case 1: Field is a allready a double */
+  /* Case 1: Field is a already a double */
   {
     MCAuto<MEDFileField1TS> f1(MEDCoupling::DynamicCast<MEDFileAnyTypeField1TS,
                                                         MEDFileField1TS>(f));

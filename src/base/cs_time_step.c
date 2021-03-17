@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -49,8 +49,6 @@
 #include "cs_log.h"
 #include "cs_map.h"
 #include "cs_parall.h"
-#include "cs_mesh_location.h"
-#include "cs_stokes_model.h"
 
 /*----------------------------------------------------------------------------
  * Header for the current file
@@ -557,8 +555,12 @@ cs_time_step_increment(double  dt)
   _time_step.t_cur = t;
   _time_step.nt_cur += 1;
 
-  cs_base_update_status("time step: %d; t = %g\n",
-                        _time_step.nt_cur, _time_step.t_cur);
+  if (_time_step.is_local)
+    cs_base_update_status("time step: %d\n",
+                          _time_step.nt_cur);
+  else
+    cs_base_update_status("time step: %d; t = %g\n",
+                          _time_step.nt_cur, _time_step.t_cur);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -663,12 +665,6 @@ cs_time_step_log_setup(void)
 
     }
   }
-
-  /* Frozen velocity field */
-  if (cs_glob_stokes_model->iccvfg)
-    cs_log_printf
-      (CS_LOG_SETUP,
-       _("  Frozen velocity field\n\n"));
 }
 
 /*----------------------------------------------------------------------------*/

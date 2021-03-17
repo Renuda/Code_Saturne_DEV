@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -53,6 +53,7 @@
 #include "cs_mesh_connect.h"
 #include "cs_mesh_location.h"
 #include "cs_mesh_quantities.h"
+#include "cs_order.h"
 #include "cs_parall.h"
 #include "cs_selector.h"
 #include "cs_timer.h"
@@ -465,8 +466,34 @@ _build_local_probe_set(cs_probe_set_t  *pset)
                       &s);
 
   pset->n_probes = n_elts;
-  pset->coords = coords;
-  pset->s_coords = s;
+
+  /* Order by curvilinear coordinates to avoid issues with some
+     plot formats/tools in single-rank mode (not needed in parallel,
+     as this is already handled through IO numbering in that case) */
+
+  if (cs_glob_n_ranks <= 1) {
+    cs_lnum_t *order = NULL;
+    BFT_MALLOC(order, n_elts, cs_lnum_t);
+    cs_order_real_allocated(NULL, s, order, n_elts);
+
+    BFT_MALLOC(pset->coords, n_elts, cs_real_3_t);
+    BFT_MALLOC(pset->s_coords, n_elts, cs_real_t);
+
+    for (cs_lnum_t i = 0; i < n_elts; i++) {
+      cs_lnum_t j = order[i];
+      for (cs_lnum_t k = 0; k < 3; k++)
+        pset->coords[i][k] = coords[j][k];
+      pset->s_coords[i] = s[j];
+    }
+
+    BFT_FREE(coords);
+    BFT_FREE(s);
+  }
+
+  else {
+    pset->coords = coords;
+    pset->s_coords = s;
+  }
 }
 
 /*----------------------------------------------------------------------------*/
@@ -497,49 +524,39 @@ _merge_snapped_to_center(cs_probe_set_t   *pset,
   for (int i = 0; i < pset->n_probes; i++)
     tag[i] = 0;
 
-  cs_lnum_t s_id = 0;
-  cs_lnum_t l_prv = -1;
+  cs_lnum_t *order;
+  BFT_MALLOC(order, pset->n_loc_probes, cs_lnum_t);
+  cs_order_lnum_allocated(NULL, pset->elt_id, order, pset->n_loc_probes);
 
-  for (int i = 0; i < pset->n_loc_probes; i++) {
-    int l = pset->elt_id[i];
-    if (l != l_prv) {
-      if (l_prv > -1) {
-        int j_min = s_id;
-        cs_real_t d_min = HUGE_VAL;
-        for (int j = s_id; j < i; j++) {
-          int k = pset->loc_id[i];
-          cs_real_t d = cs_math_3_distance(pset->coords[k], centers + l*3);
-          if (d < d_min) {
-            j_min = j;
-            d_min = d;
-          }
-        }
-        tag[pset->loc_id[j_min]] = 1;
-      }
-      s_id = i;
-    }
-    else if (l < 0)
-      s_id = i;
-    l_prv = l;
-  }
+  cs_lnum_t e_id = 0;
 
-  /* Last series of located points (l_prev > -1 if we enter loop) */
+  while (e_id < pset->n_loc_probes) {
 
-  int j_min = -1;
-  cs_real_t d_min = HUGE_VAL;
-
-  for (int j = s_id; j < pset->n_loc_probes; j++) {
-    int k = pset->loc_id[j];
-    int l = pset->elt_id[j];
-    cs_real_t d = cs_math_3_distance(pset->coords[k], centers + l*3);
-    if (d < d_min) {
-      j_min = j;
-      d_min = d;
-    }
-  }
-
-  if (j_min > -1)
+    cs_lnum_t s_id = e_id;
+    cs_lnum_t j_min = order[s_id];
+    int l = pset->elt_id[j_min];
+    int k = pset->loc_id[j_min];
+    cs_real_t d_min = cs_math_3_distance(pset->coords[k], centers + l*3);
     tag[pset->loc_id[j_min]] = 1;
+
+    for (e_id = s_id+1; e_id < pset->n_loc_probes; e_id++) {
+      cs_lnum_t j = order[e_id];
+      if (pset->elt_id[j] != l)
+        break;
+      else {
+        cs_real_t d = cs_math_3_distance(pset->coords[k], centers + l*3);
+        if (d < d_min) {
+          tag[pset->loc_id[j_min]] = 0;
+          tag[pset->loc_id[j]] = 1;
+          j_min = j;
+          d_min = d;
+        }
+      }
+    }
+
+  }
+
+  BFT_FREE(order);
 
   /* Now all points to keep are tagged */
 
@@ -630,7 +647,7 @@ cs_probe_finalize(void)
 /*!
  * \brief Transfer info on associated fields to the caller.
  *
- * This function transfert the property of the associated arrays to the caller
+ * This function transfers the property of the associated arrays to the caller
  * and removes it from the probe set info.
  *
  * \param[in]   pset        pointer to a cs_probe_set_t structure
@@ -1076,7 +1093,7 @@ cs_probe_set_allow_overwrite(const char  *name)
  * \ref cs_probe_set_create_from_local.
  *
  * If provided, the array of curvilinear absicssa must match the size of the
- * probe set. If set to NULL, it is assumed a unifor spacing is provided
+ * probe set. If set to NULL, it is assumed a uniform spacing is provided
  * between points.
  *
  * \param[in]  pset  pointer to a cs_probe_set_t structure

@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -66,6 +66,7 @@ use cs_c_bindings
 implicit none
 
 ! Local variables
+integer ivar
 
 type(var_cal_opt) :: vcopt
 
@@ -101,7 +102,12 @@ vcopt%iwgrec = 0
 call field_set_key_struct_var_cal_opt(ivarfl(ipr), vcopt)
 
 imrgra = 1
-imvisf = 1
+
+do ivar = 1, nvar
+  call field_get_key_struct_var_cal_opt(ivarfl(ivar), vcopt)
+  vcopt%imvisf = 1
+  call field_set_key_struct_var_cal_opt(ivarfl(ivar), vcopt)
+enddo
 
 ! Mass flux reconstruction option
 irecmf = 1

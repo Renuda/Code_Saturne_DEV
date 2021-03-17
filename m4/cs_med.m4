@@ -2,7 +2,7 @@ dnl-----------------------------------------------------------------------------
 dnl
 dnl This file is part of Code_Saturne, a general-purpose CFD tool.
 dnl
-dnl Copyright (C) 1998-2020 EDF S.A.
+dnl Copyright (C) 1998-2021 EDF S.A.
 dnl
 dnl This program is free software; you can redistribute it and/or modify it under
 dnl the terms of the GNU General Public License as published by the Free Software
@@ -42,10 +42,10 @@ AC_ARG_WITH(med,
             [if test "x$withval" = "x"; then
                with_med=yes
              elif test "x$withval" = "xsalome"; then
-               if test -z "$MED3HOME"; then
+               if test -z "$MEDHOME"; then
                  AC_MSG_FAILURE([no SALOME path information for MED (needed by --with-med=salome)!])
                else
-                 with_med=$MED3HOME
+                 with_med=$MEDHOME
                fi
              fi],
             [with_med=check])

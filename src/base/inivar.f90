@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -218,8 +218,6 @@ if (ippmod(icompf).ge.0.and.(    isuite.eq.0                 &
   call cs_cf_thermo(ithvar, ivoid,  rvoid, rvoid, rvoid, vvoid)
 
 endif
-
-call user_extra_operations_initialize()
 
 ! Pressure / Total pressure initialisation
 
@@ -660,6 +658,8 @@ if (nscal.gt.0) then
   enddo
 
 endif
+
+call user_extra_operations_initialize()
 
 !===============================================================================
 ! 5.  IMPRESSIONS DE CONTROLE POUR LES INCONNUES, LE PAS DE TEMPS

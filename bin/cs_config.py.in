@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -129,7 +129,13 @@ class config:
         # depend on availability, but names are reserved here);
         # Must be all lowercase to simplify tests across scripts.
 
-        self.solver_modules = ('code_saturne', 'neptune_cfd')
+        self.solver_modules = {}
+
+        self.solver_modules['code_saturne'] \
+            = {'solver': 'cs_solver' + self.exeext}
+
+        self.solver_modules['neptune_cfd'] \
+            = {'solver': 'nc_solver' + self.exeext}
 
         # Headers and libraries to add for specific executable/module names
 
@@ -150,10 +156,6 @@ class config:
 
         self.env_modules = "@cs_env_modules@"
         self.env_modulecmd = "@MODULECMD@"
-
-        # SALOME-related information
-
-        self.salome_env = "@SALOMEENVCMD@"
 
         # Setup the optionnal features
 
@@ -269,6 +271,7 @@ class config:
             prerequisite("EOS",
                          have = "@cs_have_eos@",
                          prefix="@eos_prefix@",
+                         dynamic_load = @cs_py_have_plugins@,
                          flags = {'cppflags': "@EOS_CPPFLAGS@",
                                   'ldflags': "@EOS_LDFLAGS@",
                                   'libs': "@EOS_LIBS@"})
@@ -285,6 +288,7 @@ class config:
             prerequisite("COOLPROP",
                          have = "@cs_have_coolprop@",
                          prefix="@coolprop_prefix@",
+                         dynamic_load = @cs_py_have_plugins@,
                          flags = {'cppflags': "@COOLPROP_CPPFLAGS@",
                                   'ldflags': "@COOLPROP_LDFLAGS@",
                                   'libs': "@COOLPROP_LIBS@",

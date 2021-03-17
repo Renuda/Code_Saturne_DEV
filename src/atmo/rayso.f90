@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -434,6 +434,7 @@ if (muzero.gt.epzero) then
       tauctot = tauctot + tauc(i)
     else
       tauc(i) = 0.d0
+      req = 0.d0
     endif
 
     ! Calculation of aerosol optical depth AOD
@@ -951,7 +952,7 @@ enddo
 
 ! Compute Boundary conditions for the 3D (Director diFfuse) Solar radiance
 ! at the top of the CFD domain
-! and the absortpion coefficients
+! and the absorption coefficients
 call field_get_id_try("spectral_rad_incident_flux", f_id)
 
 if (f_id.ge.0) then

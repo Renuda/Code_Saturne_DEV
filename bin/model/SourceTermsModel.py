@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -111,9 +111,9 @@ dSwdu = 0;\ndSwdv = 0;\ndSwdw = 0;\n"""
                ('t', 'current time'),
                ('volume', 'Source terms zone volume')]
 
-        sym.append( ("velocity[0]", 'x velocity component'))
-        sym.append( ("velocity[1]", 'y velocity component'))
-        sym.append( ("velocity[2]", 'z velocity component'))
+        sym.append( ("u", 'x velocity component'))
+        sym.append( ("v", 'y velocity component'))
+        sym.append( ("w", 'z velocity component'))
         sym.append( ("rho", 'local density (kg/m^3)'))
 
         for (nme, val) in self.notebook.getNotebookList():
@@ -156,8 +156,8 @@ dSwdu = 0;\ndSwdv = 0;\ndSwdw = 0;\n"""
         exp = self.getSpeciesFormula(zone, species)
         if not exp:
             exp = """S = 0;\ndS = 0;\n"""
-        req = [('S', 'species source term'),
-               ('dS', 'species source term derivative')]
+        req = [('S', 'Explcit species source term ([species]*kg/m^3/s)'),
+                ('dS', 'Species source term derivative (kg/m^3/s)')]
         sym = [('x', 'cell center coordinate'),
                ('y', 'cell center coordinate'),
                ('z', 'cell center coordinate'),
@@ -320,13 +320,14 @@ dSwdu = 0;\ndSwdv = 0;\ndSwdw = 0;\n"""
         exp = self.getThermalFormula(zone, scalar)
         if not exp:
             exp = self.getDefaultThermalFormula(scalar)
-        req = [('S', 'thermal source term'),
-               ('dS', 'thermal source term derivative')]
+        req = [('S', 'Explicit thermal source term (W/m^3)'),
+               ('dS', 'Thermal source term derivative (W/m^3/[thermal scalar])')]
         sym = [('x', 'cell center coordinate'),
                ('y', 'cell center coordinate'),
                ('z', 'cell center coordinate'),
                ('t', 'current time'),
-               ('volume', 'Source terms zone volume')]
+               ('volume', 'Source terms zone volume'),
+               ('rho', 'density (kg/m^3)')]
 
         if self.case.module_name() == 'code_saturne':
             if self.therm.getThermalScalarModel() == 'enthalpy':
@@ -335,6 +336,7 @@ dSwdu = 0;\ndSwdv = 0;\ndSwdw = 0;\n"""
                 sym.append(('total_energy', 'thermal scalar'))
             else:
                 sym.append(('temperature', 'thermal scalar'))
+
         elif self.case.module_name() == 'neptune_cfd':
             sym.append(('enthalpy', 'Enthalpy'))
 

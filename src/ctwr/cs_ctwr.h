@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -161,7 +161,7 @@ cs_ctwr_field_pointer_map(void);
  *
  * \param[in]   p0              Reference pressure
  * \param[in]   molmassrat      Dry air to water vapor molecular mass ratio
- * \param[in]   mass_source     Mass source term
+ * \param[out]  mass_source     Mass source term
  */
 /*----------------------------------------------------------------------------*/
 

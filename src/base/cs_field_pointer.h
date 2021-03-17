@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -245,6 +245,7 @@ typedef enum {
   CS_ENUMF_(dt_dp),          /*!< dtemp/dpress derivative */
   CS_ENUMF_(kindiff),        /*!< Particles kinetic diffusivity */
   CS_ENUMF_(coldiff),        /*!< Particles collisional diffusivity */
+  CS_ENUMF_(elast),          /*!< Particles restitution coefficient */
 
   /* Added variables (scalars) */
   CS_ENUMF_(add_var),        /*!< User added variables */

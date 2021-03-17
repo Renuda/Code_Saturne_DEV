@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1550,10 +1550,9 @@ cs_cdovcb_scaleq_interpolate(const cs_mesh_t            *mesh,
 
   /* Solve the linear system */
   cs_real_t  normalization = 1.0;
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(n_vertices,
-                                  eqp->name,
                                   eqp->sles_param,
                                   matrix,
                                   rs,
@@ -1736,7 +1735,7 @@ cs_cdovcb_scaleq_solve_steady_state(bool                        cur2prev,
 
       /* Compute a cellwise norm of the RHS for the normalization of the
          residual during the resolution of the linear system */
-      rhs_norm += _svcb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _svcb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                              cm, csys);
 
       /* Enforce values if needed (internal or Dirichlet) */
@@ -1773,15 +1772,14 @@ cs_cdovcb_scaleq_solve_steady_state(bool                        cur2prev,
   /* ======================= */
 
   /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      n_vertices,
                                      rhs,
                                      &rhs_norm);
 
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(n_vertices,
-                                  eqp->name,
                                   eqp->sles_param,
                                   matrix,
                                   rs,
@@ -2024,7 +2022,7 @@ cs_cdovcb_scaleq_solve_implicit(bool                        cur2prev,
 
       /* Compute a cellwise norm of the RHS for the normalization of the
          residual during the resolution of the linear system */
-      rhs_norm += _svcb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _svcb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                              cm, csys);
 
       /* Enforce values if needed (internal or Dirichlet) */
@@ -2061,15 +2059,14 @@ cs_cdovcb_scaleq_solve_implicit(bool                        cur2prev,
   /* ======================= */
 
   /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      n_vertices,
                                      rhs,
                                      &rhs_norm);
 
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(n_vertices,
-                                  eqp->name,
                                   eqp->sles_param,
                                   matrix,
                                   rs,
@@ -2391,7 +2388,7 @@ cs_cdovcb_scaleq_solve_theta(bool                        cur2prev,
 
       /* Compute a cellwise norm of the RHS for the normalization of the
          residual during the resolution of the linear system */
-      rhs_norm += _svcb_cw_rhs_normalization(eqp->sles_param.resnorm_type,
+      rhs_norm += _svcb_cw_rhs_normalization(eqp->sles_param->resnorm_type,
                                              cm, csys);
 
       /* Enforce values if needed (internal or Dirichlet) */
@@ -2428,15 +2425,14 @@ cs_cdovcb_scaleq_solve_theta(bool                        cur2prev,
   /* ======================= */
 
   /* Last step in the computation of the renormalization coefficient */
-  cs_equation_sync_rhs_normalization(eqp->sles_param.resnorm_type,
+  cs_equation_sync_rhs_normalization(eqp->sles_param->resnorm_type,
                                      n_vertices,
                                      rhs,
                                      &rhs_norm);
 
-  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(n_vertices,
-                                  eqp->name,
                                   eqp->sles_param,
                                   matrix,
                                   rs,
@@ -3184,7 +3180,7 @@ cs_cdovcb_scaleq_vtx_gradient(const cs_real_t         *v_values,
 
     } /* Loop on cells */
 
-    if (cs_glob_n_ranks > 1) {
+    if (connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL) {
 
       cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                            connect->n_vertices,

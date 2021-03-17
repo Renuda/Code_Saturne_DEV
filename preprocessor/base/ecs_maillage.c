@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1577,13 +1577,14 @@ ecs_maillage__calc_coo_ext(ecs_maillage_t  *maillage)
   /*xxxxxxxxxxxxxxxxxxxxxxxxxxx Instructions xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx*/
 
   assert(maillage != NULL);
-  assert(maillage->vertex_coords != NULL);
 
   nbr = maillage->n_vertices;
   vertex_coords = maillage->vertex_coords;
 
   if (nbr < 1)
     return;
+
+  assert(maillage->vertex_coords != NULL);
 
   ipos = 0;
 

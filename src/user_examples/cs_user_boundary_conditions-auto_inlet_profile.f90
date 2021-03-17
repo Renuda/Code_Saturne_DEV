@@ -4,7 +4,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -56,7 +56,7 @@
 !>                                    Neumann for the diffusion operator
 !> \param[in]     itrifb        indirection for boundary faces ordering
 !> \param[in,out] itypfb        boundary face types
-!> \param[out]    izfppp        boundary face zone number
+!> \param[in,out] izfppp        boundary face zone number
 !> \param[in]     dt            time step (per cell)
 !> \param[in,out] rcodcl        boundary condition values:
 !>                               - rcodcl(1) value of the dirichlet

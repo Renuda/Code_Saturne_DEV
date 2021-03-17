@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -143,7 +143,10 @@ class OutputVolumicVariablesModel(Variables, Model):
         return l
 
 
-    def getVolumeFieldsLabel2Name(self, constant=False, time_averages=True):
+    def getVolumeFieldsLabel2Name(self,
+                                  constant=False,
+                                  time_averages=True,
+                                  get_components=False):
         """
         Returns a dictionnary to relate name and label to volume fields
         (variables, properties) for time averages and profiles.
@@ -158,42 +161,40 @@ class OutputVolumicVariablesModel(Variables, Model):
             if not label:
                 label = name
 
-            dim = node['dimension']
-            if dim and int(dim) > 1:
-                # If we consider the Rij tensor, the user will see
-                # R11, R22, ... in the GUI instead of Rij[0], Rij[1], ...
-                # This choice was considered as the clearest.
-                if name == 'rij':
-                    rij_lbls = ['R11', 'R22', 'R33', 'R12', 'R23', 'R13']
-                    for ii in range(int(dim)):
-                        label1 = rij_lbls[ii]
-                        if not (node['support'] and node['support'] == "boundary"):
-                            dicoLabel2Name[label1] = (name, str(ii))
-                    if not (node['support'] and node['support'] == "boundary"):
-                        dicoLabel2Name[label] = (name, str(-1))
+            # Check that we wish to show the field
+            if not (node['support'] and node['support'] == "boundary"):
+                # Add main field. "-1" is used as default since for
+                # vectors/tensors it yields all components
+                dicoLabel2Name[label] = (name, str(-1))
 
-                elif 'reynolds_stress' in name:
-                    comp = label.split('reynolds_stress')[-1]
-                    rij_lbls = ['reynolds_stress11', 'reynolds_stress22',
-                                'reynolds_stress33', 'reynolds_stress12',
-                                'reynolds_stress23', 'reynolds_stress13']
-                    for ii in range(int(dim)):
-                        label1 = rij_lbls[ii] + comp
-                        if not (node['support'] and node['support'] == 'boundary'):
+                # Check if we want to also get components
+                dim = node['dimension']
+                if dim and int(dim) > 1 and get_components:
+                    # If we consider the Rij tensor, the user will see
+                    # R11, R22, ... in the GUI instead of Rij[0], Rij[1], ...
+                    # This choice was considered as the clearest.
+                    if name == 'rij':
+                        rij_lbls = ['R11', 'R22', 'R33', 'R12', 'R23', 'R13']
+                        for ii in range(int(dim)):
+                            label1 = rij_lbls[ii]
                             dicoLabel2Name[label1] = (name, str(ii))
-                    if not (node['support'] and node['support'] == 'boundary'):
-                        dicoLabel2Name[label] = (name, str(-1))
 
-                else:
-                    for ii in range(int(dim)):
-                        label1 = label + "[" + str(ii) + "]"
-                        if not (node['support'] and node['support'] == "boundary"):
+                    elif 'reynolds_stress' in name:
+                        comp = label.split('reynolds_stress')[-1]
+                        rij_lbls = ['reynolds_stress11',
+                                    'reynolds_stress22',
+                                    'reynolds_stress33',
+                                    'reynolds_stress12',
+                                    'reynolds_stress23',
+                                    'reynolds_stress13']
+                        for ii in range(int(dim)):
+                            label1 = rij_lbls[ii] + comp
                             dicoLabel2Name[label1] = (name, str(ii))
-                    if not (node['support'] and node['support'] == "boundary"):
-                        dicoLabel2Name[label] = (name, str(-1))
-            else:
-                if not (node['support'] and node['support'] == "boundary"):
-                    dicoLabel2Name[label] = (name, str(0))
+
+                    else:
+                        for ii in range(int(dim)):
+                            label1 = label + "[" + str(ii) + "]"
+                            dicoLabel2Name[label1] = (name, str(ii))
 
         return dicoLabel2Name
 
@@ -602,9 +603,12 @@ class OutputVolumicVariablesModel(Variables, Model):
                 if node2:
                     nodeList.append(node2)
 
+            # We are looping on the list since for NCFD we have one of each
+            # for each phase. If not courant/fourier is available, the list
+            # is empty, hence the second for loop does nothing.
             for prop in ('courant_number', 'fourier_number'):
-                L = node1.xmlGetNode('property', name=prop)
-                if L: nodeList.append(L)
+                for _n in node1.xmlGetChildNodeList('property', name=prop):
+                    nodeList.append(_n)
 
         return nodeList
 

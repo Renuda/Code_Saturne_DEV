@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -69,6 +69,17 @@ class TimeStepModel(MainFieldsModel, Variables, Model):
         """
         """
         self.isInList(model, ('constant', 'uniform', 'steady'))
+
+        # CFL/Fo
+        for f_id in self.getFieldIdList():
+            field_name = self.getLabel(f_id)
+            for tag in ['courant_number', 'fourier_number']:
+                Variables(self.case).setNewVariableProperty("property",
+                                                            "",
+                                                            self.__timeParameters,
+                                                            f_id,
+                                                            tag,
+                                                            tag+"_"+field_name)
 
         oldmodel = None
         childNode = self.__timeParameters.xmlGetNode('time_passing')

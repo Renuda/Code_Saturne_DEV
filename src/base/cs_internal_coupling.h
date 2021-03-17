@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -72,6 +72,11 @@ typedef struct {
   /* Selection criteria for coupled domains */
   char  *cells_criteria;
   char  *faces_criteria;
+
+  /* Associated zone ids */
+
+  int   n_volume_zones;
+  int  *volume_zone_ids;
 
   cs_lnum_t  n_local; /* Number of faces */
   cs_lnum_t *faces_local; /* Coupling boundary faces, numbered 0..n-1 */
@@ -141,6 +146,34 @@ cs_internal_coupling_add(cs_mesh_t   *mesh,
 void
 cs_internal_coupling_add_volume(cs_mesh_t  *mesh,
                                 const char criteria_cells[]);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Define coupling volume using a cs_zone_t. Then, this volume will
+ * be separated from the rest of the domain with thin walls.
+ *
+ * \param[in, out] mesh  pointer to mesh structure to modify
+ * \param[in]      z     pointer to cs_volume_zone_t
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_internal_coupling_add_volume_zone(cs_mesh_t       *mesh,
+                                     const cs_zone_t *z);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Define coupling volume using given cs_zone_t. Then, this volume will
+ * be separated from the rest of the domain with thin walls.
+ *
+ * \param[in]  n_zones   number of associated volume zones
+ * \param[in]  zone_ids  ids of associated volume zones
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_internal_coupling_add_volume_zones(int        n_zones,
+                                      const int  zone_ids[]);
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -518,9 +551,9 @@ cs_internal_coupling_matrix_add_values(const cs_field_t              *f,
 void
 cs_internal_coupling_coupled_faces(const cs_internal_coupling_t  *cpl,
                                    cs_lnum_t                     *n_local,
-                                   cs_lnum_t                     *faces_local[],
+                                   const cs_lnum_t               *faces_local[],
                                    cs_lnum_t                     *n_distant,
-                                   cs_lnum_t                     *faces_distant[]);
+                                   const cs_lnum_t               *faces_distant[]);
 
 /*----------------------------------------------------------------------------
  * Log information about a given internal coupling entity
@@ -665,19 +698,6 @@ cs_ic_field_dist_data_by_face_id(const int         field_id,
                                  int               stride,
                                  const cs_real_t   tab_distant[],
                                  cs_real_t         tab_local[]);
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief Tag disabled solid cells for fluid_solid mode.
- *
- * \param[in, out] m     pointer to a cs_mesh_t structure
- * \param[in, out] mq    pointer to a cs_mesh_quantities_t structure
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_internal_coupling_tag_disable_cells(cs_mesh_t            *m,
-                                       cs_mesh_quantities_t *mq);
 
 /*----------------------------------------------------------------------------*/
 

@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -72,6 +72,7 @@ use period
 use ppppar
 use ppthch
 use ppincl
+use lagran
 use mesh
 use field
 use field_operator
@@ -92,12 +93,13 @@ double precision dt(ncelet)
 ! Local variables
 
 character(len=80) :: chaine
-integer          ivar  , iel   , ifac  , iscal
-integer          ii    , jj    , iok   , iok1  , iok2  , iisct, idfm, iggafm, iebdfm
-integer          nn    , isou
-integer          mbrom , ifcvsl, iscacp
+integer          ivar, iel, ifac, iscal, f_id
+integer          ii, jj, iok, iok1, iok2, iisct, idfm, iggafm, iebdfm
+integer          nn, isou
+integer          mbrom, ifcvsl, iscacp
 integer          iclipc, idftnp
 integer          iprev , inc, iccocg
+integer          kturt, turb_flux_model, turb_flux_model_type
 
 double precision xk, xe, xnu, xrom, vismax(nscamx), vismin(nscamx)
 double precision xrij(3,3), xnal(3), xnoral
@@ -107,6 +109,9 @@ double precision varmn(4), varmx(4), tt, ttmin, ttke, viscto, visls_0
 double precision xttkmg, xttdrb
 double precision trrij,rottke
 double precision alpha3, xrnn
+double precision s, s11, s22, s33, delta, c_k, c_epsilon
+double precision dudy, dudz, dvdx, dvdz, dwdx, dwdy
+double precision, dimension(:), pointer :: field_s_v, field_s_b
 double precision, dimension(:), pointer :: brom, crom
 double precision, dimension(:), pointer :: cvar_k, cvar_ep, cvar_phi, cvar_nusa
 double precision, dimension(:), pointer :: cvar_al
@@ -118,7 +123,9 @@ double precision, dimension(:,:), pointer :: visten, vistes, cpro_visma_v
 double precision, dimension(:), pointer :: viscl, visct, cpro_vis
 double precision, dimension(:), pointer :: cvar_voidf
 double precision, dimension(:), pointer :: cpro_var, cpro_beta, cpro_visma_s
+double precision, allocatable, dimension(:) :: ttmp
 double precision, allocatable, dimension(:,:) :: grad
+double precision, dimension(:,:,:), allocatable :: gradv
 
 integer          ipass
 data             ipass /0/
@@ -148,6 +155,11 @@ endif
 !===============================================================================
 
 mbrom = 0
+
+! Densities at boundaries are computed in cs_f_vof_update_phys_prop for VoF
+if (ivofmt.gt.0) then
+  mbrom = 1
+endif
 
 ! First computation of physical properties for specific physics
 ! BEFORE the user
@@ -437,26 +449,30 @@ elseif (iturb.eq.40) then
 ! 4.5 LES Smagorinsky
 ! ===================
 
-  call vissma
+  allocate(gradv(3, 3, ncelet))
+  call vissma (gradv)
 
 elseif (iturb.eq.41) then
 
 ! 4.6 LES dynamic
 ! ===============
 
+  allocate(gradv(3, 3, ncelet))
+
   call visdyn &
  ( nvar   , nscal  ,                                              &
    ncepdc , ncetsm ,                                              &
    icepdc , icetsm , itypsm ,                                     &
    dt     ,                                                       &
-   ckupdc , smacel )
+   ckupdc , smacel, gradv )
 
 elseif (iturb.eq.42) then
 
 ! 4.7 LES WALE
 ! ============
 
-  call viswal
+  allocate(gradv(3, 3, ncelet))
+  call viswal (gradv)
 
 elseif (itytur.eq.5) then
 
@@ -480,7 +496,7 @@ elseif (itytur.eq.5) then
       ttke = xk / xe
       ttmin = cv2fct*sqrt(xnu/xe)
       tt = max(ttke,ttmin)
-      visct(iel) = cv2fmu*xrom*tt*cvar_phi(iel)*cvar_k(iel)
+      visct(iel) = cmu*xrom*tt*cvar_phi(iel)*cvar_k(iel)
     enddo
 
   else if (iturb.eq.51) then
@@ -525,12 +541,17 @@ idfm = 0
 iggafm = 0
 iebdfm = 0
 
+call field_get_key_id('turbulent_flux_model', kturt)
+
 do iscal = 1, nscal
-  if (ityturt(iscal).eq.3) idfm = 1
-  if (iturt(iscal).eq.31) iebdfm = 1
+  call field_get_key_int(ivarfl(isca(iscal)), kturt, turb_flux_model)
+  turb_flux_model_type = turb_flux_model / 10
+
+  if (turb_flux_model_type.eq.3) idfm = 1
+  if (turb_flux_model.eq.31) iebdfm = 1
   ! GGDH or AFM on current scalar
   ! and if DFM, GGDH on the scalar variance
-  if (ityturt(iscal).gt.0) iggafm = 1
+  if (turb_flux_model_type.gt.0) iggafm = 1
 enddo
 
 if (idfm.eq.1 .or. itytur.eq.3 .and. idirsm.eq.1) then
@@ -717,7 +738,48 @@ if (iand(ivofmt,VOF_MERKLE_MASS_TRANSFER).ne.0.and.icvevm.eq.1) then
 endif
 
 !===============================================================================
-! 7. User modification of the turbulent viscosity and symmetric tensor
+! 7. Compute subgrid turbulence values for LES if required
+!===============================================================================
+
+if (itytur.eq.4 .and. iilagr.gt.0) then
+
+  call field_get_val_s_by_name("k", cvar_k)
+  call field_get_val_s_by_name("epsilon", cvar_ep)
+
+  c_epsilon = 1.0
+
+  do iel = 1, ncel
+
+    s11  = gradv(1, 1, iel)
+    s22  = gradv(2, 2, iel)
+    s33  = gradv(3, 3, iel)
+
+    dudy = gradv(2, 1, iel)
+    dvdx = gradv(1, 2, iel)
+    dudz = gradv(3, 1, iel)
+    dwdx = gradv(1, 3, iel)
+    dvdz = gradv(3, 2, iel)
+    dwdy = gradv(2, 3, iel)
+
+    s = s11**2 + s22**2 + s33**2         &
+        + 0.5d0 * ((dudy + dvdx)**2      &
+        +          (dudz + dwdx)**2      &
+        +          (dvdz + dwdy)**2)
+    s = sqrt(2.0d0 * s)
+
+    delta = xlesfl * (ales*volume(iel))**bles
+
+    cvar_ep(iel) = (csmago * delta)**2 * s**3
+    cvar_k(iel) =  c_epsilon * (delta * cvar_ep(iel))**(2.0d0/3.0d0)
+
+  enddo
+
+endif
+
+if (allocated(gradv)) deallocate (gradv)
+
+!===============================================================================
+! 8. User modification of the turbulent viscosity and symmetric tensor
 !    diffusivity
 !===============================================================================
 
@@ -729,7 +791,7 @@ call usvist &
   ckupdc , smacel )
 
 !===============================================================================
-! 8. Clipping of the turbulent viscosity in dynamic LES
+! 9. Clipping of the turbulent viscosity in dynamic LES
 !===============================================================================
 
 ! Pour la LES en modele dynamique on clippe la viscosite turbulente de maniere
@@ -759,8 +821,8 @@ if (iturb.eq.41) then
 endif
 
 !===============================================================================
-! 9. Checking of the user values and put turbulent viscosity to 0 in
-!    disabled cells
+! 10. Checking of the user values and put turbulent viscosity to 0 in
+!     disabled cells
 !===============================================================================
 
 ! ---> Calcul des bornes des variables et impressions
@@ -1047,6 +1109,48 @@ endif
 if (iok.ne.0) then
   write(nfecra,9999)iok
   call csexit (1)
+endif
+
+! Initialize boundary temperature if present and not initialized yet
+!===================================================================
+
+call field_get_id_try('boundary_temperature', f_id)
+if (f_id .ge. 0) then
+  call field_get_val_s(f_id, field_s_b)
+  call field_get_id_try('temperature', f_id)
+  if (f_id .lt. 0) call field_get_id_try('t_gas', f_id)
+  if (f_id .ge. 0) then
+    call field_get_val_s(f_id, field_s_v)
+    do ifac = 1, nfabor
+      if (field_s_b(ifac) .le. -grand) then
+        iel = ifabor(ifac)
+        field_s_b(ifac) = field_s_v(iel)
+      endif
+    enddo
+  else if (itherm.eq.2) then
+    call field_get_id_try('enthalpy', f_id)
+    if (f_id .ge. 0) then
+      call field_get_val_s(f_id, field_s_v)
+      allocate(ttmp(ncelet))
+      call c_h_to_t(field_s_v, ttmp);
+      do ifac = 1, nfabor
+        if (field_s_b(ifac) .le. -grand) then
+          iel = ifabor(ifac)
+          field_s_b(ifac) = ttmp(iel)
+        endif
+      enddo
+      deallocate(ttmp)
+    endif
+  endif
+  ! Last resort
+  if (f_id .ge. 0) then
+    do ifac = 1, nfabor
+      if (field_s_b(ifac) .le. -grand) then
+        iel = ifabor(ifac)
+        field_s_b(ifac) = t0
+      endif
+    enddo
+  endif
 endif
 
 !--------

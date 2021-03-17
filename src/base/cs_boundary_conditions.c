@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -105,7 +105,7 @@ BEGIN_C_DECLS
 typedef struct {
 
   int             bc_location_id;      /* location id of boundary zone */
-  int             source_location_id;  /* location if of source elements */
+  int             source_location_id;  /* location id of source elements */
   cs_real_t       coord_shift[3];      /* coordinates shift relative to
                                           selected boundary faces */
   double          tolerance;           /* search tolerance */
@@ -296,6 +296,7 @@ _inlet_sum(int                          var_id,
  * \param[in]       eqp         pointer to a cs_equation_param_t
  * \param[in]       def         pointer to a boundary condition definition
  * \param[in]       var_id      matching variable id
+ * \param[in]       icodcl_m    multiplier for assigned icodcl values (1 or -1)
  * \param[in, out]  icodcl      boundary conditions type array
  * \param[in, out]  rcodcl      boundary conditions values array
  */
@@ -307,6 +308,7 @@ _compute_hmg_dirichlet_bc(const cs_mesh_t            *mesh,
                           const cs_equation_param_t  *eqp,
                           const cs_xdef_t            *def,
                           cs_lnum_t                   var_id,
+                          int                         icodcl_m,
                           int                        *icodcl,
                           double                     *rcodcl)
 {
@@ -322,6 +324,8 @@ _compute_hmg_dirichlet_bc(const cs_mesh_t            *mesh,
   int bc_type = (boundary_type & CS_BOUNDARY_WALL) ? 5 : 1;
   if (boundary_type & CS_BOUNDARY_ROUGH_WALL)
     bc_type = 6;
+
+  bc_type *= icodcl_m;
 
   for (int coo_id = 0; coo_id < def->dim; coo_id++) {
 
@@ -356,6 +360,7 @@ _compute_hmg_dirichlet_bc(const cs_mesh_t            *mesh,
  * \param[in]       def         pointer to a boundary condition definition
  * \param[in]       var_id      matching variable id
  * \param[in]       t_eval      time at which one evaluates the boundary cond.
+ * \param[in]       icodcl_m    multiplier for assigned icodcl values (1 or -1)
  * \param[in, out]  icodcl      boundary conditions type array
  * \param[in, out]  rcodcl      boundary conditions values array
  */
@@ -368,6 +373,7 @@ _compute_dirichlet_bc(const cs_mesh_t            *mesh,
                       const cs_xdef_t            *def,
                       cs_lnum_t                   var_id,
                       cs_real_t                   t_eval,
+                      int                         icodcl_m,
                       int                        *icodcl,
                       double                     *rcodcl)
 {
@@ -383,6 +389,8 @@ _compute_dirichlet_bc(const cs_mesh_t            *mesh,
   int bc_type = (boundary_type & CS_BOUNDARY_WALL) ? 5 : 1;
   if (boundary_type & CS_BOUNDARY_ROUGH_WALL)
     bc_type = 6;
+
+  bc_type *= icodcl_m;
 
   switch(def->type) {
 
@@ -500,7 +508,7 @@ _compute_neumann_bc(const cs_mesh_t            *mesh,
                     int                        *icodcl,
                     double                     *rcodcl)
 {
-  assert(eqp->dim*3 == def->dim);
+  assert(eqp->dim == def->dim);
 
   const cs_lnum_t n_b_faces = mesh->n_b_faces;
   const cs_zone_t *bz = cs_boundary_zone_by_id(def->z_id);
@@ -510,14 +518,12 @@ _compute_neumann_bc(const cs_mesh_t            *mesh,
 
   case CS_XDEF_BY_VALUE:
     {
-      /* Vector values per component
-         for CDO, scalar (1st component) for legacy */
-      const int dim = def->dim/3;
+      const int dim = def->dim;
       const cs_real_t *constant_vals = (cs_real_t *)def->context;
 
       for (int coo_id = 0; coo_id < dim; coo_id++) {
 
-        const cs_real_t value = constant_vals[coo_id*3];
+        const cs_real_t value = constant_vals[coo_id];
 
         int        *_icodcl = icodcl + (var_id+coo_id)*n_b_faces;
         cs_real_t  *_rcodcl3 = rcodcl + 2*n_b_faces*nvar
@@ -1221,10 +1227,10 @@ cs_boundary_conditions_set_convective_outlet_scalar(cs_real_t *coefa ,
 /*----------------------------------------------------------------------------*/
 
 void
-cs_boundary_conditions_compute(int         nvar,
-                               int        *itypfb,
-                               int        *icodcl,
-                               double     *rcodcl)
+cs_boundary_conditions_compute(int     nvar,
+                               int     itypfb[],
+                               int     icodcl[],
+                               double  rcodcl[])
 {
   /* Initialization */
 
@@ -1257,13 +1263,24 @@ cs_boundary_conditions_compute(int         nvar,
 
     /* Only handle legacy discretization here */
 
-    if (eqp-> space_scheme != CS_SPACE_SCHEME_LEGACY)
+    if (eqp->space_scheme != CS_SPACE_SCHEME_LEGACY)
+      continue;
+
+    /* Settings in eqp may not be well-defined at this stage. The following
+       test should be more appropriate to decide if one skips this field or
+       not */
+    if (f->type & CS_FIELD_CDO)
       continue;
 
     /* Get associated variable id  */
 
     int var_id = cs_field_get_key_int(f, var_id_key) - 1;
     assert(var_id >= 0);
+
+    /* Conversion flag for enthalpy (temperature given);
+       not active yet in GUI and XML. */
+
+    int icodcl_m = 1;
 
     /* Loop on boundary conditions */
 
@@ -1278,6 +1295,7 @@ cs_boundary_conditions_compute(int         nvar,
                                   eqp,
                                   def,
                                   var_id,
+                                  icodcl_m,
                                   icodcl,
                                   rcodcl);
         break;
@@ -1289,6 +1307,7 @@ cs_boundary_conditions_compute(int         nvar,
                               def,
                               var_id,
                               t_eval,
+                              icodcl_m,
                               icodcl,
                               rcodcl);
         break;
@@ -1318,6 +1337,76 @@ cs_boundary_conditions_compute(int         nvar,
         break;
       }
     }
+
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Automatic adjustments for boundary condition codes.
+ *
+ * Currently handles mapped inlets, after the call to \ref stdtcl.
+ * As portions of stdtcl are migrated to C, they should be called here,
+ * before mapped inlets.
+ *
+ * \param[in]       nvar             number of variables requiring BC's
+ * \param[in]       itypfb           type of boundary for each face
+ * \param[in, out]  icodcl           boundary condition codes
+ * \param[in, out]  rcodcl           boundary condition values
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_boundary_conditions_complete(int     nvar,
+                                int     itypfb[],
+                                int     icodcl[],
+                                double  rcodcl[])
+{
+  CS_NO_WARN_IF_UNUSED(itypfb);
+
+  /* Initialization */
+
+  const cs_time_step_t *ts = cs_glob_time_step;
+
+  for (int map_id = 0; map_id < _n_bc_maps; map_id++)
+    _update_bc_map(map_id);
+
+  static int var_id_key = -1;
+  if (var_id_key < 0)
+    var_id_key = cs_field_key_id("variable_id");
+  assert(var_id_key >= 0);
+
+  const cs_real_t t_eval = ts->t_cur;
+
+  /* Loop on fields */
+
+  const int n_fields = cs_field_n_fields();
+
+  for (int f_id = 0; f_id < n_fields; f_id++) {
+    cs_field_t  *f = cs_field_by_id(f_id);
+
+    if (! (f->type & CS_FIELD_VARIABLE))
+      continue;
+
+    const cs_equation_param_t *eqp
+      = cs_field_get_equation_param_const(f);
+
+    /* Only handle legacy discretization here */
+    if (eqp != NULL) {
+      if (eqp->space_scheme != CS_SPACE_SCHEME_LEGACY)
+        continue;
+    }
+
+    /* Settings in eqp may not be well-defined at this stage. The following
+       test should be more appropriate to decide if one skips this field or
+       not */
+    if (f->type & CS_FIELD_CDO)
+      continue;
+
+    /* Get associated variable id  */
+
+    int var_id = cs_field_get_key_int(f, var_id_key) - 1;
+    assert(var_id >= 0);
 
     /* Treatment of mapped inlets */
 
@@ -1356,6 +1445,18 @@ cs_boundary_conditions_compute(int         nvar,
                                           NULL,
                                           nvar,
                                           rcodcl);
+
+        if (f == CS_F_(h)) {
+          const cs_lnum_t n_b_faces = cs_glob_mesh->n_b_faces;
+          int  *_icodcl = rcodcl + var_id*n_b_faces;
+
+          for (cs_lnum_t i = 0; i < n_faces; i++) {
+            const cs_lnum_t j = (faces != NULL) ? faces[i] : i;
+            if (_icodcl[j] < 0)
+              _icodcl[j] *= -1;
+          }
+        }
+
       }
 
     }

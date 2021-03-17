@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -57,6 +57,7 @@ BoundaryConditionsTurbulenceInletViewNeptune.py \
 BoundaryConditionsView.py \
 BoundaryConditionsViewNeptune.py \
 BoundaryConditionsWallView.py \
+CouplingParametersView.py \
 CathareCouplingView.py \
 CoalCombustionView.py \
 ConjugateHeatTransferView.py \
@@ -78,7 +79,8 @@ InitializationView.py \
 InterfacialEnthalpyView.py \
 InterfacialForcesView.py \
 InterfacialAreaView.py \
-LagrangianBoundariesView.py \
+InternalCouplingView.py \
+LagrangianBoundaryView.py \
 LagrangianOutputView.py \
 LagrangianStatisticsView.py \
 LagrangianView.py \
@@ -87,6 +89,7 @@ MainFieldsView.py \
 MainFieldsInitializationView.py \
 MainFieldsSourceTermsView.py \
 MobileMeshView.py \
+NeptuneWallTransferView.py \
 NonCondensableView.py \
 NotebookView.py \
 NucleateBoilingView.py \
@@ -121,8 +124,14 @@ UsersControlView.py \
 OutputFieldsView.py \
 OpenTurnsDialogView.py \
 SolidView.py \
-ThermodynamicsView.py \
-TimeStepViewNeptune.py
+ThermodynamicsFieldView.py \
+ThermodynamicsInteractionView.py \
+ThermodynamicsSaturationView.py \
+NeptuneThermodynamicsView.py \
+TimeStepViewNeptune.py \
+VolumicNatureView.py \
+BoundaryNatureView.py \
+VolumicConditionsView.py
 
 # PyQt User Interface files
 UIFILES = \
@@ -150,6 +159,7 @@ BoundaryConditionsSlidingWallForm.ui \
 BoundaryConditionsTurbulenceInletForm.ui \
 BoundaryConditionsVelocityInletForm.ui \
 BoundaryConditionsWallRadiativeTransferForm.ui \
+CouplingParametersForm.ui \
 CoalCombustionForm.ui \
 CompressibleForm.ui \
 ConjugateHeatTransferForm.ui \
@@ -167,13 +177,14 @@ HeadLossesForm.ui \
 IdentityAndPathesForm.ui \
 ImmersedBoundariesNeptune.ui \
 InitializationForm.ui \
-LagrangianBoundariesForm.ui \
+LagrangianBoundaryForm.ui \
 LagrangianForm.ui \
 LagrangianOutputForm.ui \
 LagrangianStatisticsForm.ui \
 LocalizationForm.ui \
 MeshQualityCriteriaLogDialogForm.ui \
 MobileMeshForm.ui \
+NeptuneWallTransferForm.ui \
 NotebookForm.ui \
 NumericalParamEquationForm.ui \
 NumericalParamGlobalForm.ui \
@@ -220,7 +231,10 @@ BoundaryConditionsNeptune.ui \
 UsersControl.ui \
 OutputFields.ui \
 Solid.ui \
-Thermodynamics.ui \
+ThermodynamicsField.ui \
+ThermodynamicsInteraction.ui \
+ThermodynamicsSaturation.ui \
+NeptuneThermodynamics.ui \
 NumericalParamEquationNeptune.ui \
 BoundaryConditionsPressure.ui \
 BoundaryConditionsEnergy.ui \
@@ -229,7 +243,10 @@ BoundaryConditionsNonCondensable.ui \
 BoundaryConditionsScalar.ui \
 BoundaryConditionsWall.ui \
 BoundaryConditionsInterfacialArea.ui \
-TimeStep.ui
+TimeStep.ui \
+VolumicNatureForm.ui \
+BoundaryNatureForm.ui \
+VolumicConditionsForm.ui
 
 # PyQt Resources files
 

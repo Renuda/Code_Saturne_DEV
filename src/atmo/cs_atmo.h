@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -397,6 +397,7 @@ cs_atmo_declare_chem_from_spack(void);
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief 1D Radiative scheme - Solar data + zenithal angle)
+ *
  * Compute:
  *   - zenithal angle
  *   - solar contant (with correction for earth - solar length)

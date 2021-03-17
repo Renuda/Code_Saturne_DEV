@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -79,7 +79,6 @@ BEGIN_C_DECLS
  * \param[out] tparop   wall temperature in Kelvin
  * \param[in]  qincip   radiative flux density at boundaries
  * \param[in]  textp    exterior boundary temperature in degrees C
- * \param[in]  tintp    interior boundary temperature in degrees C
  * \param[in]  xlamp    thermal conductivity coefficient of wall faces (w/m/k)
  * \param[in]  epap     wall thickness (m)
  * \param[in]  epsp     wall emissivity
@@ -100,7 +99,6 @@ cs_rad_transfer_wall_flux(int         nvar,
                           cs_real_t   tparop[],
                           cs_real_t   qincip[],
                           cs_real_t   textp[],
-                          cs_real_t   tintp[],
                           cs_real_t   xlamp[],
                           cs_real_t   epap[],
                           cs_real_t   epsp[],

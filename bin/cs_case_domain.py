@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -477,6 +477,29 @@ class domain(base_domain):
 
     #---------------------------------------------------------------------------
 
+    def __xml_case_initialize__(self, path):
+        """
+        Build XML case object
+        """
+
+        from code_saturne.model.XMLengine import Case
+        from code_saturne.model.SolutionDomainModel import getRunType
+        case = Case(package=self.package, file_name=path)
+        case['xmlfile'] = path
+        case.xmlCleanAllBlank(case.xmlRootNode())
+        preprocess_only = (getRunType(case) != 'standard')
+        module_name = case.module_name()
+        if module_name == 'code_saturne':
+            from code_saturne.model.XMLinitialize import XMLinit
+            XMLinit(case).initialize(preprocess_only)
+        elif module_name == 'neptune_cfd':
+            from code_saturne.model.XMLinitializeNeptune import XMLinitNeptune
+            XMLinitNeptune(case).initialize(preprocess_only)
+
+        return case
+
+    #---------------------------------------------------------------------------
+
     def for_domain_str(self):
 
         if self.name == None:
@@ -612,27 +635,14 @@ class domain(base_domain):
             needs_comp = True
 
         if self.param != None:
-            from code_saturne.model.XMLengine import Case
-            from code_saturne.model.SolutionDomainModel import getRunType
-
             fp = os.path.join(self.data_dir, self.param)
-            case = Case(package=self.package, file_name=fp)
-            case['xmlfile'] = fp
-            case.xmlCleanAllBlank(case.xmlRootNode())
-
-            prepro = (getRunType(case) != 'standard')
-            module_name = case.module_name()
-            if module_name == 'code_saturne':
-                from code_saturne.model.XMLinitialize import XMLinit
-                XMLinit(case).initialize(prepro)
-            elif module_name == 'neptune_cfd':
-                from code_saturne.model.XMLinitializeNeptune import XMLinitNeptune
-                XMLinitNeptune(case).initialize(prepro)
+            case = self.__xml_case_initialize__(fp)
 
             # Do not call case.xmlSaveDocument() to avoid side effects in case
             # directory; is not required as meg_to_c_interpreter works from
             # case in memory
 
+            module_name = case.module_name()
             self.mci = meg_to_c_interpreter(case,
                                             module_name=module_name,
                                             wdir = os.path.join(self.exec_dir, 'src'))
@@ -729,8 +739,8 @@ class domain(base_domain):
 
         dir_files = os.listdir(self.data_dir)
 
-        if self.package.guiname in dir_files:
-            dir_files.remove(self.package.guiname)
+        if self.package.name in dir_files:
+            dir_files.remove(self.package.name)
 
         for f in dir_files:
             src = os.path.join(self.data_dir, f)
@@ -754,41 +764,48 @@ class domain(base_domain):
 
         # Handle automatic case first
 
-        if self.restart_input == '*':
-            self.__set_auto_restart__()
+        ignore_checkpoint = False
+        if self.solver_args:
+            for a in ('--preprocess', '--quality', '-q'):
+                if a in self.solver_args:
+                    ignore_checkpoint = True
 
-        if self.restart_input != None:
+        if not ignore_checkpoint:
+            if self.restart_input == '*':
+                self.__set_auto_restart__()
 
-            restart_input =  os.path.expanduser(self.restart_input)
-            if not os.path.isabs(restart_input):
-                restart_input = os.path.join(self.case_dir, restart_input)
+            if self.restart_input != None:
 
-            if not os.path.exists(restart_input):
-                err_str += restart_input + ' does not exist.\n\n'
-            elif not os.path.isdir(restart_input):
-                err_str += restart_input + ' is not a directory.\n\n.'
-            else:
-                self.symlink(restart_input,
-                             os.path.join(self.exec_dir, 'restart'))
+                restart_input =  os.path.expanduser(self.restart_input)
+                if not os.path.isabs(restart_input):
+                    restart_input = os.path.join(self.case_dir, restart_input)
 
-            print(' Restart from ' + self.restart_input + '\n')
+                if not os.path.exists(restart_input):
+                    err_str += restart_input + ' does not exist.\n\n'
+                elif not os.path.isdir(restart_input):
+                    err_str += restart_input + ' is not a directory.\n\n.'
+                else:
+                    self.symlink(restart_input,
+                                 os.path.join(self.exec_dir, 'restart'))
 
-        if self.restart_mesh_input != None and err_str == '':
+                print(' Restart from ' + self.restart_input + '\n')
 
-            restart_mesh_input =  os.path.expanduser(self.restart_mesh_input)
-            if not os.path.isabs(restart_mesh_input):
-                restart_mesh_input = os.path.join(self.case_dir,
-                                                  restart_mesh_input)
+            if self.restart_mesh_input != None and err_str == '':
 
-            if not os.path.exists(restart_mesh_input):
-                err_str += restart_mesh_input + ' does not exist.\n\n'
-            elif not os.path.isfile(restart_mesh_input):
-                err_str += restart_mesh_input + ' is not a file.\n\n.'
-            else:
-                self.symlink(restart_mesh_input,
-                             os.path.join(self.exec_dir, 'restart_mesh_input'))
+                restart_mesh_input =  os.path.expanduser(self.restart_mesh_input)
+                if not os.path.isabs(restart_mesh_input):
+                    restart_mesh_input = os.path.join(self.case_dir,
+                                                      restart_mesh_input)
 
-            print(' Restart mesh ' + self.restart_mesh_input + '\n')
+                if not os.path.exists(restart_mesh_input):
+                    err_str += restart_mesh_input + ' does not exist.\n\n'
+                elif not os.path.isfile(restart_mesh_input):
+                    err_str += restart_mesh_input + ' is not a file.\n\n.'
+                else:
+                    self.symlink(restart_mesh_input,
+                                 os.path.join(self.exec_dir, 'restart_mesh_input'))
+
+                print(' Restart mesh ' + self.restart_mesh_input + '\n')
 
         # Mesh input file
 
@@ -836,15 +853,43 @@ class domain(base_domain):
 
         # Fixed parameter name
 
-        setup_ref = "setup.xml"
-        if self.param != None and self.param != "setup.xml":
-            link_path = os.path.join(self.exec_dir, setup_ref)
-            self.purge_result(link_path) # in case of previous run here
-            try:
-                os.symlink(self.param, link_path)
-            except Exception:
-                src_path = os.path.join(self.exec_dir, self.param)
-                shutil.copy2(src_path, link_path)
+        setup_path = os.path.join(self.exec_dir, "setup.xml")
+
+        if self.param != None:
+            param_base = os.path.basename(self.param)
+            src_path = os.path.join(self.exec_dir, param_base)
+            default_path = os.path.join(self.data_dir, 'setup.xml')
+            if param_base != "setup.xml":
+                if os.path.isfile(default_path):
+                    self.purge_result(setup_path) # in case of previous run here
+                    fmt = ('Warning:\n'
+                           '  Both {0} and {1} exist in\n'
+                           '    {2}.\n'
+                           '  {0} will be used for the computation.\n'
+                           '  Be aware that to follow best practices '
+                           'only one of the two should be present.\n\n')
+                    msg = fmt.format(os.path.basename(self.param),
+                                     os.path.basename(setup_path),
+                                     self.data_dir)
+                    print(msg, file = sys.stderr)
+                try:
+                    if os.path.islink(setup_path):
+                        os.remove(setup_path)
+                    os.symlink(self.param, setup_path)
+                except Exception:
+                    shutil.copy2(src_path, setup_path)
+
+        # Ensure XML file is up to date as a precaution
+
+        if os.path.isfile(setup_path):
+            case = self.__xml_case_initialize__(setup_path)
+            case['xmlfile'] = setup_path
+            case.xmlSaveDocument()
+        else:
+            msg  = ('Remark:\n'
+                    '  No setup.xml file was provided in the DATA folder.\n'
+                    '  Default settings will be used.\n')
+            print(msg, file = sys.stderr)
 
         if len(err_str) > 0:
             self.error = 'data preparation'
@@ -1179,7 +1224,7 @@ class domain(base_domain):
 
 #-------------------------------------------------------------------------------
 
-# SYRTHES 4 coupling
+# SYRTHES coupling
 
 class syrthes_domain(base_domain):
 
@@ -1735,8 +1780,8 @@ class cathare_domain(domain):
 
         dir_files = os.listdir(self.data_dir)
 
-        if self.package.guiname in dir_files:
-            dir_files.remove(self.package.guiname)
+        if self.package.name in dir_files:
+            dir_files.remove(self.package.name)
 
         for f in dir_files:
             src = os.path.join(self.data_dir, f)

@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -63,6 +63,7 @@ use ppcpfu
 use cs_coal_incl
 use mesh
 use field
+use cs_c_bindings
 use pointe, only:pmapper_double_r1
 
 !===============================================================================
@@ -116,6 +117,8 @@ double precision, dimension(:), pointer :: cvar_hox, cvar_hgas
 double precision, dimension(:), pointer :: cpro_rom1
 type(pmapper_double_r1), dimension(:) , allocatable :: cpro_x2b, cpro_ro2
 
+logical(kind=c_bool) :: log_active
+
 !===============================================================================
 !
 !===============================================================================
@@ -155,6 +158,8 @@ if ( ieqnox .eq. 1 ) then
   call field_get_val_s(ivarfl(isca(ihox)), cvar_hox)
 endif
 call field_get_val_s(ivarfl(isca(ihgas)), cvar_hgas)
+
+log_active = cs_log_default_is_active()
 
 !===============================================================================
 ! Deallocation dynamic arrays
@@ -321,12 +326,14 @@ if (irangp .ge. 0) then
   call parmax(valmax)
 endif
 
-write(nfecra,*) ' Values of F3 min and max: ',ff3min,ff3max
-if (nbclip1 .gt. 0) then
-  write(nfecra,*) ' Clipping phase gas variance in min:',nbclip1,valmin
-endif
-if (nbclip2 .gt. 0) then
-  write(nfecra,*) ' Clipping phase gas variance in max:',nbclip2,valmax
+if (log_active .eqv. .true.) then
+  write(nfecra,*) ' Values of F3 min and max: ',ff3min,ff3max
+  if (nbclip1 .gt. 0) then
+    write(nfecra,*) ' Clipping phase gas variance in min:',nbclip1,valmin
+  endif
+  if (nbclip2 .gt. 0) then
+    write(nfecra,*) ' Clipping phase gas variance in max:',nbclip2,valmax
+  endif
 endif
 
 ! ---- Gas Enthalpy h1 (cpro_x1 h1 is transported)

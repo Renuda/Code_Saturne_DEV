@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -182,6 +182,7 @@ _build_block_row_g_id(cs_lnum_t         n_rows,
                       halo,
                       n_rows,
                       false,
+                      2, /* tr_ignore */
                       0, /* g_id_base */
                       _l_range,
                       _global_row_id);
@@ -597,7 +598,7 @@ cs_matrix_msr(bool              symmetric,
  *----------------------------------------------------------------------------*/
 
 cs_matrix_t  *
-cs_matrix_native(bool             symmetric,
+cs_matrix_native(bool              symmetric,
                  const cs_lnum_t  *diag_block_size,
                  const cs_lnum_t  *extra_diag_block_size)
 {

@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -178,7 +178,7 @@ class StandardItemModelUserScalar(QStandardItemModel):
         QStandardItemModel.__init__(self)
 
         self.headers = [ self.tr("Label"),
-                         self.tr("Carrier Field")]
+                         self.tr("Convective phase")]
 
         self.setColumnCount(len(self.headers))
         self.parent = parent
@@ -326,8 +326,8 @@ class SpeciesView(QWidget, Ui_Species):
         # Validators
         validatorDiffusionCoef   = DoubleValidator(self.lineEditDiffusionCoef, min = 0.0)
         validatorSchmidt = DoubleValidator(self.lineEditSchmidt, min = 0.0)
-        validatorMin     = DoubleValidator(self.lineEditMinValue, min = 0.0)
-        validatorMax     = DoubleValidator(self.lineEditMaxValue, min = 0.0)
+        validatorMin     = DoubleValidator(self.lineEditMinValue)
+        validatorMax     = DoubleValidator(self.lineEditMaxValue)
 
         self.lineEditDiffusionCoef.setValidator(validatorDiffusionCoef)
         self.lineEditSchmidt.setValidator(validatorSchmidt)

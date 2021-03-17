@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -2388,6 +2388,10 @@ _write_output(cs_gnum_t  n_g_cells,
                   _("The partitioning directory cannot be created"));
     }
   }
+#if defined(HAVE_MPI)
+  if (cs_glob_n_ranks > 1)
+    MPI_Barrier(cs_glob_mpi_comm);
+#endif
 
   /* Open file */
 

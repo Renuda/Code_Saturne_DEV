@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -127,10 +127,12 @@ const char *cs_sles_it_type_name[]
      N_("Jacobi"),
      N_("BiCGstab"),
      N_("BiCGstab2"),
+     N_("GCR"),
      N_("GMRES"),
      N_("Gauss-Seidel"),
      N_("Symmetric Gauss-Seidel"),
      N_("3-layer conjugate residual"),
+     N_("User-defined iterative solver"),
      N_("None"), /* Smoothers beyond this */
      N_("Truncated forward Gauss-Seidel"),
      N_("Truncated backwards Gauss-Seidel"),
@@ -2580,6 +2582,247 @@ _solve_diag_sup_halo(cs_real_t  *restrict a,
 }
 
 /*----------------------------------------------------------------------------
+ * Solution of A.vx = Rhs using preconditioned GCR.
+ *
+ * On entry, vx is considered initialized.
+ *
+ * parameters:
+ *   c               <-- pointer to solver context info
+ *   a               <-- matrix
+ *   diag_block_size <-- diagonal block size (unused here)
+ *   rotation_mode   <-- halo update option for rotational periodicity
+ *   convergence     <-- convergence information structure
+ *   rhs             <-- right hand side
+ *   vx              <-> system solution
+ *   aux_size        <-- number of elements in aux_vectors (in bytes)
+ *   aux_vectors     --- optional working area (allocation otherwise)
+ *
+ * returns:
+ *   convergence state
+ *----------------------------------------------------------------------------*/
+
+static cs_sles_convergence_state_t
+_gcr(cs_sles_it_t              *c,
+     const cs_matrix_t         *a,
+     cs_lnum_t                  diag_block_size,
+     cs_halo_rotation_t         rotation_mode,
+     cs_sles_it_convergence_t  *convergence,
+     const cs_real_t           *rhs,
+     cs_real_t                 *restrict vx,
+     size_t                     aux_size,
+     void                      *aux_vectors)
+{
+  cs_sles_convergence_state_t cvg;
+  double  ro_0, alpha, rk_rkm1, gk_zkm1, rk_rk, beta, residue;
+  cs_real_t *_aux_vectors, *ro_1;
+  cs_real_t *restrict rk, *restrict dk, *restrict zk;
+  cs_real_t *restrict gk, *restrict sk;
+
+  /* In case of the standard GCR, n_k_per_restart --> Inf,
+   * or stops until convergence*/
+  unsigned n_iter = 0;
+  const unsigned n_k_per_restart = c->restart_interval;
+
+  size_t wa_size;
+
+  unsigned n_restart = 0;
+
+  /* Allocate or map work arrays */
+  /*-----------------------------*/
+
+  assert(c->setup_data != NULL);
+  const cs_lnum_t n_rows = c->setup_data->n_rows;
+
+  {
+    const cs_lnum_t n_cols = cs_matrix_get_n_columns(a) * diag_block_size;
+    const size_t n_wa = 3 + n_k_per_restart + n_k_per_restart;
+    wa_size = CS_SIMD_SIZE(n_cols);
+
+    if (aux_vectors == NULL || aux_size/sizeof(cs_real_t) < (wa_size * n_wa))
+      BFT_MALLOC(_aux_vectors, wa_size * n_wa, cs_real_t);
+    else
+      _aux_vectors = aux_vectors;
+
+    rk = _aux_vectors;                                   /* store residuals  */
+    sk = _aux_vectors + wa_size;                         /* store inv(M)*r   */
+    gk = _aux_vectors + wa_size * 2;                     /* store A*s        */
+    dk = _aux_vectors + wa_size * 3;                     /* store pj(j=O...i)*/
+    zk = _aux_vectors + wa_size * (3 + n_k_per_restart); /* store A*pj       */
+  }
+
+  BFT_MALLOC(ro_1, n_k_per_restart, cs_real_t);
+
+  cvg = CS_SLES_ITERATING;
+
+  /* Current Restart */
+  while (cvg == CS_SLES_ITERATING) {
+
+    n_iter = 0;
+
+    /* Initialize iterative calculation */
+    /*----------------------------------*/
+
+    /* Residue and descent direction */
+
+    cs_matrix_vector_multiply(rotation_mode, a, vx, rk);  /* rk = A.x0 */
+
+#   pragma omp parallel for if(n_rows > CS_THR_MIN)
+    for (cs_lnum_t ii = 0; ii < n_rows; ii++)
+      rk[ii] -= rhs[ii];
+
+    /* Preconditionning */
+
+    c->setup_data->pc_apply(c->setup_data->pc_context,
+                            rotation_mode,
+                            rk,
+                            sk);
+
+    /* Descent direction */
+    /*-------------------*/
+
+#if defined(HAVE_OPENMP)
+#   pragma omp parallel for if(n_rows > CS_THR_MIN)
+    for (cs_lnum_t ii = 0; ii < n_rows; ii++)
+      dk[ii] = sk[ii];
+#else
+    memcpy(dk, sk, n_rows*sizeof(cs_real_t));
+#endif
+
+    residue = sqrt(_dot_product_xx(c, rk));
+
+    if (n_restart == 0)
+      c->setup_data->initial_residue = residue;
+
+    /* If no solving required, finish here */
+
+    cvg = _convergence_test(c, (n_restart * n_k_per_restart) + n_iter,
+                            residue, convergence);
+
+    if (cvg == CS_SLES_ITERATING) {
+
+      n_iter = 1;
+
+      cs_matrix_vector_multiply(rotation_mode, a, dk, zk);
+
+      /* Descent parameter */
+
+      _dot_products_xy_yz(c, rk, zk, zk, &ro_0, &ro_1[0]);
+
+      cs_real_t d_ro_1 = (CS_ABS(ro_1[0]) > DBL_MIN) ? 1. / ro_1[0] : 0.;
+      alpha =  - ro_0 * d_ro_1;
+
+#     pragma omp parallel if(n_rows > CS_THR_MIN)
+      {
+#       pragma omp for nowait
+        for (cs_lnum_t ii = 0; ii < n_rows; ii++)
+          vx[ii] += (alpha * dk[ii]);
+
+#       pragma omp for nowait
+        for (cs_lnum_t ii = 0; ii < n_rows; ii++)
+          rk[ii] += (alpha * zk[ii]);
+      }
+
+      /* Convergence test */
+
+      residue = sqrt(_dot_product(c, rk, rk));
+
+      cvg = _convergence_test(c, (n_restart * n_k_per_restart) + n_iter,
+                              residue, convergence);
+
+    }
+
+    /* Current Iteration on k */
+    /* ---------------------- */
+
+    while (cvg == CS_SLES_ITERATING && n_iter < n_k_per_restart) {
+
+      /* compute residue and prepare descent parameter */
+
+      _dot_products_xx_xy(c, rk, rk, &residue, &rk_rk);
+
+      residue = sqrt(residue);
+
+      /* Convergence test for end of previous iteration */
+
+      if (n_iter > 1)
+        cvg = _convergence_test(c,(n_restart * n_k_per_restart) + n_iter,
+                                residue, convergence);
+
+      if (cvg != CS_SLES_ITERATING)
+        break;
+
+      n_iter += 1;
+
+      /* Preconditionning */
+
+      c->setup_data->pc_apply(c->setup_data->pc_context,
+                              rotation_mode,
+                              rk,
+                              sk);
+
+
+      /* Complete descent parameter computation and matrix.vector product */
+
+      cs_matrix_vector_multiply(rotation_mode, a, sk, gk);
+
+#     pragma omp parallel for if(n_rows > CS_THR_MIN)
+      for (cs_lnum_t ii = 0; ii < n_rows; ii++)
+        dk[(n_iter - 1) * wa_size + ii] = sk[ii];
+
+      for(cs_lnum_t jj = 0; jj < n_iter - 1; jj++) {
+
+        gk_zkm1 = _dot_product(c, gk, zk + jj * wa_size);
+
+        cs_real_t d_ro_1 = (CS_ABS(ro_1[jj]) > DBL_MIN) ?
+          1. / ro_1[jj] : 0.;
+
+        beta = - gk_zkm1 * d_ro_1;
+
+#      pragma omp parallel for if(n_rows > CS_THR_MIN)
+       for (cs_lnum_t ii = 0; ii < n_rows; ii++)
+          dk[(n_iter - 1) * wa_size + ii] += beta * dk[jj * wa_size + ii];
+
+      }
+
+      cs_matrix_vector_multiply(rotation_mode, a,
+                                dk + (n_iter - 1) * wa_size,
+                                zk + (n_iter - 1) * wa_size);
+
+      _dot_products_xy_yz(c, rk,
+                          zk + (n_iter - 1) * wa_size,
+                          zk + (n_iter - 1) * wa_size,
+                          &ro_0, &ro_1[n_iter - 1]);
+
+      cs_real_t d_ro_1 = (CS_ABS(ro_1[n_iter - 1]) > DBL_MIN) ?
+        1. / ro_1[n_iter - 1] : 0.;
+      alpha =  - ro_0 * d_ro_1;
+
+#     pragma omp parallel if(n_rows > CS_THR_MIN)
+      {
+#       pragma omp for nowait
+        for (cs_lnum_t ii = 0; ii < n_rows; ii++)
+          vx[ii] += (alpha * dk[(n_iter - 1) * wa_size + ii]);
+
+#       pragma omp for nowait
+        for (cs_lnum_t ii = 0; ii < n_rows; ii++)
+          rk[ii] += (alpha * zk[(n_iter - 1) * wa_size + ii]);
+      }
+
+    } /* Needs iterating or k < n_restart */
+
+    n_restart += 1;
+
+  } /* Needs iterating */
+
+  if (_aux_vectors != aux_vectors)
+    BFT_FREE(_aux_vectors);
+
+  BFT_FREE(ro_1);
+
+  return cvg;
+}
+
+/*----------------------------------------------------------------------------
  * Solution of A.vx = Rhs using preconditioned GMRES.
  *
  * On entry, vx is considered initialized.
@@ -2610,8 +2853,6 @@ _gmres(cs_sles_it_t              *c,
        size_t                     aux_size,
        void                      *aux_vectors)
 {
-  CS_UNUSED(diag_block_size);
-
   cs_sles_convergence_state_t cvg = CS_SLES_ITERATING;
   int l_iter, l_old_iter;
   double    beta, dot_prod, residue;
@@ -2621,7 +2862,7 @@ _gmres(cs_sles_it_t              *c,
   cs_real_t *restrict dk, *restrict gk;
   cs_real_t *restrict bk, *restrict fk, *restrict krk;
 
-  cs_lnum_t krylov_size_max = 40;
+  cs_lnum_t krylov_size_max = c->restart_interval;
   unsigned n_iter = 0;
 
   /* Allocate or map work arrays */
@@ -3549,6 +3790,56 @@ _fallback(cs_sles_it_t                    *c,
 
 /*! (DOXYGEN_SHOULD_SKIP_THIS) \endcond */
 
+/*=============================================================================
+ * User function prototypes
+ *============================================================================*/
+
+/*----------------------------------------------------------------------------
+ * Solution of A.vx = Rhs using a user-defined iterative solver
+ *
+ * On entry, vx is considered initialized.
+ *
+ * parameters:
+ *   c               <-- pointer to solver context info
+ *   a               <-- matrix
+ *   diag_block_size <-- diagonal block size (unused here)
+ *   rotation_mode   <-- halo update option for rotational periodicity
+ *   convergence     <-- convergence information structure
+ *   rhs             <-- right hand side
+ *   vx              <-> system solution
+ *   aux_size        <-- number of elements in aux_vectors (in bytes)
+ *   aux_vectors     --- optional working area (allocation otherwise)
+ *
+ * returns:
+ *   convergence state
+ *----------------------------------------------------------------------------*/
+
+cs_sles_convergence_state_t
+cs_user_sles_it_solver(cs_sles_it_t              *c,
+                       const cs_matrix_t         *a,
+                       cs_lnum_t                  diag_block_size,
+                       cs_halo_rotation_t         rotation_mode,
+                       cs_sles_it_convergence_t  *convergence,
+                       const cs_real_t           *rhs,
+                       cs_real_t                 *restrict vx,
+                       size_t                     aux_size,
+                       void                      *aux_vectors)
+{
+  cs_sles_convergence_state_t cvg = CS_SLES_CONVERGED;
+
+  CS_UNUSED(c);
+  CS_UNUSED(a);
+  CS_UNUSED(diag_block_size);
+  CS_UNUSED(rotation_mode);
+  CS_UNUSED(convergence);
+  CS_UNUSED(rhs);
+  CS_UNUSED(vx);
+  CS_UNUSED(aux_size);
+  CS_UNUSED(aux_vectors);
+
+  return cvg;
+}
+
 /*============================================================================
  * Public function definitions
  *============================================================================*/
@@ -3677,6 +3968,7 @@ cs_sles_it_create(cs_sles_it_type_t   solver_type,
   c->ignore_convergence = false;
 
   c->n_max_iter = n_max_iter;
+  c->restart_interval = 20; /* Default value commonly found in the literature */
 
   c->n_setups = 0;
   c->n_solves = 0;
@@ -3793,6 +4085,10 @@ cs_sles_it_copy(const void  *context)
       d->pc = c->pc;
     }
 
+    /* If useful, copy the restart interval */
+    if (c->type == CS_SLES_GMRES || c->type == CS_SLES_GCR)
+      d->restart_interval = c->restart_interval;
+
 #if defined(HAVE_MPI)
     d->comm = c->comm;
 #endif
@@ -3826,10 +4122,13 @@ cs_sles_it_log(const void  *context,
       cs_log_printf(log_type,
                     _("  Preconditioning:                   %s\n"),
                     _(cs_sles_pc_get_type_name(c->pc)));
+    if (c->type == CS_SLES_GMRES || c->type == CS_SLES_GCR)
+      cs_log_printf(log_type,
+                    "  Restart interval:                  %d\n",
+                    c->restart_interval);
     cs_log_printf(log_type,
                   _("  Maximum number of iterations:      %d\n"),
                   c->n_max_iter);
-
   }
 
   else if (log_type == CS_LOG_PERFORMANCE) {
@@ -4007,11 +4306,18 @@ cs_sles_it_setup(void               *context,
   case CS_SLES_BICGSTAB:
     c->solve = _bi_cgstab;
     break;
+
   case CS_SLES_BICGSTAB2:
     c->solve = _bicgstab2;
     break;
 
+  case CS_SLES_GCR:
+    assert(c->restart_interval > 1);
+    c->solve = _gcr;
+    break;
+
   case CS_SLES_GMRES:
+    assert(c->restart_interval > 1);
     c->solve = _gmres;
     break;
 
@@ -4020,6 +4326,10 @@ cs_sles_it_setup(void               *context,
     break;
   case CS_SLES_P_SYM_GAUSS_SEIDEL:
     c->solve = _p_sym_gauss_seidel_msr;
+    break;
+
+  case CS_SLES_USER_DEFINED:
+    c->solve = cs_user_sles_it_solver;
     break;
 
   default:
@@ -4386,6 +4696,7 @@ cs_sles_it_transfer_parameters(const cs_sles_it_t  *src,
 
     dest->update_stats = src->update_stats;
     dest->n_max_iter = src->n_max_iter;
+    dest->restart_interval = src->restart_interval;
 
     dest->plot_time_stamp = src->plot_time_stamp;
     dest->plot = src->plot;
@@ -4542,6 +4853,26 @@ cs_sles_it_set_fallback_threshold(cs_sles_it_t                 *context,
                                   cs_sles_convergence_state_t   threshold)
 {
   context->fallback_cvg = threshold;
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Define the number of iterations to be done before restarting the
+ *        solver. Useful only for GCR or GMRES algorithms.
+ *
+ * \param[in, out]  context    pointer to iterative solver info and context
+ * \param[in]       interval   convergence level under which fallback is used
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_sles_it_set_restart_interval(cs_sles_it_t                 *context,
+                                int                           interval)
+{
+  if (context == NULL)
+    return;
+
+  context->restart_interval = interval;
 }
 
 /*----------------------------------------------------------------------------*/

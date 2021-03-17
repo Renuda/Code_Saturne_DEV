@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -85,6 +85,7 @@ integer          key_t_ext_id, icpext
 integer          iviext, iscacp
 integer          iroext
 integer          ivisext
+integer          kturt, turb_flux_model
 double precision scmaxp, scminp
 double precision turb_schmidt, visls_0
 
@@ -171,16 +172,18 @@ if (itytur.eq.4.or.ischtp.eq.2) then
   if (vcopt%nswrsm.lt.iiidef) then
     write(nfecra,2125) chaine(1:16),iiidef,vcopt%nswrsm
   endif
-endif
 
-do ii = 1, nscal
-  if (itytur.eq.4.or.ischtp.eq.2) then
+  ! Scalars
+  do ii = 1, nscal
     iiidef = 10
+    call field_get_label(ivarfl(isca(ii)), chaine)
+    call field_get_key_struct_var_cal_opt(ivarfl(isca(ii)), vcopt)
+    chaine = trim(chaine)
     if (vcopt%nswrsm.lt.iiidef) then
       write(nfecra,2125) chaine(1:16),iiidef,vcopt%nswrsm
     endif
-  endif
-enddo
+  enddo
+endif
 
 !     Test du theta de la viscosite secondaire, du flux de masse et
 !     de la viscosite par rapport a celui de la vitesse
@@ -475,19 +478,25 @@ if (nscal.ge.1) then
     iok = iok + 1
   endif
 
-  ! Turbulent flux model for scalar
-  if (iturt(iscal).ne. 0.and.iturt(iscal).ne.10 .and. &
-      iturt(iscal).ne.20.and.iturt(iscal).ne.30 .and. &
-      iturt(iscal).ne.11.and.iturt(iscal).ne.21 .and. &
-      iturt(iscal).ne.31                              &
-                   ) then
-    write(nfecra,2604) 'iturt  ',iturt(iscal)
-    write(nfecra,2610)                         &
-         'Index of the scalar: ', iscal,       &
-         'Number of scalars: ', nscal
 
-    iok = iok + 1
-  endif
+  do iscal = 1, nscal
+    call field_get_key_id('turbulent_flux_model', kturt)
+    call field_get_key_int(ivarfl(isca(iscal)), kturt, turb_flux_model)
+
+    ! Turbulent flux model for scalar
+    if (turb_flux_model.ne. 0.and.turb_flux_model.ne.10 .and. &
+        turb_flux_model.ne.20.and.turb_flux_model.ne.30 .and. &
+        turb_flux_model.ne.11.and.turb_flux_model.ne.21 .and. &
+        turb_flux_model.ne.31                              &
+                     ) then
+      write(nfecra,2604) 'turbulent_flux_model  ', turb_flux_model
+      write(nfecra,2610)                         &
+           'Index of the scalar: ', iscal,       &
+           'Number of scalars: ', nscal
+
+      iok = iok + 1
+    endif
+  enddo
 
 endif
 
@@ -568,44 +577,6 @@ endif
 ! 3. TABLEAUX DE cstphy : formats 4000
 !===============================================================================
 
-!     LES
-if (itytur.eq.4) then
-  if (xlesfl.lt.0.d0) then
-    write(nfecra,2511) 'XLESFL', xlesfl
-    iok = iok + 1
-  endif
-  if (ales  .lt.0.d0) then
-    write(nfecra,2511) 'ALES  ', ales
-    iok = iok + 1
-  endif
-  if (bles  .lt.0.d0) then
-    write(nfecra,2511) 'BLES  ', bles
-    iok = iok + 1
-  endif
-  if (csmago.lt.0.d0) then
-    write(nfecra,2511) 'CSMAGO', csmago
-    iok = iok + 1
-  endif
-  if (cwale.lt.0.d0) then
-    write(nfecra,2511) 'CWALE', cwale
-    iok = iok + 1
-  endif
-  if (idries.eq.1.and.cdries.lt.0) then
-    write(nfecra,2511) 'CDRIES', cdries
-    iok = iok + 1
-  endif
-  if (iturb.eq.41) then
-    if (xlesfd.lt.0.d0) then
-      write(nfecra,2511) 'XLESFD', xlesfd
-      iok = iok + 1
-    endif
-    if (smagmx.lt.0.d0) then
-      write(nfecra,2511) 'SMAGMX', smagmx
-      iok = iok + 1
-    endif
-  endif
-endif
-
 ! --- Scalaires
 
 if (nscal.gt.0) then
@@ -647,36 +618,6 @@ if (nscal.gt.0) then
     if (turb_schmidt.le.0d0) then
       call field_get_label(ivarfl(isca(ii)), chaine)
       write(nfecra,4350)chaine(1:16),ii,turb_schmidt
-      iok = iok + 1
-    endif
-  enddo
-
-!     Si on n'utilise pas la borne inf de clipping, on demande
-!      a l'utilisateur de ne pas y toucher (ca permet d'etre sur
-!      qu'il sait ce qu'il fait)
-  do ii = 1, nscal
-    ! Get the min clipping
-    call field_get_key_double(ivarfl(isca(ii)), kscmin, scminp)
-
-    if (iscavr(ii).gt.0.and.iscavr(ii).le.nscal.and.               &
-       iclvfl(ii).ne.2.and.abs(scminp+grand).ge.epzero) then
-      call field_get_label(ivarfl(isca(ii)), chaine)
-      write(nfecra,4360)chaine(1:16),ii,scminp,ii,iclvfl(ii)
-      iok = iok + 1
-    endif
-  enddo
-
-!     Si on n'utilise pas la borne sup de clipping, on demande
-!      a l'utilisateur de ne pas y toucher (ca permet d'etre sur
-!      qu'il sait ce qu'il fait)
-  do ii = 1, nscal
-    ! Get the max clipping
-    call field_get_key_double(ivarfl(isca(ii)), kscmax, scmaxp)
-
-    if (iscavr(ii).gt.0.and.iscavr(ii).le.nscal.and.               &
-       iclvfl(ii).ne.2.and.abs(scmaxp-grand).ge.epzero) then
-      call field_get_label(ivarfl(isca(ii)), chaine)
-      write(nfecra,4361)chaine(1:16),ii,scmaxp,ii,iclvfl(ii)
       iok = iok + 1
     endif
   enddo
@@ -1354,7 +1295,7 @@ endif
 '@'                                                            ,/,&
 '@ @@  WARNING:   STOP WHILE READING INPUT DATA'               ,/,&
 '@    ========='                                               ,/,&
-'@    ',a7,' MUST BE AN INTEGER EQUAL TO 0, 10, 11, 20, 21,'   ,/,&
+'@    ',a21,' MUST BE AN INTEGER EQUAL TO 0, 10, 11, 20, 21,'  ,/,&
 '@    30 OR 31'                                                ,/,&
 '@   IT HAS VALUE ',i10                                        ,/,&
 '@'                                                            ,/,&
@@ -1497,7 +1438,7 @@ endif
 '@ @@  WARNING:   STOP WHILE READING INPUT DATA',               /,&
 '@    =========',                                               /,&
 '@    SCALAR ', a16,                                            /,&
-'@    ICLVFL(',i10,   ') MUST BE AN INTEGER  EGAL A 0, 1 or 2', /,&
+'@    ICLVFL(',i10, ') MUST BE AN INTEGER EQUAL TO 0, 1 or 2',  /,&
 '@   IT HAS VALUE', i10,                                        /,&
 '@',                                                            /,&
 '@   The calculation could NOT run.',                           /,&
@@ -1546,58 +1487,6 @@ endif
 '@',                                                            /,&
 '@  SIFMAS(I) is the turbulent Prandtl turbulent',              /,&
 '@    associated to scalar I.',                                 /,&
-'@ Check the input data given through the User Interface',      /,&
-'@   or in cs_user_parameters.f90.',                            /,&
-'@',                                                            /,&
-'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@',/,&
-'@',                                                            /)
- 4360 format(                                                     &
-'@',                                                            /,&
-'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@',/,&
-'@',                                                            /,&
-'@ @@  WARNING:   STOP WHILE READING INPUT DATA',               /,&
-'@    =========',                                               /,&
-'@    SCALAR ', a16,                                            /,&
-'@    SCAMIN(',i10,   ') IS EQUAL', e14.5,                      /,&
-'@      AVEC ICLVFL(',i10,   ') = ', i10,                       /,&
-'@',                                                            /,&
-'@  Computation CAN NOT run',                                   /,&
-'@',                                                            /,&
-'@  SCAMIN(I) is the  minimale acceptable value for',           /,&
-'@    scalaire I. When this scalar is a variance',              /,&
-'@    (iscavr(I) > 0) value of SCAMIN is only used if',         /,&
-'@                  ICLVFL(I) = 2',                             /,&
-'@',                                                            /,&
-'@',                                                            /,&
-'@',                                                            /,&
-'@',                                                            /,&
-'@',                                                            /,&
-'@ Check the input data given through the User Interface',      /,&
-'@   or in cs_user_parameters.f90.',                            /,&
-'@',                                                            /,&
-'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@',/,&
-'@',                                                            /)
- 4361 format(                                                     &
-'@',                                                            /,&
-'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@',/,&
-'@',                                                            /,&
-'@ @@  WARNING:   STOP WHILE READING INPUT DATA',               /,&
-'@    =========',                                               /,&
-'@    SCALAR ', a16,                                            /,&
-'@    SCAMAX(',i10,   ') IS EQUAL', e14.5,                      /,&
-'@      AVEC ICLVFL(',i10,   ') = ', i10,                       /,&
-'@',                                                            /,&
-'@  Computation CAN NOT run',                                   /,&
-'@',                                                            /,&
-'@  SCAMAX(I) is the maximum acceptable value for',             /,&
-'@    scalar  I. When this is a variance',                      /,&
-'@    (iscavr(I) > 0) the value of SCAMAX is only used',        /,&
-'@               if ICLVFL(I) = 2',                             /,&
-'@',                                                            /,&
-'@',                                                            /,&
-'@',                                                            /,&
-'@',                                                            /,&
-'@',                                                            /,&
 '@ Check the input data given through the User Interface',      /,&
 '@   or in cs_user_parameters.f90.',                            /,&
 '@',                                                            /,&

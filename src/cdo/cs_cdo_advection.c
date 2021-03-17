@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1188,6 +1188,8 @@ cs_cdofb_advection_close_std_scal(const cs_equation_param_t   *eqp,
                                   cs_cell_builder_t           *cb,
                                   cs_sdm_t                    *adv)
 {
+  CS_UNUSED(adv);
+
   /* Multiply by a scaling property if needed before adding it to the local
      system */
   if (eqp->adv_scaling_property == NULL)
@@ -1417,15 +1419,22 @@ cs_cdofb_advection_build_no_diffusion(const cs_equation_param_t   *eqp,
      treated here since there are always weakly enforced */
   build_func(eqp->dim, cm, csys, cb, adv);
 
-  /* Handle the specific case where there is no diffusion and no advection
+  /* Handle the specific case when there is no diffusion and no advection
    * flux. In this case, a zero row may appear leading to the divergence of
    * linear solver. To circumvent this issue, one set the boundary face value
-   * to the cell value. */
+   * to the cell value. This is equivalent to enforce a homogeneous Neumann
+   * behavior. */
   assert(cs_equation_param_has_diffusion(eqp) == false);
+
+  cs_real_t  max_abs_flux = 0.;
+  for (int f = 0; f < cm->n_fc; f++)
+    max_abs_flux = fmax(max_abs_flux, fabs(cb->adv_fluxes[f]));
+
+  const cs_real_t  threshold = max_abs_flux * cs_math_epzero;
 
   for (int f = 0; f < cm->n_fc; f++) {
 
-    if (fabs(cb->adv_fluxes[f]) < cs_math_zero_threshold) {
+    if (fabs(cb->adv_fluxes[f]) < threshold) {
 
       cs_real_t  *f_row = adv->val + f*adv->n_rows;
 
@@ -1483,9 +1492,9 @@ cs_cdofb_advection_build(const cs_equation_param_t   *eqp,
   if (cb->cell_flag & CS_FLAG_SOLID_CELL)
     return;         /* Nothing to do. No advection in the current cell volume */
 
-  /* Compute the flux across the primal faces. Store in cb->adv_fluxes */
-  cs_advection_field_cw_face_flux(cm, eqp->adv_field, cb->t_bc_eval,
-                                  cb->adv_fluxes);
+  /* Remark: The flux across the primal faces is stored in cb->adv_fluxes and
+     should have been computed previously in a function compliant with the
+     cs_cdofb_adv_open_hook_t prototype */
 
   /* Define the local operator for advection. Boundary conditions are also
      treated here since there are always weakly enforced */
@@ -1648,7 +1657,6 @@ cs_cdofb_advection_upwcsv(int                        dim,
 
       /* access the row containing the current face */
       double  *f_row = adv->val + f*adv->n_rows;
-
 
       f_row[f] += beta_plus;
       f_row[c] -= beta_plus;

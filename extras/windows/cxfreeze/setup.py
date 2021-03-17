@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -40,7 +40,7 @@ includes = ["sip"]
 # Specific modules to be excluded
 m_script = ["cs_user_scripts"]
 m_studymanager = ["matplotlib", "vtk", "numpy"]
-m_neptune = ["nc_package", "core.XMLinitialize", "core.MainView"]
+m_neptune = ["core.XMLinitialize", "core.MainView"]
 m_syrthes = ["syrthes"]
 m_salome = ["Pages.SalomeHandler"]
 m_win32 = ["win32api", "win32con", "win32pipe"]

@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -372,8 +372,9 @@ cs_sles_find_or_add(int          f_id,
  * operations involving access through a field id.
  *
  * \deprecated This function is provided to allow some peculiar
- * calling sequences, in which \ref codits is called with a nonzero
- * \c ivar value, but specific solver options must still be set.
+ * calling sequences, in which \ref cs_equation_iterative_solve_scalar
+ * is called with a nonzero \c ivar value, but specific solver options must
+ * still be set.
  * In the future, a more consistent mechanism (using a zero \c ivar
  * value or designing a cleaner method to handle those exceptional cases)
  * is preferred. As such, only a stack depth of 1 is allowed.

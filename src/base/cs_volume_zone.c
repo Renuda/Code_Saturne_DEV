@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -126,7 +126,8 @@ static const int _type_flag_mask[] = {CS_VOLUME_ZONE_INITIALIZATION,
                                       CS_VOLUME_ZONE_SOURCE_TERM,
                                       CS_VOLUME_ZONE_MASS_SOURCE_TERM,
                                       CS_VOLUME_ZONE_GWF_SOIL,
-                                      CS_VOLUME_ZONE_SOLID};
+                                      CS_VOLUME_ZONE_SOLID,
+                                      CS_VOLUME_ZONE_1D};
 
 static const char *_type_flag_name[] = {N_("initialization"),
                                         N_("porosity"),
@@ -134,7 +135,8 @@ static const char *_type_flag_name[] = {N_("initialization"),
                                         N_("source term"),
                                         N_("mass source term"),
                                         N_("groundwater soil"),
-                                        N_("solid")};
+                                        N_("solid"),
+                                        N_("1d")};
 
 /*============================================================================
  * Prototypes for functions intended for use only by Fortran wrappers.
@@ -961,6 +963,44 @@ cs_volume_zone_select_type_cells(int        type_flag,
 
 /*----------------------------------------------------------------------------*/
 /*!
+ * \brief Tag cells of a given zone type
+ *
+ * The tag array should be initialized. The given tag_value is associted
+ * to cells of the given zone type using a logical "or", so multiple flag
+ * bits can be handled using the same array if necessary.
+ *
+ * \param[in]       zone_type_flag  zone types to tag
+ * \param[in]       tag_value  tag value to add to cells of matching zones
+ * \param[in, out]  tag        tag value for each cell
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_volume_zone_tag_cell_type(int  zone_type_flag,
+                             int  tag_value,
+                             int  tag[])
+{
+  for (int i = 0; i < _n_zones; i++) {
+    const cs_zone_t *z = _zones[i];
+    if (z->type & zone_type_flag) {
+
+      const cs_lnum_t _n_cells = z->n_elts;
+      const cs_lnum_t *_cell_ids = z->elt_ids;
+      if (_cell_ids != NULL) {
+        for (cs_lnum_t j = 0; j < _n_cells; j++)
+          tag[_cell_ids[j]] |= tag_value;
+      }
+      else {
+        for (cs_lnum_t j = 0; j < _n_cells; j++)
+          tag[j] = tag_value;
+      }
+
+    }
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
  * \brief Print volume zones information to listing file
  */
 /*----------------------------------------------------------------------------*/
@@ -968,7 +1008,6 @@ cs_volume_zone_select_type_cells(int        type_flag,
 void
 cs_volume_zone_print_info(void)
 {
-
   bft_printf("\n");
   bft_printf(" --- Information on volume zones\n");
 

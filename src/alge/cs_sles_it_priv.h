@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -162,6 +162,10 @@ struct _cs_sles_it_t {
                                               solvers used as preconditioners */
 
   int                  n_max_iter;         /* maximum number of iterations */
+  int                  restart_interval;   /* maximum number of iterations
+                                              before restarting the algorithm
+                                              (only applicable for GMRES or GCR
+                                              algorithm up to now) */
 
   cs_sles_it_solve_t  *solve;              /* pointer to solve function */
 

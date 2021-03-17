@@ -4,7 +4,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -51,7 +51,7 @@
 !>                                 (input mass flux blocked to 0)
 !> \param[in]     itrifb        indirection for boundary faces ordering
 !> \param[in,out] itypfb        boundary face types
-!> \param[out]    izfppp        boundary face zone number
+!> \param[in,out] izfppp        boundary face zone number
 !> \param[in]     dt            time step (per cell)
 !> \param[in,out] rcodcl        boundary condition values:
 !>                               - rcodcl(1) value of the dirichlet
@@ -192,7 +192,7 @@ do ilelt = 1, nlelt
 
   !  ** Choose a couple of variables which values are to be imposed
   !     and delete the others (that will be computed with the help of
-  !     the thermodynamic laws in cfther.f90).
+  !     the thermodynamic laws in cs_cf_thermo.c).
 
   ! Pressure (in Pa)
   rcodcl(ifac,ipr,1) = 5.d5

@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -71,41 +71,16 @@ def displaySelectedPage(page_name, root, case, stbar=None, tree=None):
                 import code_saturne.Pages.BoundaryConditionsView as Page
                 thisPage = Page.BoundaryConditionsView(root, case, zone_name)
 
-        elif item.parentItem.itemData[0] == tr("Initialization"):
-            if case.xmlRootNode().tagName == tr("NEPTUNE_CFD_GUI"):
-                import code_saturne.Pages.MainFieldsInitializationView as Page
-                thisPage = Page.MainFieldsInitializationView(root, case, zone_name)
-            else:
-                import code_saturne.Pages.InitializationView as Page
-                thisPage = Page.InitializationView(root, case, zone_name, stbar)
+        elif item.parentItem.itemData[0] == tr("Volume conditions"):
+            import code_saturne.Pages.VolumicConditionsView as Page
+            thisPage = Page.VolumicConditionsView(root, case, zone_name)
 
-        elif item.parentItem.itemData[0] == tr("Head losses"):
-            import code_saturne.Pages.HeadLossesView as Page
-            thisPage = Page.HeadLossesView(root, case, zone_name)
-
-        elif item.parentItem.itemData[0] == tr("Porosity"):
-            import code_saturne.Pages.PorosityView as Page
-            thisPage = Page.PorosityView(root, case, zone_name)
-
-        elif item.parentItem.itemData[0] == tr("Source terms"):
-            if case.xmlRootNode().tagName == "NEPTUNE_CFD_GUI":
-                import code_saturne.Pages.MainFieldsSourceTermsView as Page
-                thisPage = Page.MainFieldsSourceTermsView(root, case, zone_name, stbar)
-            else:
-                import code_saturne.Pages.SourceTermsView as Page
-                thisPage = Page.SourceTermsView(root, case, zone_name, stbar)
-
-        elif item.parentItem.itemData[0] == tr("Groundwater laws"):
-            import code_saturne.Pages.GroundwaterLawView as Page
-            thisPage = Page.GroundwaterLawView(root, case, zone_name)
-
-        elif item.parentItem.itemData[0] in (tr("Boundary zones"), tr("Volume zones")):
+        elif item.parentItem.itemData[0] == tr("Volume zones"):
             import code_saturne.Pages.LocalizationView as Page
             thisPage = Page.VolumeLocalizationView(root, case, tree, hide_all=True)
 
         else:
             import code_saturne.Pages.WelcomeView as Page
-            print(item.parentItem.itemData[0])
             thisPage = Page.WelcomeView()
 
     case['current_page'] = str(page_name)
@@ -126,13 +101,21 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.PreprocessingView as Page
         thisPage = Page.PreprocessingView(root, case, stbar)
 
+    elif page_name == tr("Volume zones"):
+        import code_saturne.Pages.LocalizationView as Page
+        thisPage = Page.VolumeLocalizationView(root, case, tree)
+
+    elif page_name == tr("Boundary zones"):
+        import code_saturne.Pages.LocalizationView as Page
+        thisPage = Page.BoundaryLocalizationView(root, case, tree)
+
     elif page_name == tr("Notebook"):
         import code_saturne.Pages.NotebookView as Page
         thisPage = Page.NotebookView(root, case)
 
-    elif page_name == tr("Volume zones"):
-        import code_saturne.Pages.LocalizationView as Page
-        thisPage = Page.VolumeLocalizationView(root, case, tree)
+    elif page_name == tr("Volume conditions"):
+        import code_saturne.Pages.VolumicNatureView as Page
+        thisPage = Page.VolumicNatureView(root, case, tree)
 
     elif page_name == tr("Calculation features"):
         import code_saturne.Pages.AnalysisFeaturesView as Page
@@ -166,13 +149,9 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.ElectricalView as Page
         thisPage = Page.ElectricalView(root, case, stbar)
 
-    elif page_name == tr("Conjugate heat transfer"):
-        import code_saturne.Pages.ConjugateHeatTransferView as Page
-        thisPage = Page.ConjugateHeatTransferView(root, case)
-
-    elif page_name == tr("Fluid properties"):
-        import code_saturne.Pages.FluidCharacteristicsView as Page
-        thisPage = Page.FluidCharacteristicsView(root, case)
+#    elif page_name == tr("Fluid properties"):
+#        import code_saturne.Pages.FluidCharacteristicsView as Page
+#        thisPage = Page.FluidCharacteristicsView(root, case)
 
     elif page_name == tr("Body forces"):
         import code_saturne.Pages.BodyForcesView as Page
@@ -210,21 +189,17 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.BoundaryConditionsViewNeptune as Page
         thisPage = Page.BoundaryConditionsView(root, case)
 
-    elif page_name == tr("Cathare Coupling"):
-        import code_saturne.Pages.CathareCouplingView as Page
-        thisPage = Page.CathareCouplingView(root, case)
-
     elif page_name == tr("Immersed Boundaries"):
         import code_saturne.Pages.ImmersedBoundariesViewNeptune as Page
         thisPage = Page.ImmersedBoundariesViewNeptune(root, case)
 
-    elif page_name == tr("Boundary zones"):
-        import code_saturne.Pages.LocalizationView as Page
-        thisPage = Page.BoundaryLocalizationView(root, case, tree)
+    elif page_name == tr("Boundary conditions"):
+        import code_saturne.Pages.BoundaryNatureView as Page
+        thisPage = Page.BoundaryNatureView(root, case, tree)
 
-    elif page_name == tr("Particle boundary conditions"):
-        import code_saturne.Pages.LagrangianBoundariesView as Page
-        thisPage = Page.LagrangianBoundariesView(root, case)
+    elif page_name == tr("Coupling parameters"):
+        import code_saturne.Pages.CouplingParametersView as Page
+        thisPage = Page.CouplingParametersView(root, case)
 
     elif page_name == tr("Time averages"):
         import code_saturne.Pages.TimeAveragesView as Page
@@ -290,10 +265,6 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.PerformanceTuningView as Page
         thisPage = Page.PerformanceTuningView(root, case)
 
-    elif page_name == tr("Fluid structure interaction"):
-        import code_saturne.Pages.FluidStructureInteractionView as Page
-        thisPage = Page.FluidStructureInteractionView(root, case)
-
     elif page_name == tr("Atmospheric flows"):
         import code_saturne.Pages.AtmosphericFlowsView as Page
         thisPage = Page.AtmosphericFlowsView(root, case)
@@ -306,10 +277,6 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.MainFieldsView as Page
         thisPage = Page.MainFieldsView(root, case, tree)
 
-    elif page_name == tr("Thermodynamics"):
-        import code_saturne.Pages.ThermodynamicsView as Page
-        thisPage = Page.ThermodynamicsView(root, case)
-
     elif page_name == tr("Closure modeling"):
         import code_saturne.Pages.InterfacialForcesView as Page
         thisPage = Page.InterfacialForcesView(root, case, tree)
@@ -318,13 +285,9 @@ def displayStaticPage(case, page_name, root, stbar, tree):
         import code_saturne.Pages.InterfacialEnthalpyView as Page
         thisPage = Page.InterfacialEnthalpyView(root, case)
 
-    elif page_name == tr("Nucleate boiling parameters"):
-        import code_saturne.Pages.NucleateBoilingView as Page
-        thisPage = Page.NucleateBoilingView(root, case)
-
-    elif page_name == tr("Droplet condensation-evaporation"):
-        import code_saturne.Pages.DropletCondensationEvaporationView as Page
-        thisPage = Page.DropletCondensationEvaporationView(root, case)
+    elif page_name == tr("Wall transfer parameters"):
+        import code_saturne.Pages.NeptuneWallTransferView as Page
+        thisPage = Page.NeptuneWallTransferView(root, case)
 
     elif page_name == tr("Particles interactions"):
         import code_saturne.Pages.SolidView as Page

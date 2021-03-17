@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -93,7 +93,7 @@ class StandardItemModelOutput(QStandardItemModel):
             label = self.mdl.dicoLabelName[name]
             post  = self.mdl.getPostProcessing(label)
 
-            if OutputControlModel(self.case).getAssociatedWriterIdList("-2") == []:
+            if not OutputControlModel(self.case).isSurfaceWriterActive():
                 self.disableItem.append((row, 1))
                 post = "off"
 
@@ -181,7 +181,7 @@ class StandardItemModelOutput(QStandardItemModel):
                 self.dataPost[row] = "on"
             else:
                 self.dataPost[row] = "off"
-            if OutputControlModel(self.case).getAssociatedWriterIdList("-2") == []:
+            if not OutputControlModel(self.case).isSurfaceWriterActive():
                 self.dataPost[row] = "off"
 
             self.mdl.setPostProcessing(self.dataLabel[row], self.dataPost[row])

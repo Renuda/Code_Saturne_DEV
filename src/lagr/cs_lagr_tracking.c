@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1791,7 +1791,7 @@ _boundary_treatment(cs_lagr_particle_set_t    *particles,
     if (particle_state == CS_LAGR_PART_TO_SYNC) {
 
       cs_real_t *cell_cen = fvq->cell_cen + (3*cell_id);
-      cs_real_3_t vect_cen;
+      cs_real_t vect_cen[3];
       for (int k = 0; k < 3; k++) {
         vect_cen[k] = (cell_cen[k] - intersect_pt[k]);
         p_info->start_coords[k] = intersect_pt[k] + bc_epsilon * vect_cen[k];

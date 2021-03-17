@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -125,6 +125,7 @@ typedef struct {
 
 typedef struct {
 
+  int            n_fields; /* number of handled fields */
   int            n_zones;  /* number of associated zones */
 
   const char   **label;    /* pointer to label for each boundary zone */
@@ -432,16 +433,14 @@ _boundary_scalar(cs_tree_node_t  *tn_bc,
   const char *z_name = boundaries->label[izone];
   const char *choice = cs_tree_node_get_tag(tn_s, "choice");
 
-  cs_real_t value[27] = {0, 0, 0, 0, 0, 0, 0, 0, 0,
-                         0, 0, 0, 0, 0, 0, 0, 0, 0,
-                         0, 0, 0, 0, 0, 0, 0, 0, 0};
+  cs_real_t value[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
   assert(dim <= 9);
 
   bool possibly_incomplete = false;
 
   /* FIXME: we should not need a loop over components, but
      directly use vector values; if we do not yet have
-     multidimensional user variables in the GUI, we can hendle
+     multidimensional user variables in the GUI, we can handle
      this more cleanly */
 
   for (int i = 0; i < dim; i++) {
@@ -470,11 +469,9 @@ _boundary_scalar(cs_tree_node_t  *tn_bc,
           possibly_incomplete = true;
       }
       else if (! strcmp(choice, "neumann")) {
-        /* Vector values per component for CDO,
-           scalar (1st component) for legacy */
         const cs_real_t *v = cs_tree_node_get_child_values_real(tn_s, choice);
         if (v != NULL) {
-          value[i*3] = *v;
+          value[i] = *v;
         }
       }
       else if (! strcmp(choice, "dirichlet_formula")) {
@@ -700,7 +697,7 @@ _inlet_compressible(cs_tree_node_t  *tn_vp,
 
   if (cs_gui_strcmp(choice, "imposed_inlet")) {
 
-    cs_real_t te_in = 0;
+    cs_real_t te_in = cs_math_infinite_r;
 
     boundaries->itype[izone] = CS_ESICF;
 
@@ -743,7 +740,7 @@ _inlet_compressible(cs_tree_node_t  *tn_vp,
     cs_gui_node_get_child_real
       (tn_vp, "total_pressure", &boundaries->prein[izone]);
 
-    cs_real_t h_in = 0;
+    cs_real_t h_in = cs_math_infinite_r;
     cs_gui_node_get_child_real(tn_vp, "enthalpy", &h_in);
 
     cs_equation_param_t *eqp = _get_equation_param("total_energy");
@@ -936,6 +933,7 @@ _init_boundaries(void)
 
   BFT_MALLOC(boundaries, 1, cs_gui_boundary_t);
 
+  boundaries->n_fields = n_fields;
   boundaries->n_zones = n_zones;
 
   BFT_MALLOC(boundaries->label,     n_zones,    const char *);
@@ -1081,9 +1079,9 @@ _init_boundaries(void)
 
     else if (cs_glob_physical_model_flag[CS_COMPRESSIBLE] > -1) {
       boundaries->itype[izone]     = 0;
-      boundaries->prein[izone]     = 0;
-      boundaries->rhoin[izone]     = 0;
-      boundaries->tempin[izone]    = 0;
+      boundaries->prein[izone]     = cs_math_infinite_r;
+      boundaries->rhoin[izone]     = cs_math_infinite_r;
+      boundaries->tempin[izone]    = cs_math_infinite_r;
     }
 
     else if (cs_glob_physical_model_flag[CS_GROUNDWATER] > -1) {
@@ -1359,7 +1357,7 @@ _init_boundaries(void)
       }
 
       /* Electric arc scalars only if required */
-      if (cs_glob_physical_model_flag[CS_JOULE_EFFECT] < 0)
+      if (cs_glob_physical_model_flag[CS_ELECTRIC_ARCS] < 0)
         scalar_sections[1] = NULL;
 
       /* Loop on possible specific model scalar sections */
@@ -1615,7 +1613,7 @@ void CS_PROCF (uiclim, UICLIM)(const int  *nozppm,
 
     if (cs_gui_strcmp(boundaries->nature[izone], "wall")) {
       if (boundaries->rough[izone] >= 0.0)
-        wall_type = 6;//TODO remove and use all roughness wall function
+        wall_type = 6; //TODO remove and use all roughness wall function
       else
         wall_type = 5;
     }
@@ -1626,7 +1624,16 @@ void CS_PROCF (uiclim, UICLIM)(const int  *nozppm,
       const int var_key_id = cs_field_key_id("variable_id");
       cs_lnum_t ivar = cs_field_get_key_int(f, var_key_id) -1;
 
+      if (f->type & CS_FIELD_CDO)
+        continue; /* TODO: Avoid a SIGSEV (when sharing CDO and FV, one has to
+                     find a better fix) */
+
       if (f->type & CS_FIELD_VARIABLE) {
+
+        int icodcl_m = 1;
+        if (f == CS_F_(h))
+          icodcl_m = -1;
+
         switch (boundaries->type_code[f->id][izone]) {
 
           case DIRICHLET_FORMULA:
@@ -1637,7 +1644,8 @@ void CS_PROCF (uiclim, UICLIM)(const int  *nozppm,
               for (cs_lnum_t ii = 0; ii < f->dim; ii++) {
                 for (cs_lnum_t elt_id = 0; elt_id < bz->n_elts; elt_id++) {
                   cs_lnum_t face_id = bz->elt_ids[elt_id];
-                  icodcl[(ivar + ii) *n_b_faces + face_id] = wall_type;
+                  icodcl[(ivar + ii) *n_b_faces + face_id]
+                    = wall_type * icodcl_m;
                   rcodcl[(ivar + ii) * n_b_faces + face_id]
                     = new_vals[ii * bz->n_elts + elt_id];
                 }
@@ -2390,7 +2398,7 @@ void CS_PROCF (uiclim, UICLIM)(const int  *nozppm,
         if (boundaries->meteo[izone].automatic) {
           for (cs_lnum_t elt_id = 0; elt_id < bz->n_elts; elt_id++) {
             cs_lnum_t face_id = bz->elt_ids[elt_id];
-            itypfb[face_id] = 0;
+            iautom[face_id] = 1;
           }
         }
       }
@@ -2920,7 +2928,7 @@ cs_gui_boundary_conditions_free_memory(void)
 
     n_zones = boundaries->n_zones;
 
-    for (int f_id = 0; f_id < cs_field_n_fields(); f_id++) {
+    for (int f_id = 0; f_id < boundaries->n_fields; f_id++) {
       const cs_field_t  *f = cs_field_by_id(f_id);
       if (f->type & CS_FIELD_VARIABLE) {
         if (boundaries->type_code != NULL)

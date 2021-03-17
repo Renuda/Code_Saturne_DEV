@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -40,6 +40,10 @@ BEGIN_C_DECLS
 /*============================================================================
  * Macro definitions
  *============================================================================*/
+
+/* Rescaling or not of the pressure */
+#define CS_BOUNDARY_PRESSURE_NO_RESCALING   1
+#define CS_BOUNDARY_PRESSURE_RESCALING      0
 
 /* Name of the boundary zone gathering all domain boundary walls */
 #define CS_BOUNDARY_WALLS_NAME   "auto:wall"

@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -3029,7 +3029,7 @@ ecs_loc_pre_cgns__cree_grps_boco(const ecs_loc_cgns_base_t  *base_maillage,
             /* If boundary condition references elements not present,
                ignore it (workaround for bug in ICEM Meshing 13 output). */
 
-            if (ind_ent >= ptr_zone->renum_size)
+            if (ind_ent < 0 || ind_ent >= ptr_zone->renum_size)
               continue;
 
             /* Stockage des valeurs lues avant transfert dans maillage */

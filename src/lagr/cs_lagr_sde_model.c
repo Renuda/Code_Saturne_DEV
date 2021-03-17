@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -943,10 +943,10 @@ _lagitf(cs_lagr_attribute_t  *iattr)
     cs_lnum_t cell_id = cs_lagr_particle_get_lnum(particle, p_am,
                                                   CS_LAGR_CELL_ID);
 
-    if (   extra->itytur == 2 || extra->itytur == 3
+    if (   extra->itytur == 2 || extra->itytur == 4 || extra->itytur == 3
         || extra->iturb == 50 || extra->iturb == 60) {
 
-      if (extra->itytur == 2 || extra->iturb == 50) {
+      if (extra->itytur == 2 || extra->itytur == 4 || extra->iturb == 50) {
 
         energ    = extra->cvar_k->val[cell_id];
         dissip   = extra->cvar_ep->val[cell_id];

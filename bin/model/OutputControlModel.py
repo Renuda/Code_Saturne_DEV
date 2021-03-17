@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -74,6 +74,8 @@ class OutputControlModel(Model):
         default['probe_recording_frequency_time'] = 0.1
         default['probe_format'] = "CSV"
         default['coordinate'] = 0.0
+        default['probes_snap'] = 'snap_to_center'
+        default['probes_interpolation'] = 'no'
 
         return default
 
@@ -928,6 +930,38 @@ class OutputControlModel(Model):
         return associated_writer
 
 
+    @Variables.noUndo
+    def isVolumeWriterActive(self):
+        """
+        Check if at least one volumic mesh is associated to a writer.
+        """
+        status = False
+
+        for mesh_id in self.getMeshIdList():
+            if self.getMeshType(mesh_id) in ["cells", "VolumicZone"]:
+                if self.getAssociatedWriterIdList(mesh_id):
+                    status = True
+                    break
+
+        return status
+
+
+    @Variables.noUndo
+    def isSurfaceWriterActive(self):
+        """
+        Check if at least one surface mesh is associated to a writer.
+        """
+        status = False
+
+        for mesh_id in self.getMeshIdList():
+            if self.getMeshType(mesh_id) in ["boundary_faces", "BoundaryZone"]:
+                if self.getAssociatedWriterIdList(mesh_id):
+                    status = True
+                    break
+
+        return status
+
+
     def addAssociatedWriter(self, mesh_id, lagrangian):
         """Public method.
         Input a new user associated writer to a mesh
@@ -1080,6 +1114,64 @@ class OutputControlModel(Model):
         self.isInList(choice, ('DAT', 'CSV'))
         node = self.node_out.xmlInitNode('probe_format', 'choice')
         node['choice'] = choice
+
+
+    @Variables.noUndo
+    def getMonitoringPointsSnap(self):
+        """
+        Return status of SnapToCenter activation or not.
+        """
+
+        node = self.node_out.xmlInitNode('probes_snap', 'choice')
+        choice = node['choice']
+        if not choice:
+            choice = self.defaultInitialValues()['probes_snap']
+
+        return choice
+
+
+    @Variables.undoLocal
+    def setMonitoringPointsSnap(self, choice):
+        """
+        Set choice of snap mode
+        """
+
+        if choice == self.defaultInitialValues()['probes_snap']:
+            node = self.node_out.xmlGetNode('probes_snap', 'choice')
+            if node:
+                node.xmlRemoveNode()
+        else:
+            node = self.node_out.xmlInitNode('probes_snap', 'choice')
+            node['choice'] = choice
+
+
+    @Variables.noUndo
+    def getMonitoringPointsInterpolation(self):
+        """
+        Return status of probes interpolation activation.
+        """
+
+        node = self.node_out.xmlInitNode('probes_interpolation', 'choice')
+        choice = node['choice']
+        if not choice:
+            choice = self.defaultInitialValues()['probes_interpolation']
+
+        return choice
+
+
+    @Variables.undoLocal
+    def setMonitoringPointsInterpolation(self, choice):
+        """
+        Activate/deactivate interpolation for monitoring points.
+        """
+
+        if choice == self.defaultInitialValues()['probes_interpolation']:
+            node = self.node_out.xmlGetNode('probes_interpolation', 'choice')
+            if node:
+                node.xmlRemoveNode()
+        else:
+            node = self.node_out.xmlInitNode('probes_interpolation', 'choice')
+            node['choice'] = choice
 
 
     @Variables.undoLocal

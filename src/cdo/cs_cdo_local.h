@@ -10,7 +10,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -116,6 +116,7 @@ typedef struct {
   double     *rhs;      /*!< cellwise view of the right-hand side */
   double     *source;   /*!< cellwise view of the source term array */
   double     *val_n;    /*!< values of the unkown at previous time t_n */
+  double     *val_nm1;  /*!< values of the unkown at previous time t_{n-1} */
 
   /* Boundary conditions for the local system */
   short int   n_bc_faces;  /*!< Number of border faces associated to a cell */

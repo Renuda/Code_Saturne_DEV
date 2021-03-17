@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -231,7 +231,7 @@ _compute_poisson_cdovb(const cs_cdo_connect_t     *connect,
 
   } /* Loop on cells */
 
-  if (cs_glob_n_ranks > 1) {
+  if (connect->interfaces[CS_CDO_CONNECT_VTX_SCAL] != NULL) {
 
     cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_VTX_SCAL],
                          connect->n_vertices,
@@ -482,26 +482,6 @@ cs_walldistance_setup(void)
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief  Finalize the setup stage for the equation related to the wall
- *         distance. Only useful for Hamilton-Jacobi equation
- *
- * \param[in]      connect    pointer to a cs_cdo_connect_t structure
- * \param[in]      cdoq       pointer to a cs_cdo_quantities_t structure
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_walldistance_finalize_setup(const cs_cdo_connect_t       *connect,
-                               const cs_cdo_quantities_t    *cdoq)
-{
-  CS_UNUSED(connect);
-  CS_UNUSED(cdoq);
-
-  return;
-}
-
-/*----------------------------------------------------------------------------*/
-/*!
  * \brief  Compute the wall distance
  *
  * \param[in]      mesh       pointer to a cs_mesh_t structure
@@ -518,27 +498,12 @@ cs_walldistance_compute(const cs_mesh_t              *mesh,
                         const cs_cdo_quantities_t    *cdoq)
 {
   CS_UNUSED(time_step);
+  cs_equation_t  *eq = cs_wd_poisson_eq;
 
   /* First step:
      Solve the equation related to the definition of the wall distance. */
 
-  cs_equation_t  *eq = cs_wd_poisson_eq;
-
-  if (cs_equation_uses_new_mechanism(eq))
-    cs_equation_solve_steady_state(mesh, eq);
-
-  else { /* Deprecated */
-
-    /* Sanity check */
-    assert(cs_equation_is_steady(eq));
-
-    /* Define the algebraic system */
-    cs_equation_build_system(mesh, eq);
-
-    /* Solve the algebraic system */
-    cs_equation_solve_deprecated(eq);
-
-  }
+  cs_equation_solve_steady_state(mesh, eq);
 
   /* Second step:
      Compute the wall distance. */

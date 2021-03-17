@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -107,7 +107,7 @@ double precision vela  (3  ,ncelet)
 
 integer          ifac  , iel, ischcp, idftnp, ircflp
 integer          init  , inc   , iccocg, isstpp
-integer          imrgrp, nswrgp, imligp, iwarnp, iconvp, idiffp
+integer          imrgrp, nswrgp, imligp, iwarnp, iconvp, idiffp, imvisp
 integer          icvflb, f_id0
 integer          isou  , jsou
 integer          iflmb0, itypfl
@@ -132,8 +132,12 @@ double precision, dimension(:,:), pointer :: coefau, cofafu
 double precision, dimension(:,:,:), pointer :: coefbu, cofbfu
 
 type(var_cal_opt) :: vcopt_u, vcopt_p
+type(var_cal_opt), target :: vcopt_loc
+type(var_cal_opt), pointer :: p_k_value
+type(c_ptr) :: c_k_value
 
 double precision rvoid(1)
+
 !===============================================================================
 
 !===============================================================================
@@ -266,6 +270,7 @@ if (itsqdm.ne.0) then
 
   ! ---> Face diffusivity for the velocity
   idiffp = vcopt_u%idiff
+  imvisp = vcopt_u%imvisf
   if (idiffp.ge. 1) then
 
      call field_get_val_s(iviscl, viscl)
@@ -338,18 +343,27 @@ if (itsqdm.ne.0) then
   ! has to impose 1 on mass accumulation.
   imasac = 1
 
-  call bilscv &
-  !==========
-( idtvar , ivarfl(iu)      , iconvp , idiffp , nswrgp , imligp , ircflp , &
-  ischcp , isstpp , inc    , imrgrp , ivisse ,                            &
-  iwarnp , idftnp , imasac ,                                              &
-  blencp , epsrgp , climgp , relaxp , thetap ,                            &
-  vela   , vela   ,                                                       &
-  coefau , coefbu , cofafu , cofbfu ,                                     &
-  flumas , flumab , viscf  , viscb  , secvif , secvib ,                   &
-  rvoid  , rvoid  , rvoid  ,                                              &
-  icvflb , icvfli ,                                                       &
-  tsexp  )
+  vcopt_loc = vcopt_u
+
+  vcopt_loc%istat  = -1
+  vcopt_loc%idifft = -1
+  vcopt_loc%iswdyn = -1
+  vcopt_loc%nswrsm = -1
+  vcopt_loc%iwgrec = 0
+  vcopt_loc%blend_st = 0 ! Warning, may be overwritten if a field
+  vcopt_loc%epsilo = -1
+  vcopt_loc%epsrsm = -1
+  vcopt_loc%extrag = -1
+
+  p_k_value => vcopt_loc
+  c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
+
+  call cs_balance_vector                                      &
+    (idtvar, ivarfl(iu), imasac, inc, ivisse,                 &
+     c_k_value, vela, vela, coefau, coefbu, cofafu, cofbfu,   &
+     flumas, flumab, viscf, viscb, secvif, secvib,            &
+     rvoid, rvoid, rvoid,                                     &
+     icvflb, icvfli, tsexp)
 
 endif
 

@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -103,10 +103,9 @@ class NumericalParamEquationModel(Model):
         self.default = {}
         self.default['time_step_factor'] = 1.0
         self.default['verbosity'] = 0
-        self.default['solver_precision'] = 1e-8
+        self.default['solver_precision'] = 1e-5
         self.default['solver_precision_pressure'] = 1e-8
         if NumericalParamGlobalModel(self.case).getTimeSchemeOrder() == 2:
-            self.default['solver_precision'] = 1e-5
             self.default['solver_precision_pressure'] = 1e-5
         self.default['slope_test'] = 'on'
         self.default['flux_reconstruction'] = 'on'

@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -187,6 +187,46 @@ contains
     !==========
 
   end subroutine resize_vec_real_array
+
+  !=============================================================================
+
+  ! Resize a symmetric tensor interleaved array and synchronize halo
+
+  subroutine resize_sym_tens_real_array ( array )
+
+    use mesh, only: ncel, ncelet
+
+    implicit none
+
+    ! Arguments
+
+    double precision, pointer, dimension(:,:) :: array
+
+    ! Local variables
+
+    integer iel, isou
+    double precision, allocatable, dimension(:,:) :: buffer
+
+    allocate(buffer(6,ncel))
+    do iel = 1, ncel
+      do isou = 1, 6
+        buffer(isou,iel) = array(isou,iel)
+      enddo
+    enddo
+    deallocate(array)
+
+    allocate(array(6,ncelet))
+    do iel = 1, ncel
+      do isou = 1, 6
+        array(isou,iel) = buffer(isou,iel)
+      enddo
+    enddo
+    deallocate(buffer)
+
+    call syntis (array)
+    !==========
+
+  end subroutine resize_sym_tens_real_array
 
   !=============================================================================
 

@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -310,7 +310,6 @@ extern const double cs_turb_cpale1;
 extern const double cs_turb_cpale2;
 extern const double cs_turb_cpale3;
 extern const double cs_turb_cpale4;
-extern const double cs_turb_cpalmu;
 extern const double cs_turb_cpalc1;
 extern const double cs_turb_cpalc2;
 extern const double cs_turb_cpalct;
@@ -354,13 +353,12 @@ extern const double cs_turb_xlesfl;
 extern const double cs_turb_ales;
 extern const double cs_turb_bles;
 extern double cs_turb_csmago;
-extern const double cs_turb_xlesfd;
-extern double cs_turb_smagmx;
-extern double cs_turb_smagmn;
-extern const double cs_turb_cdries;
+extern double cs_turb_xlesfd;
+extern double cs_turb_csmago_max;
+extern double cs_turb_csmago_min;
+extern double cs_turb_cdries;
 extern const double cs_turb_cv2fa1;
 extern const double cs_turb_cv2fe2;
-extern const double cs_turb_cv2fmu;
 extern const double cs_turb_cv2fc1;
 extern const double cs_turb_cv2fc2;
 extern const double cs_turb_cv2fct;

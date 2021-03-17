@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -72,10 +72,7 @@ class NumericalParamGlobalModel(Model):
         self.default['pressure_relaxation'] = 1.
         self.default['density_relaxation'] = 0.95
         self.default['velocity_pressure_coupling'] ='off'
-        self.default['hydrostatic_pressure'] ='off'
-        from code_saturne.model.HgnModel import HgnModel
-        if HgnModel(self.case).getHgnModel() == 'no_mass_transfer':
-            self.default['hydrostatic_pressure'] ='on'
+        self.default['hydrostatic_pressure'] ='on'
         self.default['hydrostatic_equilibrium'] ='off'
         self.default['time_scheme_order'] = 1
         self.default['gradient_reconstruction'] = 'default'
@@ -89,11 +86,12 @@ class NumericalParamGlobalModel(Model):
         """
         Return status of transposed gradient
         """
-        node = self.node_np.xmlInitNode('gradient_transposed', 'status')
-        status = node['status']
+        status = None
+        node = self.node_np.xmlGetNode('gradient_transposed')
+        if node:
+            status = node['status']
         if not status:
             status = self._defaultValues()['gradient_transposed']
-            self.setTransposedGradient(status)
         return status
 
 
@@ -102,11 +100,12 @@ class NumericalParamGlobalModel(Model):
         """
         Return status of IPUCOU value is activated or not
         """
-        node = self.node_np.xmlInitNode('velocity_pressure_coupling', 'status')
-        status = node['status']
+        status = None
+        node = self.node_np.xmlGetNode('velocity_pressure_coupling')
+        if node:
+            status = node['status']
         if not status:
             status = self._defaultValues()['velocity_pressure_coupling']
-            self.setVelocityPressureCoupling(status)
         return status
 
 
@@ -115,25 +114,25 @@ class NumericalParamGlobalModel(Model):
         """
         Return status of ICFGRP value (for hydrostatic equilibrium) is activated or not
         """
-        node = self.node_np.xmlInitNode('hydrostatic_equilibrium', 'status')
+        node = self.node_np.xmlGetNode('hydrostatic_equilibrium')
         status = node['status']
         if not status:
             status = self._defaultValues()['hydrostatic_equilibrium']
-            self.setHydrostaticEquilibrium(status)
         return status
 
 
     @Variables.noUndo
     def getHydrostaticPressure(self):
         """
-        Return status of hydrostatic pressure :
+        Return status of hydrostatic pressure:
         'off' if standard, 'on' if improved
         """
-        node = self.node_np.xmlInitNode('hydrostatic_pressure', 'status')
-        status = node['status']
+        status = None
+        node = self.node_np.xmlGetNode('hydrostatic_pressure')
+        if node:
+            status = node['status']
         if not status:
             status = self._defaultValues()['hydrostatic_pressure']
-            self.setHydrostaticPressure(status)
         return status
 
 
@@ -145,7 +144,6 @@ class NumericalParamGlobalModel(Model):
         value = self.node_np.xmlGetDouble('pressure_relaxation')
         if value == None:
             value = self._defaultValues()['pressure_relaxation']
-            self.setPressureRelaxation(value)
         return value
 
 
@@ -166,8 +164,10 @@ class NumericalParamGlobalModel(Model):
         """
         Return gradient reconstruction method
         """
-        node = self.node_np.xmlInitNode('gradient_reconstruction', 'choice')
-        choice = node['choice']
+        choice = None
+        node = self.node_np.xmlGetNode('gradient_reconstruction')
+        if node:
+            choice = node['choice']
         if not choice:
             choice = self._defaultValues()['gradient_reconstruction']
         return choice
@@ -178,8 +178,10 @@ class NumericalParamGlobalModel(Model):
         """
         Return extended neighborhood type
         """
-        node = self.node_np.xmlInitNode('extended_neighborhood', 'choice')
-        choice = node['choice']
+        choice = None
+        node = self.node_np.xmlGetNode('extended_neighborhood')
+        if node:
+            choice = node['choice']
         if not choice:
             choice = self._defaultValues()['extended_neighborhood']
         return choice
@@ -192,7 +194,10 @@ class NumericalParamGlobalModel(Model):
         """
         self.isOnOff(status)
         node = self.node_np.xmlInitNode('gradient_transposed', 'status')
-        node['status'] = status
+        if status == self._defaultValues()['gradient_transposed']:
+            node.xmlRemoveNode()
+        else:
+            node['status'] = status
 
 
     @Variables.undoLocal
@@ -217,6 +222,7 @@ class NumericalParamGlobalModel(Model):
         else:
             for node in node_ipucou.xmlGetNodeList('property'):
                 node.xmlRemoveNode()
+            node_ipucou.xmlRemoveNode()
 
 
     @Variables.undoLocal
@@ -226,7 +232,10 @@ class NumericalParamGlobalModel(Model):
         """
         self.isOnOff(var)
         node = self.node_np.xmlInitNode('hydrostatic_equilibrium', 'status')
-        node['status'] = var
+        if var == self._defaultValues()['hydrostatic_equilibrium']:
+            node.xmlRemoveNode()
+        else:
+            node['status'] = var
 
 
     @Variables.undoLocal
@@ -236,7 +245,10 @@ class NumericalParamGlobalModel(Model):
         """
         self.isOnOff(var)
         node = self.node_np.xmlInitNode('hydrostatic_pressure', 'status')
-        node['status'] = var
+        if var == self._defaultValues()['hydrostatic_pressure']:
+            node.xmlRemoveNode()
+        else:
+            node['status'] = var
 
 
     @Variables.undoLocal
@@ -245,7 +257,8 @@ class NumericalParamGlobalModel(Model):
         Put value of pressure_relaxation
         """
         self.isPositiveFloat(value)
-        self.node_np.xmlSetData('pressure_relaxation', value)
+        self.node_np.xmlSetData('pressure_relaxation', value,
+                                default=self._defaultValues()['pressure_relaxation'])
 
 
     @Variables.undoLocal
@@ -255,7 +268,8 @@ class NumericalParamGlobalModel(Model):
         """
         self.isGreaterOrEqual(value, 0.0)
         self.isLower(value, 1.0)
-        self.node_np.xmlSetData('density_relaxation', value)
+        self.node_np.xmlSetData('density_relaxation', value,
+                                default=self._defaultValues()['density_relaxation'])
 
 
     @Variables.undoLocal
@@ -314,8 +328,10 @@ class NumericalParamGlobalModel(Model):
         """
         Return the algorithm for density variation in time
         """
-        node = self.node_np.xmlInitNode('algo_density_variation', 'choice')
-        choice = node['choice']
+        choice = None
+        node = self.node_np.xmlGetNode('algo_density_variation')
+        if node:
+            choice = node['choice']
         if not choice:
             choice = self._defaultValues()['algo_density_variation']
         return choice

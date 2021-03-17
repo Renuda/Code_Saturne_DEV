@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -240,6 +240,8 @@ if (init_gas_with_lib) then
 
   else
 
+    zproc(1) = 0.
+
     call sshaerosol_get_gas(espnum)
 
     ! Conversion from microg / m^3 to ppm
@@ -425,14 +427,13 @@ return
 !============================
 
  99   continue
-write ( nfecra,9998 )
-call csexit (1)
-!==========
+write(nfecra, 9998)
+
+return
 
  999  continue
-write ( nfecra,9999 )
+write(nfecra, 9999)
 call csexit (1)
-!==========
 
 !--------
 ! FORMATS
@@ -523,15 +524,14 @@ call csexit (1)
 '@                                                            ',/,&
 '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@',/,&
 '@                                                            ',/,&
-'@ @@  WARNING:   STOP WHILE READING INPUT DATA (atlecc)      ',/,&
-'@     =======                                                ',/,&
-'@      ATMOSPHERIC CHEMISTRY                                 ',/,&
-'@                                                            ',/,&
-'@  Error opening the chemistry profile file                  ',/,&
-'@  check the name of the chemistry file                      ',/,&
-'@                                                            ',/,&
-'@  The computation will not be run                           ',/,&
-'@                                                            ',/,&
+'@ @@  WARNING:   ATMOSPHERIC CHEMISTRY (atlecc)'              ,/,&
+'@     ======='                                                ,/,&
+'@'                                                            ,/,&
+'@  No chemistry profile given'                                ,/,&
+'@  check the name of the chemistry file'                      ,/,&
+'@'                                                            ,/,&
+'@  The chemistry variable will be set to 0.'                  ,/,&
+'@'                                                            ,/,&
 '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@',/,&
 '@                                                            ',/)
  9999 format(                                                           &

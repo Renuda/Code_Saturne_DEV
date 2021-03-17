@@ -4,7 +4,7 @@
 
 /* This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -413,6 +413,7 @@ cs_matrix_wrapper_vector(int                  iconvp,
   if (tensorial_diffusion == 1) {
     /* Symmetric matrix */
     if (isym == 1) {
+      assert(eb_size[0] == 1);
       cs_sym_matrix_vector(m,
                            idiffp,
                            thetap,
@@ -424,7 +425,8 @@ cs_matrix_wrapper_vector(int                  iconvp,
                            xa);
 
     /* Non-symmetric matrix */
-    } else {
+    }
+    else {
       cs_matrix_vector(m,
                        mq,
                        iconvp,
@@ -834,11 +836,11 @@ cs_matrix_scalar(const cs_mesh_t          *m,
   const cs_lnum_t *restrict b_face_cells
     = (const cs_lnum_t *restrict)m->b_face_cells;
 
-  /*===============================================================================*/
+  /*========================================================================== */
 
-  /*===============================================================================
+  /*==========================================================================
     1. Initialization
-    ===============================================================================*/
+    ========================================================================== */
 
 # pragma omp parallel for
   for (cs_lnum_t cell_id = 0; cell_id < n_cells; cell_id++) {
@@ -960,8 +962,10 @@ cs_matrix_scalar(const cs_mesh_t          *m,
            * D_jj = -theta (m_ij)^- + m_ij
            *      = -X_ji + (1-theta)*m_ij
            */
-          da[ii] -= xa[face_id][0] + iconvp*(1. - thetap)*xcpp[ii]*i_massflux[face_id];
-          da[jj] -= xa[face_id][1] - iconvp*(1. - thetap)*xcpp[jj]*i_massflux[face_id];
+          da[ii] -= xa[face_id][0]
+            + iconvp*(1. - thetap)*xcpp[ii]*i_massflux[face_id];
+          da[jj] -= xa[face_id][1]
+            - iconvp*(1. - thetap)*xcpp[jj]*i_massflux[face_id];
 
         }
       }

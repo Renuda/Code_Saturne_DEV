@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -192,6 +192,32 @@ cs_xdef_cw_eval_vector_by_val(const cs_cell_mesh_t     *cm,
   eval[0] = constant_val[0];
   eval[1] = constant_val[1];
   eval[2] = constant_val[2];
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief  Evaluate a tensor-valued quantity with a symmetric storage by a
+ *         cellwise process
+ *
+ * \param[in]  cm         pointer to a \ref cs_cell_mesh_t structure
+ * \param[in]  time_eval  physical time at which one evaluates the term
+ * \param[in]  input      pointer to an input structure
+ * \param[out] eval       result of the evaluation
+ */
+/*----------------------------------------------------------------------------*/
+
+static inline void
+cs_xdef_cw_eval_symtens_by_val(const cs_cell_mesh_t     *cm,
+                               cs_real_t                 time_eval,
+                               void                     *input,
+                               cs_real_t                *eval)
+{
+  CS_UNUSED(cm);
+  CS_UNUSED(time_eval);
+
+  const cs_real_t  *constant_val = (const cs_real_t *)input;
+  for (int k = 0; k < 6; k++)
+    eval[k] = constant_val[k];
 }
 
 /*----------------------------------------------------------------------------*/

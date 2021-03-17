@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -41,25 +41,28 @@ from code_saturne.Base.QtCore    import *
 from code_saturne.Base.QtGui     import *
 from code_saturne.Base.QtWidgets import *
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Application modules import
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 from code_saturne.Pages.BoundaryConditionsInterfacialArea import Ui_BoundaryConditionsInterfacialArea
 
 from code_saturne.model.Common import GuiParam
 from code_saturne.Base.QtPage import DoubleValidator, from_qvariant
 from code_saturne.model.InterfacialAreaModel import InterfacialAreaModel
+from code_saturne.model.MainFieldsModel import MainFieldsModel
+from code_saturne.model.InterfacialForcesModel import InterfacialForcesModel
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # log config
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 logging.basicConfig()
 log = logging.getLogger("BoundaryConditionsInterfacialAreaView")
 log.setLevel(GuiParam.DEBUG)
 
-#-------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------
 # Main class
 #-------------------------------------------------------------------------------
 
@@ -100,12 +103,18 @@ class BoundaryConditionsInterfacialAreaView(QWidget, Ui_BoundaryConditionsInterf
         """
         self.__boundary = boundary
 
-        if InterfacialAreaModel(self.case).getAreaModel(self.__currentField) != "constant" :
+        interfacial_area_model = None
+        dispersed_fields = MainFieldsModel(self.case).getDispersedFieldList() + InterfacialForcesModel(
+            self.case).getGLIMfields()
+        if dispersed_fields != []:
+            interfacial_area_model = InterfacialAreaModel(self.case).getAreaModel(self.__currentField)
+
+        if interfacial_area_model not in [None, "constant"]:
             self.lineEditDiameter.show()
             val = boundary.getDiameter(self.__currentField)
             self.lineEditDiameter.setText(str(val))
             self.show()
-        else :
+        else:
             self.hideWidget()
 
 

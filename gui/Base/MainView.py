@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -116,7 +116,7 @@ class NewCaseDialogView(QDialog, Ui_NewCaseDialogForm):
     """
     Advanced dialog
     """
-    def __init__(self, parent, pkg):
+    def __init__(self, parent, pkg, path):
         """
         Constructor
         """
@@ -133,7 +133,7 @@ class NewCaseDialogView(QDialog, Ui_NewCaseDialogForm):
         self.copyFromName = None
         self.caseName = None
 
-        self.currentPath = str(QDir.currentPath())
+        self.currentPath = path
         self.model = QFileSystemModel(self)
         self.model.setRootPath(self.currentPath)
         self.model.setFilter(QDir.Dirs)
@@ -650,24 +650,18 @@ class MainView(object):
 
         create new Code_Saturne case
         """
-        if not hasattr(self, 'case') or not self.case['xmlfile']:
-            dialog = NewCaseDialogView(self, self.package)
-            if dialog.exec_():
-                self.case = QtCase.QtCase(package=self.package)
-                self.case.root()['version'] = self.XML_DOC_VERSION
-                self.initCase()
-                self.updateTitleBar()
-
-                self.Browser.configureTree(self.case)
-                self.dockWidgetBrowserDisplay(True)
-
-                self.case['salome'] = self.salome
-                self.scrollArea.setWidget(self.displayFirstPage())
-                self.case['saved'] = "yes"
-
-                self.case.undo_signal.connect(self.slotUndoRedoView)
-        else:
-            MainView(cmd_package=self.package, cmd_case="new case").show()
+        path = str(QDir.currentPath())
+        if hasattr(self, 'case') and self.case['xmlfile']:
+            path = os.path.dirname(self.case['xmlfile'])
+            path = os.path.split(path)[0]  # case directory
+            path = os.path.split(path)[0]  # parent directory
+        dialog = NewCaseDialogView(self, self.package, path)
+        if dialog.exec_():
+            if not hasattr(self, 'case'):
+                self.fileNew()
+            else:
+                new_view = MainView(cmd_package=self.package, cmd_case="setup.xml")
+                new_view.show()
 
 
     def fileAlreadyLoaded(self, f):
@@ -758,6 +752,41 @@ class MainView(object):
             msg = self.tr("This file is not in accordance with XML specifications.")
             self.loadingAborted(msg, fn)
             return
+
+        # Check if legacy conjugate heat transfer node is present. If so, display warning.
+        node_cht = self.case.xmlGetNode("conjugate_heat_transfer")
+        deprecated_couplings = []
+        if node_cht != None:
+            node_ext = node_cht.xmlGetChildNode("external_coupling")
+            if node_ext != None:
+                deprecated_couplings += node_ext.xmlGetChildNodeList("syrthes")
+        if deprecated_couplings != []:
+            # Write a file containing previous definitions
+            syrlog = open("deprecated_syrthes_coupling_data.txt", "w")
+            syrlog.write("SYRTHES INSTANCE | SELECTION CRITERIA;\n")
+            syrlog.write("-------------------------------------\n")
+            _pad = len("SYRTHES INSTANCE ")
+            for n in deprecated_couplings:
+                _sname = n.xmlGetChildString("syrthes_name")
+                if not _sname:
+                    _sname = "undefined"
+                _scrit = n.xmlGetChildString("selection_criteria")
+                syrlog.write("%s| %s\n" % (_sname.ljust(_pad), _scrit))
+            syrlog.close()
+
+            # Print warning message
+            title = "Warning"
+            msg = "Old XML format detected for external conjugate heat transfer coupling.\n\n"
+            msg += "This XML should still be valid to launch a Code_Saturne computation outside of the GUI," \
+                   "but is not maintained anymore.\n"
+            msg += "Old definitions are removed from the XML file and are stored in the "
+            msg += "DATA folder within the 'deprecated_syrthes_coupling_data.txt file'.\n"
+            msg += "Please fill in the coupling information again."
+            QMessageBox.warning(self, title, msg)
+
+            # Delete old definitions which are now stored in the syrlog file
+            for n in deprecated_couplings:
+                n.xmlRemoveNode()
 
         # Cleaning the '\n' and '\t' from file_name (except in formula)
         self.case.xmlCleanAllBlank(self.case.xmlRootNode())
@@ -1715,12 +1744,11 @@ class MainViewSaturne(QMainWindow, Ui_MainForm, MainView):
         """
 
         prepro_only = self.case['run_type'] != 'standard'
+        from code_saturne.cs_package import package as cs_package
         if self.case.xmlRootNode().tagName == "NEPTUNE_CFD_GUI" :
-            from neptune_cfd.nc_package import package as nc_package
-            self.package = nc_package()
+            self.package = cs_package(name = "neptune_cfd")
             return XMLinitNeptune(self.case).initialize(prepro_only)
         elif self.case.xmlRootNode().tagName == "Code_Saturne_GUI" :
-            from code_saturne.cs_package import package as cs_package
             self.package = cs_package()
             return XMLinit(self.case).initialize(prepro_only)
 
@@ -1824,12 +1852,9 @@ class MainViewSaturne(QMainWindow, Ui_MainForm, MainView):
 
         open the user manual
         """
-        if self.package.name == 'neptune_cfd':
-            self.displayManual(self.package, 'user')
-        else:
-            from neptune_cfd.nc_package import package as nc_package
-            pkg = nc_package()
-            self.displayManual(pkg, 'user')
+        from code_saturne.cs_package import package as cs_package
+        pkg = cs_package(name = 'neptune_cfd')
+        self.displayManual(pkg, 'user')
 
 
     def displayNCTutorial(self):
@@ -1838,12 +1863,9 @@ class MainViewSaturne(QMainWindow, Ui_MainForm, MainView):
 
         open the user manual
         """
-        if self.package.name == 'neptune_cfd':
-            self.displayManual(self.package, 'tutorial')
-        else:
-            from neptune_cfd.nc_package import package as nc_package
-            pkg = nc_package()
-            self.displayManual(pkg, 'tutorial')
+        from code_saturne.cs_package import package as cs_package
+        pkg = cs_package(name = 'neptune_cfd')
+        self.displayManual(pkg, 'tutorial')
 
 
     def displayNCTheory(self):
@@ -1852,12 +1874,9 @@ class MainViewSaturne(QMainWindow, Ui_MainForm, MainView):
 
         open the user manual
         """
-        if self.package.name == 'neptune_cfd':
-            self.displayManual(self.package, 'theory')
-        else:
-            from neptune_cfd.nc_package import package as nc_package
-            pkg = nc_package()
-            self.displayManual(pkg, 'theory')
+        from code_saturne.cs_package import package as cs_package
+        pkg = cs_package(name = 'neptune_cfd')
+        self.displayManual(pkg, 'theory')
 
 
     def displayNCDoxygen(self):
@@ -1866,12 +1885,9 @@ class MainViewSaturne(QMainWindow, Ui_MainForm, MainView):
 
         open the user manual
         """
-        if self.package.name == 'neptune_cfd':
-            self.displayManual(self.package, 'Doxygen')
-        else:
-            from neptune_cfd.nc_package import package as nc_package
-            pkg = nc_package()
-            self.displayManual(pkg, 'Doxygen')
+        from code_saturne.cs_package import package as cs_package
+        pkg = cs_package(name = 'neptune_cfd')
+        self.displayManual(pkg, 'Doxygen')
 
 
     def slotUndo(self):

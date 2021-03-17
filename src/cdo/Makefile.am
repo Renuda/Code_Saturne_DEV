@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -67,15 +67,14 @@ cs_cdo_advection.h \
 cs_cdo_bc.h \
 cs_cdo_connect.h \
 cs_cdo_diffusion.h \
-cs_cdoeb_priv.h \
 cs_cdo_field_interpolation.h \
 cs_cdo_local.h \
 cs_cdo_main.h \
 cs_cdo_quantities.h \
-cs_cdo_time.h \
 cs_cdo_turbulence.h \
-cs_cdofb_ac.h \
+cs_cdoeb_priv.h \
 cs_cdoeb_vecteq.h \
+cs_cdofb_ac.h \
 cs_cdofb_monolithic.h \
 cs_cdofb_monolithic_priv.h \
 cs_cdofb_monolithic_sles.h \
@@ -119,6 +118,7 @@ cs_param_cdo.h \
 cs_property.h \
 cs_quadrature.h \
 cs_reco.h \
+cs_saddle_itsol.h \
 cs_scheme_geometry.h \
 cs_sdm.h \
 cs_solidification.h \
@@ -145,7 +145,6 @@ cs_cdo_field_interpolation.c \
 cs_cdo_local.c \
 cs_cdo_main.c \
 cs_cdo_quantities.c \
-cs_cdo_time.c \
 cs_cdo_turbulence.c \
 cs_cdoeb_vecteq.c \
 cs_cdofb_monolithic.c \
@@ -164,6 +163,7 @@ cs_equation.c \
 cs_equation_assemble.c \
 cs_equation_bc.c \
 cs_equation_common.c \
+cs_equation_param.c \
 cs_evaluate.c \
 cs_flag.c \
 cs_gwf.c \
@@ -182,6 +182,7 @@ cs_navsto_system.c \
 cs_property.c \
 cs_quadrature.c \
 cs_reco.c \
+cs_saddle_itsol.c \
 cs_scheme_geometry.c \
 cs_sdm.c \
 cs_solidification.c \
@@ -203,7 +204,6 @@ libcscdo_extension_la_SOURCES = \
 cs_cdofb_ac.c \
 cs_cdofb_monolithic_sles.c \
 cs_cdofb_predco.c \
-cs_equation_param.c \
 cs_navsto_param.c \
 cs_navsto_sles.c
 

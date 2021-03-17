@@ -3,7 +3,7 @@
 !     This file is part of the Code_Saturne Kernel, element of the
 !     Code_Saturne CFD tool.
 
-!     Copyright (C) 1998-2020 EDF S.A., France
+!     Copyright (C) 1998-2021 EDF S.A., France
 
 !     contact: saturne-support@edf.fr
 
@@ -85,7 +85,7 @@ integer          iflid, iopchr
 integer          itycat, ityloc, idim1, idim3
 integer          f_id, potr, poti, flag
 integer          f_vis, f_log, ivtmp
-integer          kturt, kfturt
+integer          kturt, kfturt, turb_flux_model, turb_flux_model_type
 integer          kfturt_alpha
 integer          keycpl, keydri
 integer          ivar, iscdri
@@ -172,12 +172,14 @@ do ii = 1, nscal
 
     call field_get_key_int(ivarfl(ivar), keyvis, f_vis)
     call field_get_key_int(ivarfl(ivar), keylog, f_log)
+    call field_get_key_int(ivarfl(ivar), kturt, turb_flux_model)
+    turb_flux_model_type = turb_flux_model / 10
 
-    if (ityturt(ii).gt.0) then
+    if (turb_flux_model_type.gt.0) then
       call field_get_name (f_id, name)
       f_name = trim(name)//'_turbulent_flux'
 
-      if (ityturt(ii).eq.3) then
+      if (turb_flux_model_type.eq.3) then
         call add_variable_field(f_name, f_name, 3, ivtmp)
         iflid = ivarfl(ivtmp)
 
@@ -199,11 +201,10 @@ do ii = 1, nscal
         call field_set_key_int(iflid, keylog, f_log)
       endif
 
-      call field_set_key_int(ivarfl(ivar), kturt, iturt(ii))
       call field_set_key_int(ivarfl(ivar), kfturt, iflid)
 
       ! Elliptic Blending (AFM or DFM)
-      if (iturt(ii).eq.11 .or. iturt(ii).eq.21 .or. iturt(ii).eq.31) then
+      if (turb_flux_model.eq.11 .or. turb_flux_model.eq.21 .or. turb_flux_model.eq.31) then
         f_name = trim(name)//'_alpha'
 
         call add_variable_field(f_name, f_name, 1, ivtmp)
@@ -472,6 +473,21 @@ if (ineedy.eq.1) then
 
 endif
 
+! Add Subgrid TKE and dissipation for LES and Particle modelling
+if (itytur.eq.4 .and. iilagr.gt.0) then
+  ityloc = 1 ! variables defined on cells
+  itycat = FIELD_INTENSIVE + FIELD_PROPERTY
+  ! Warning, not ik or ivarfl(ik)
+  call field_find_or_create('k', itycat, ityloc, idim1, iflid)
+  call field_set_key_int(iflid, keyvis, 1)
+  call field_set_key_int(iflid, keylog, 1)
+
+  ! Warning, not iep or ivarfl(iep)
+  call field_find_or_create('epsilon', itycat, ityloc, idim1, iflid)
+  call field_set_key_int(iflid, keyvis, 1)
+  call field_set_key_int(iflid, keylog, 1)
+end if
+
 if (ippmod(iatmos).ge.0.and.compute_z_ground) then
   f_name  = 'z_ground'
   f_label = 'Z ground'
@@ -483,7 +499,8 @@ if (ippmod(iatmos).ge.0.and.compute_z_ground) then
   vcopt%iconv = 1
   vcopt%blencv= 0.d0 ! Pure upwind
   vcopt%istat = 0
-  vcopt%nswrsm = 1
+  vcopt%nswrsm = 100
+  vcopt%epsrsm = 1.d-3
   vcopt%idiff  = 0
   vcopt%idifft = 0
   vcopt%relaxv = 1.d0 ! No relaxation, even for steady algorithm.
@@ -505,9 +522,29 @@ endif
 if (imeteo.ge.2) then
   f_name  = 'meteo_pressure'
   f_label = 'Meteo pressure'
-  ! Now create matching property
-  call add_property_field(f_name, f_label, 1, .false., iflid)
-  call field_set_key_int(iflid, keylog, 1)
+  call add_variable_field(f_name, f_label, 1, ivar)
+  iflid = ivarfl(ivar)
+
+  ! Pure convection equation (no convection, no time term)
+  call field_get_key_struct_var_cal_opt(iflid, vcopt)
+  vcopt%iconv = 0
+  vcopt%blencv= 0.d0 ! Pure upwind
+  vcopt%istat = 0
+  vcopt%idircl = 1
+  vcopt%nswrsm = 100
+  vcopt%nswrgr = 100
+  vcopt%imrgra = 0
+  vcopt%imligr = -1
+  vcopt%epsilo = 0.000001
+  vcopt%epsrsm = 1.d-3
+  vcopt%epsrgr = 0.0001
+  vcopt%climgr = 1.5
+  vcopt%idiff  = 1
+  vcopt%idifft = 0
+  vcopt%idften = 1
+  vcopt%relaxv = 1.d0 ! No relaxation, even for steady algorithm.
+  vcopt%thetav = 1
+  call field_set_key_struct_var_cal_opt(iflid, vcopt)
 
   f_name  = 'meteo_density'
   f_label = 'Meteo rho'

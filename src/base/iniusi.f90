@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -110,6 +110,12 @@ interface
     implicit none
   end subroutine cs_gui_radiative_transfer_parameters
 
+  subroutine cs_velocity_pressure_set_solid()  &
+       bind(C, name='cs_velocity_pressure_set_solid')
+    use, intrinsic :: iso_c_binding
+    implicit none
+  end subroutine cs_velocity_pressure_set_solid
+
   subroutine cs_runaway_check_define_field_max(f_id, value)  &
        bind(C, name='cs_runaway_check_define_field_max')
     use, intrinsic :: iso_c_binding
@@ -159,6 +165,9 @@ call usipph(1, iturb, itherm, iale)
 ! Flow and other models selection through user C function
 call cs_user_model
 
+! Set type and order of the turbulence model
+call cs_set_type_order_turbulence_model()
+
 ! Activate CDO for ALE
 if (iale.eq.2) then
   call cs_ale_activate
@@ -168,6 +177,10 @@ endif
 
 call cs_gui_user_variables
 call cs_gui_user_arrays
+
+! Solid zones
+
+call cs_velocity_pressure_set_solid
 
 !===============================================================================
 ! 2. Initialize parameters for specific physics
@@ -290,7 +303,7 @@ call cs_gui_turb_ref_values
 call cs_f_turb_complete_constants
 
 ! Scamin, scamax, turbulent flux model
-call cssca2(iturt)
+call cssca2()
 
 ! Diffusivities
 call cssca3()
@@ -351,6 +364,7 @@ if (icdo.lt.2) then
   call varpos
 endif
 ! --- Internal coupling
+call cs_gui_internal_coupling
 call cs_user_internal_coupling
 
 call cs_internal_coupling_setup

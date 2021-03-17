@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -104,6 +104,7 @@ class QMegHighlighter(QSyntaxHighlighter):
          'cos', 'sin', 'tan', 'exp', 'sqrt', 'log',
          'acos', 'asin', 'atan', 'atan2', 'cosh', 'sinh',
          'tanh', 'abs', 'mod', 'int', 'min', 'max',
+         'square_norm',
          'pi', 'e', 'while', 'if', 'else'
     ]
 
@@ -253,6 +254,7 @@ class QMegEditorView(QDialog, Ui_QMegDialog):
                   "<b>int</b>: floor<br>"\
                   "<b>min</b>: minimum<br>"\
                   "<b>max</b>: maximum<br>"\
+                  "<b>square_norm</b>: square norm of a vector<br>"\
                   "<br>"\
                   "<big><u>Useful constants:</u></big><br>"\
                   "<b>pi</b> = 3.14159265358979323846<br>"\

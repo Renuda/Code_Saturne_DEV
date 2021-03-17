@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -155,7 +155,7 @@ static int  _n_amgx_systems = 0;
 static MPI_Comm _amgx_comm = MPI_COMM_NULL;
 #endif
 
-/* TODO: for mult-device configurations, this will need to be adapted */
+/* TODO: for multi-device configurations, this will need to be adapted */
 
 static int _n_devices = 1;
 static int _devices[] = {0};

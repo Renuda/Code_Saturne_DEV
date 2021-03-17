@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -212,6 +212,9 @@ cs_cdo_bc_get_flag(cs_param_bc_type_t   bc_type)
     ret_flag = CS_CDO_BC_HMG_NEUMANN;
     break;
   case CS_PARAM_BC_NEUMANN:
+    ret_flag = CS_CDO_BC_NEUMANN;
+    break;
+  case CS_PARAM_BC_NEUMANN_FULL:
     ret_flag = CS_CDO_BC_NEUMANN;
     break;
   case CS_PARAM_BC_ROBIN:

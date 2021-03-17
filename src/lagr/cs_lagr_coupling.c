@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -271,7 +271,8 @@ cs_lagr_coupling(const cs_real_t  taup[],
   /* Turbulence source terms
      ======================= */
 
-    if (extra->itytur == 2 || extra->iturb == 50 || extra->iturb == 60) {
+    if (extra->itytur == 2 || extra->itytur == 4 ||
+        extra->iturb == 50 || extra->iturb == 60) {
 
       /* In v2f (ITURB=50) the Lagrangian STs only influence k and epsilon
          (difficult to write something for v2, which loses its meaning as

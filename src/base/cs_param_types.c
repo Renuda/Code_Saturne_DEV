@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -40,6 +40,7 @@
 #include "bft_mem.h"
 
 #include "cs_base.h"
+#include "cs_log.h"
 
 /*----------------------------------------------------------------------------
  * Header for the current file
@@ -93,7 +94,8 @@ cs_param_time_scheme_name[CS_TIME_N_SCHEMES][CS_BASE_STRING_LEN] =
     N_("1st order Forward Euler (Implicit)"),
     N_("1st order Backward Euler (Explicit)"),
     N_("Crank-Nicolson"),
-    N_("Theta scheme")
+    N_("Theta scheme"),
+    N_("BDF2 (Implicit, 2nd order)")
   };
 
 static const char
@@ -136,6 +138,7 @@ cs_param_bc_type_name[CS_PARAM_N_BC_TYPES][CS_BASE_STRING_LEN] =
     N_("Dirichlet"),
     N_("Homogeneous Neumann"),
     N_("Neumann"),
+    N_("Neumann (full)"),
     N_("Robin"),
     N_("Sliding")
   };
@@ -146,6 +149,26 @@ cs_param_bc_enforcement_name[CS_PARAM_N_BC_ENFORCEMENTS][CS_BASE_STRING_LEN] =
     N_("weak using a big penalization coefficient"),
     N_("weak using the Nitsche method"),
     N_("weak using the symmetrized Nitsche method") };
+
+static const char
+cs_param_precond_block_name[CS_PARAM_N_PCD_BLOCK_TYPES][CS_BASE_STRING_LEN] =
+  { N_("No block preconditioner"),
+    N_("Diagonal block preconditioner"),
+    N_("Lower triangular block preconditioner"),
+    N_("Symmetric Gauss-Seidel block preconditioner"),
+    N_("Upper triangular block preconditioner"),
+    N_("Uzawa block preconditioner") };
+
+static const char
+cs_param_schur_approx_name[CS_PARAM_N_SCHUR_APPROX][CS_BASE_STRING_LEN] =
+  { N_("None"),
+    N_("Based on the diagonal"),
+    N_("Elman'99"),
+    N_("Identity matrix"),
+    N_("Lumped inverse"),
+    N_("Scaled mass matrix"),
+    N_("Based on the diagonal + mass scaling"),
+    N_("Lumped inverse + mass scaling") };
 
 /*! \cond DOXYGEN_SHOULD_SKIP_THIS */
 
@@ -158,36 +181,6 @@ cs_param_bc_enforcement_name[CS_PARAM_N_BC_ENFORCEMENTS][CS_BASE_STRING_LEN] =
 /*============================================================================
  * Public function prototypes
  *============================================================================*/
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief   Copy a cs_param_sles_t structure from src to dst
- *
- * \param[in]   src      reference cs_param_sles_t structure to copy
- * \param[out]  dst      copy of the reference at exit
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_param_sles_copy_from(cs_param_sles_t    src,
-                        cs_param_sles_t   *dst)
-{
-  if (dst == NULL)
-    return;
-
-  dst->setup_done = src.setup_done;
-  dst->verbosity = src.verbosity;
-  dst->field_id = src.field_id;
-
-  dst->solver_class = src.solver_class;
-  dst->precond = src.precond;
-  dst->solver = src.solver;
-  dst->amg_type = src.amg_type;
-
-  dst->resnorm_type = src.resnorm_type;
-  dst->n_max_iter = src.n_max_iter;
-  dst->eps = src.eps;
-}
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -260,6 +253,7 @@ cs_param_get_time_scheme_name(cs_param_time_scheme_t    scheme)
   case CS_TIME_SCHEME_EULER_EXPLICIT:
   case CS_TIME_SCHEME_CRANKNICO:
   case CS_TIME_SCHEME_THETA:
+  case CS_TIME_SCHEME_BDF2:
     return cs_param_time_scheme_name[scheme];
 
   default:
@@ -386,6 +380,7 @@ cs_param_get_bc_name(cs_param_bc_type_t    type)
   case CS_PARAM_BC_DIRICHLET:
   case CS_PARAM_BC_HMG_NEUMANN:
   case CS_PARAM_BC_NEUMANN:
+  case CS_PARAM_BC_NEUMANN_FULL:
   case CS_PARAM_BC_ROBIN:
   case CS_PARAM_BC_SLIDING:
   case CS_PARAM_BC_CIRCULATION:
@@ -464,6 +459,9 @@ cs_param_get_solver_name(cs_param_itsol_type_t  solver)
   case CS_PARAM_ITSOL_GAUSS_SEIDEL:
     return "Gauss.Seidel";
     break;
+  case CS_PARAM_ITSOL_GCR:
+    return "Generalized Conjugate Residual";
+    break;
   case CS_PARAM_ITSOL_GKB_CG:
     return "Golub-Kahan.BiOrthogonalization.with.CG.(inner.solver)";
     break;
@@ -482,11 +480,20 @@ cs_param_get_solver_name(cs_param_itsol_type_t  solver)
   case CS_PARAM_ITSOL_MUMPS:
     return "MUMPS (LU factorization)";
     break;
+  case CS_PARAM_ITSOL_MUMPS_FLOAT:
+    return "MUMPS (LU factorization) with float";
+    break;
+  case CS_PARAM_ITSOL_MUMPS_FLOAT_LDLT:
+    return "MUMPS (LDLT factorization) with float";
+    break;
   case CS_PARAM_ITSOL_MUMPS_LDLT:
     return "MUMPS (LDLT factorization)";
     break;
   case CS_PARAM_ITSOL_SYM_GAUSS_SEIDEL:
     return "Symmetric.Gauss.Seidel";
+    break;
+  case CS_PARAM_ITSOL_USER_DEFINED:
+    return "User-defined iterative solver";
     break;
 
   default:
@@ -525,9 +532,6 @@ cs_param_get_precond_name(cs_param_precond_type_t  precond)
   case CS_PARAM_PRECOND_AMG:
     return  "Algebraic.MultiGrid";
     break;
-  case CS_PARAM_PRECOND_AMG_BLOCK:
-    return  "Algebraic.MultiGrid.ByBlock";
-    break;
   case CS_PARAM_PRECOND_AS:
     return  "Additive.Schwarz";
     break;
@@ -562,6 +566,62 @@ cs_param_get_precond_name(cs_param_precond_type_t  precond)
   }
 
   return "";
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief   Get the name of the type of block preconditioning
+ *
+ * \param[in] type     type of block preconditioning
+ *
+ * \return the associated type name
+ */
+/*----------------------------------------------------------------------------*/
+
+const char *
+cs_param_get_precond_block_name(cs_param_precond_block_t   type)
+{
+  switch (type) {
+  case CS_PARAM_PRECOND_BLOCK_NONE:
+  case CS_PARAM_PRECOND_BLOCK_DIAG:
+  case CS_PARAM_PRECOND_BLOCK_LOWER_TRIANGULAR:
+  case CS_PARAM_PRECOND_BLOCK_SYM_GAUSS_SEIDEL:
+  case CS_PARAM_PRECOND_BLOCK_UPPER_TRIANGULAR:
+  case CS_PARAM_PRECOND_BLOCK_UZAWA:
+    return cs_param_precond_block_name[type];
+
+  default:
+    return NULL;
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief   Get the name of the type of Schur complement approximation
+ *
+ * \param[in] type     type of Schur complement approximation
+ *
+ * \return the associated type name
+ */
+/*----------------------------------------------------------------------------*/
+
+const char *
+cs_param_get_schur_approx_name(cs_param_schur_approx_t   type)
+{
+  switch (type) {
+  case CS_PARAM_SCHUR_NONE:
+  case CS_PARAM_SCHUR_IDENTITY:
+  case CS_PARAM_SCHUR_MASS_SCALED:
+  case CS_PARAM_SCHUR_DIAG_INVERSE:
+  case CS_PARAM_SCHUR_MASS_SCALED_DIAG_INVERSE:
+  case CS_PARAM_SCHUR_LUMPED_INVERSE:
+  case CS_PARAM_SCHUR_MASS_SCALED_LUMPED_INVERSE:
+  case CS_PARAM_SCHUR_ELMAN:
+    return cs_param_schur_approx_name[type];
+
+  default:
+    return NULL;
+  }
 }
 
 /*----------------------------------------------------------------------------*/

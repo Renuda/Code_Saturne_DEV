@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -146,10 +146,10 @@ do iel = 1, ncel
 
   ttke = xk / xe
   ttmin = cpalct*sqrt(xnu/xe)
-  ttlim = 0.6d0/cvar_phi(iel)/sqrt(3.d0)/cpalmu/s2(iel)
+  ttlim = 0.6d0/cvar_phi(iel)/sqrt(3.d0)/cmu/s2(iel)
   tt = min(ttlim,sqrt(ttke**2 + ttmin**2))
 
-  visct(iel) = cpalmu*xrom*tt*cvar_phi(iel)*cvar_k(iel)
+  visct(iel) = cmu*xrom*tt*cvar_phi(iel)*cvar_k(iel)
 
 enddo
 

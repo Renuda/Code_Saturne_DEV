@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -544,6 +544,33 @@ cs_base_get_dl_function_pointer(void        *handle,
 void
 cs_base_backtrace_dump(FILE  *f,
                        int    lv_start);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Query run-time directory info, using working directory names.
+ *
+ * Returned names are allocated if non-NULL, so should be deallocated by
+ * the caller when no longer needed.
+ *
+ * Names are extracted from the working directory structure, which is expected
+ * to be of the form:
+ * <prefix>/study_name/case_name/RESU/run_id
+ *
+ * or, in the case o a coupled run:
+ * <prefix>/study_name/RESU_COUPLING/run_id/case_name
+ *
+ * If some names cannot be queried, NULL is returned.
+ *
+ * \param[out]  run_id      run_id, or NULL
+ * \param[out]  case_name   case name, or NULL
+ * \param[out]  study_name  study name, or NULL
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_base_get_run_identity(char  **run_id,
+                         char  **case_name,
+                         char  **study_name);
 
 /*----------------------------------------------------------------------------*/
 

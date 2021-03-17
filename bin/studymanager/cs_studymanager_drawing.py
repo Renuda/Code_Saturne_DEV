@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -26,7 +26,7 @@
 # Standard modules
 #-------------------------------------------------------------------------------
 
-import os, sys, string, logging
+import os, sys, string, logging, traceback
 from string import *
 
 #-------------------------------------------------------------------------------
@@ -707,6 +707,7 @@ class Plotter(object):
                 exec(cmd)
             except:
                 print("Error with the matplotlib command: %s" % cmd)
+                traceback.print_exc()
 
     #---------------------------------------------------------------------------
 
@@ -824,6 +825,7 @@ class Plotter(object):
                     exec(cmd)
                 except:
                     print("Error with the matplotlib command: %s" % cmd)
+                    traceback.print_exc()
 
     #---------------------------------------------------------------------------
 

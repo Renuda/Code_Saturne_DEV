@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -87,7 +87,7 @@ integer          f_id, kdflim
 
 logical          have_previous
 
-double precision xxk, xcmu, trii, clvfmn, visls_0
+double precision xxk, trii, clvfmn, visls_0
 
 double precision, dimension(:), pointer :: dt
 double precision, dimension(:), pointer :: brom, crom
@@ -137,8 +137,17 @@ call field_get_val_s_by_name('dt', dt)
 call field_get_id_try('temperature', f_id)
 if (f_id .ge. 0) then
   call field_get_val_s(f_id, field_s_v)
-  do iel = 1, ncel
+  do iel = 1, ncelet
     field_s_v(iel) = t0
+  enddo
+endif
+
+! Initialize boundary temperature to "marker" if present
+call field_get_id_try('boundary_temperature', f_id)
+if (f_id .ge. 0) then
+  call field_get_val_s(f_id, field_s_v)
+  do iel = 1, nfabor
+    field_s_v(iel) = -grand
   enddo
 endif
 
@@ -168,7 +177,7 @@ call field_get_val_s(ibrom, brom)
 
 !     Masse volumique aux cellules (et au pdt precedent si ordre2 ou icalhy
 !     ou algo. VOF)
-do iel = 1, ncel
+do iel = 1, ncelet
   crom(iel)  = ro0
 enddo
 
@@ -189,7 +198,7 @@ call field_get_val_s(iviscl, viscl)
 call field_get_val_s(ivisct, visct)
 
 ! Molecular viscosity at cells (and eventual previous value)
-do iel = 1, ncel
+do iel = 1, ncelet
   viscl(iel) = viscl0
 enddo
 call field_current_to_previous(iviscl)
@@ -197,7 +206,7 @@ call field_current_to_previous(iviscl)
 ! Specific heat at cells (and eventual previous value)
 if(icp.ge.0) then
   call field_get_val_s(icp, cpro_cp)
-  do iel = 1, ncel
+  do iel = 1, ncelet
     cpro_cp(iel) = cp0
   enddo
   call field_current_to_previous(icp)
@@ -212,7 +221,7 @@ endif
 if ((ippmod(icompf).lt.0.and.ippmod(idarcy).lt.0).or.                          &
     (ippmod(idarcy).ge.0.and.darcy_gravity.ge.1)) then
   call field_get_val_s(iprtot, cpro_prtot)
-  do iel = 1, ncel
+  do iel = 1, ncelet
     cpro_prtot(iel) = - rinfin
   enddo
 endif
@@ -221,7 +230,7 @@ endif
 ! (used in cs_cf_thermo_default_init)
 if(ippmod(igmix).ge.0) then
   call field_get_val_s(igmxml, mix_mol_mas)
-  do iel =1, ncel
+  do iel =1, ncelet
     mix_mol_mas(iel) = xmasmr
   enddo
 endif
@@ -231,7 +240,7 @@ if (ippmod(icompf).ge.0) then
   ! In compressible, for now, the temperature is not solved but is a field of
   ! type variable anyway. The reference value has to be taken into account.
   call field_get_val_s(ivarfl(isca(itempk)), cvar_tempk)
-  do iel = 1, ncel
+  do iel = 1, ncelet
     cvar_tempk(iel) = t0
   enddo
 
@@ -253,13 +262,13 @@ do iscal = 1, nscal
   ! Diffusivite aux cellules (et au pdt precedent si ordre2)
   if (ifcvsl.ge.0) then
     call field_get_val_s(ifcvsl, cpro_viscls)
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cpro_viscls(iel) = visls_0
     enddo
     call field_have_previous(ifcvsl, have_previous)
     if (have_previous) then
       call field_get_val_prev_s(ifcvsl, cproa_viscls)
-      do iel = 1, ncel
+      do iel = 1, ncelet
         cproa_viscls(iel) = visls_0
       enddo
     endif
@@ -274,7 +283,7 @@ if (iale.ge.1) then
 
   if (iand(idftnp, ANISOTROPIC_LEFT_DIFFUSION).ne.0) then
     call field_get_val_v(ivisma, cpro_visma_v)
-    do iel = 1, ncel
+    do iel = 1, ncelet
       do ii = 1, 3
         cpro_visma_v(ii  ,iel) = 1.d0
         cpro_visma_v(ii+3,iel) = 0.d0
@@ -282,7 +291,7 @@ if (iale.ge.1) then
     enddo
   else if (iand(idftnp, ISOTROPIC_DIFFUSION).ne.0) then
     call field_get_val_s(ivisma, cpro_visma_s)
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cpro_visma_s(iel) = 1.d0
     enddo
   endif
@@ -319,7 +328,7 @@ endif
 
 !     On met la pression P* a PRED0
 !$omp parallel do
-do iel = 1, ncel
+do iel = 1, ncelet
   cvar_pr(iel) = pred0
 enddo
 
@@ -330,7 +339,7 @@ if (ivofmt.gt.0) then
   call field_get_key_double(ivarfl(ivolf2), kscmin, clvfmn)
 
   call field_get_val_s(ivarfl(ivolf2), field_s_v)
-  do iel = 1, ncel
+  do iel = 1, ncelet
     field_s_v(iel) = clvfmn
   enddo
 
@@ -350,20 +359,16 @@ if(itytur.eq.2 .or. itytur.eq.5) then
   call field_get_val_s(ivarfl(ik), cvar_k)
   call field_get_val_s(ivarfl(iep), cvar_ep)
 
-  xcmu = cmu
-  if (iturb.eq.50) xcmu = cv2fmu
-  if (iturb.eq.51) xcmu = cpalmu
-
   if (uref.ge.0.d0) then
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cvar_k(iel) = 1.5d0*(0.02d0*uref)**2
-      cvar_ep(iel) = cvar_k(iel)**1.5d0*xcmu/almax
+      cvar_ep(iel) = cvar_k(iel)**1.5d0*cmu/almax
     enddo
 
     call clipke(ncel, 1)
 
   else
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cvar_k(iel) = -grand
       cvar_ep(iel) = -grand
     enddo
@@ -372,7 +377,7 @@ if(itytur.eq.2 .or. itytur.eq.5) then
   if (iturb.eq.50) then
     call field_get_val_s(ivarfl(iphi), cvar_phi)
     call field_get_val_s(ivarfl(ifb), cvar_fb)
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cvar_phi(iel) = 2.d0/3.d0
       cvar_fb(iel) = 0.d0
     enddo
@@ -380,7 +385,7 @@ if(itytur.eq.2 .or. itytur.eq.5) then
   if (iturb.eq.51) then
     call field_get_val_s(ivarfl(ial), cvar_al)
     call field_get_val_s(ivarfl(iphi), cvar_phi)
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cvar_phi(iel) = 2.d0/3.d0
       cvar_al(iel) = 1.d0
     enddo
@@ -397,7 +402,7 @@ elseif(itytur.eq.3) then
 
       trii   = (0.02d0*uref)**2
 
-      do iel = 1, ncel
+      do iel = 1, ncelet
         cvar_rij(1,iel) = trii
         cvar_rij(2,iel) = trii
         cvar_rij(3,iel) = trii
@@ -413,7 +418,7 @@ elseif(itytur.eq.3) then
 
     else
 
-      do iel = 1, ncel
+      do iel = 1, ncelet
         cvar_rij(1,iel) = -grand
         cvar_rij(2,iel) = -grand
         cvar_rij(3,iel) = -grand
@@ -436,7 +441,7 @@ elseif(itytur.eq.3) then
 
       trii   = (0.02d0*uref)**2
 
-      do iel = 1, ncel
+      do iel = 1, ncelet
         cvar_r11(iel) = trii
         cvar_r22(iel) = trii
         cvar_r33(iel) = trii
@@ -452,7 +457,7 @@ elseif(itytur.eq.3) then
 
     else
 
-      do iel = 1, ncel
+      do iel = 1, ncelet
         cvar_r11(iel) = -grand
         cvar_r22(iel) = -grand
         cvar_r33(iel) = -grand
@@ -465,7 +470,7 @@ elseif(itytur.eq.3) then
   endif
   if(iturb.eq.32)then
     call field_get_val_s(ivarfl(ial), cvar_al)
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cvar_al(iel) = 1.d0
     enddo
   endif
@@ -477,7 +482,7 @@ elseif(iturb.eq.60) then
 
   if (uref.ge.0.d0) then
 
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cvar_k(iel) = 1.5d0*(0.02d0*uref)**2
       !     on utilise la formule classique eps=k**1.5/Cmu/ALMAX et omega=eps/Cmu/k
       cvar_omg(iel) = cvar_k(iel)**0.5d0/almax
@@ -486,7 +491,7 @@ elseif(iturb.eq.60) then
 
   else
 
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cvar_k(iel) = -grand
       cvar_omg(iel) = -grand
     enddo
@@ -499,7 +504,7 @@ elseif(iturb.eq.70) then
 
   if (uref.ge.0.d0) then
 
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cvar_nusa(iel) = sqrt(1.5d0)*(0.02d0*uref)*almax
       !     on utilise la formule classique eps=k**1.5/Cmu/ALMAX
       !     et nusa=Cmu*k**2/eps
@@ -508,7 +513,7 @@ elseif(iturb.eq.70) then
 
   else
 
-    do iel = 1, ncel
+    do iel = 1, ncelet
       cvar_nusa(iel) = -grand
     enddo
 

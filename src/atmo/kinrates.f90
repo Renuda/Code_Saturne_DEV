@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -162,8 +162,12 @@ do iel = 1, ncel
    (nbmett, nbmetm,                                               &
     ztmet , tmmet, qvmet, zent, ttcabs, hspec )
 
-  else
+  else if (met_qv_id.ge.0) then
     hspec = cpro_met_qv(iel)
+
+  ! Dry
+  else
+    hspec = 0.d0
   endif
 
   ! Call the computation of kinetic rates

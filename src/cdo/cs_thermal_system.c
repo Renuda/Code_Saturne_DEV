@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -711,17 +711,17 @@ cs_thermal_system_finalize_setup(const cs_cdo_connect_t     *connect,
  * \brief  Build and solve a steady-state thermal system
  *
  * \param[in]  mesh       pointer to a cs_mesh_t structure
- * \param[in]  time_step  pointer to a cs_time_step_t structure
  * \param[in]  connect    pointer to a cs_cdo_connect_t structure
  * \param[in]  quant      pointer to a cs_cdo_quantities_t structure
+ * \param[in]  time_step  pointer to a cs_time_step_t structure
  */
 /*----------------------------------------------------------------------------*/
 
 void
 cs_thermal_system_compute_steady_state(const cs_mesh_t              *mesh,
-                                       const cs_time_step_t         *time_step,
                                        const cs_cdo_connect_t       *connect,
-                                       const cs_cdo_quantities_t    *quant)
+                                       const cs_cdo_quantities_t    *quant,
+                                       const cs_time_step_t         *time_step)
 {
   cs_thermal_system_t  *thm = cs_thermal_system;
 
@@ -743,18 +743,18 @@ cs_thermal_system_compute_steady_state(const cs_mesh_t              *mesh,
  *
  * \param[in]  cur2prev   true="current to previous" operation is performed
  * \param[in]  mesh       pointer to a cs_mesh_t structure
- * \param[in]  time_step  pointer to a cs_time_step_t structure
  * \param[in]  connect    pointer to a cs_cdo_connect_t structure
  * \param[in]  quant      pointer to a cs_cdo_quantities_t structure
+ * \param[in]  time_step  pointer to a cs_time_step_t structure
  */
 /*----------------------------------------------------------------------------*/
 
 void
 cs_thermal_system_compute(bool                          cur2prev,
                           const cs_mesh_t              *mesh,
-                          const cs_time_step_t         *time_step,
                           const cs_cdo_connect_t       *connect,
-                          const cs_cdo_quantities_t    *quant)
+                          const cs_cdo_quantities_t    *quant,
+                          const cs_time_step_t         *time_step)
 {
   cs_thermal_system_t  *thm = cs_thermal_system;
 

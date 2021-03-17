@@ -6,7 +6,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -194,6 +194,7 @@ typedef struct {
    */
 
   cs_cdo_bc_face_t               *pressure_bc;
+  int                             pressure_rescaling;
 
   /*! \var apply_fixed_wall
    *  \ref cs_cdo_apply_boundary_t function pointer defining how to apply a
@@ -645,9 +646,8 @@ _update_variables(cs_cdofb_predco_t           *sc)
 
   } /* OpenMP block */
 
-  /* Parallel sum */
-  if (cs_glob_n_ranks > 1) {
-    assert(connect->interfaces[CS_CDO_CONNECT_FACE_SP0] != NULL);
+  /* Parallel or periodic sum */
+  if (connect->interfaces[CS_CDO_CONNECT_FACE_SP0] != NULL) {
     cs_interface_set_sum(connect->interfaces[CS_CDO_CONNECT_FACE_SP0],
                          n_faces,
                          3,
@@ -832,6 +832,9 @@ cs_cdofb_predco_init_scheme_context(const cs_navsto_param_t   *nsp,
                                           nsp->pressure_bc_defs,
                                           cs_shared_quant->n_b_faces);
 
+  sc->pressure_rescaling =
+    cs_boundary_need_pressure_rescaling(quant->n_b_faces, fb_type);
+
   cs_equation_param_t  *mom_eqp = cc->prediction->param;
   cs_equation_builder_t  *mom_eqb = cc->prediction->builder;
 
@@ -929,13 +932,13 @@ cs_cdofb_predco_set_sles(const cs_navsto_param_t    *nsp,
 
   assert(nsp != NULL && nsc != NULL);
 
-  cs_navsto_param_sles_t  nslesp = nsp->sles_param;
+  cs_navsto_param_sles_t  *nslesp = nsp->sles_param;
   cs_equation_param_t  *mom_eqp = cs_equation_get_param(nsc->prediction);
   int  field_id = cs_equation_get_field_id(nsc->prediction);
 
-  mom_eqp->sles_param.field_id = field_id;
+  mom_eqp->sles_param->field_id = field_id;
 
-  switch (nslesp.strategy) {
+  switch (nslesp->strategy) {
 
   case CS_NAVSTO_SLES_EQ_WITHOUT_BLOCK: /* "Classical" way to set SLES */
     cs_equation_param_set_sles(mom_eqp);
@@ -943,11 +946,11 @@ cs_cdofb_predco_set_sles(const cs_navsto_param_t    *nsp,
 
   case CS_NAVSTO_SLES_BLOCK_MULTIGRID_CG:
 #if defined(HAVE_PETSC)
-    if (mom_eqp->sles_param.amg_type == CS_PARAM_AMG_NONE) {
+    if (mom_eqp->sles_param->amg_type == CS_PARAM_AMG_NONE) {
 #if defined(PETSC_HAVE_HYPRE)
-      mom_eqp->sles_param.amg_type = CS_PARAM_AMG_HYPRE_BOOMER;
+      mom_eqp->sles_param->amg_type = CS_PARAM_AMG_HYPRE_BOOMER;
 #else
-      mom_eqp->sles_param.amg_type = CS_PARAM_AMG_PETSC_GAMG;
+      mom_eqp->sles_param->amg_type = CS_PARAM_AMG_PETSC_GAMG;
 #endif
     }
 
@@ -956,7 +959,7 @@ cs_cdofb_predco_set_sles(const cs_navsto_param_t    *nsp,
                          NULL,
                          MATMPIAIJ,
                          cs_navsto_sles_amg_block_hook,
-                         (void *)mom_eqp);
+                         (void *)nsp);
 #else
     bft_error(__FILE__, __LINE__, 0,
               "%s: Invalid strategy for solving the linear system %s\n"
@@ -975,7 +978,7 @@ cs_cdofb_predco_set_sles(const cs_navsto_param_t    *nsp,
   /* For the correction step, use the generic way to setup the SLES */
   cs_equation_param_t  *corr_eqp = cs_equation_get_param(nsc->correction);
 
-  corr_eqp->sles_param.field_id = cs_equation_get_field_id(nsc->correction);
+  corr_eqp->sles_param->field_id = cs_equation_get_field_id(nsc->correction);
   cs_equation_param_set_sles(corr_eqp);
 
 }
@@ -1120,6 +1123,7 @@ cs_cdofb_predco_compute_implicit(const cs_mesh_t              *mesh,
       cs_cdofb_vecteq_init_cell_system(cm, mom_eqp, mom_eqb,
                                        dir_values, enforced_ids,
                                        mom_eqc->face_values, vel_c,
+                                       NULL, NULL, /* no n-1 state is given */
                                        csys, cb);
 
       /* 1- SETUP THE NAVSTO LOCAL BUILDER *
@@ -1250,10 +1254,9 @@ cs_cdofb_predco_compute_implicit(const cs_mesh_t              *mesh,
   /* Solve the linear system (treated as a scalar-valued system
    * with 3 times more DoFs) */
   cs_real_t  normalization = 1.0; /* TODO */
-  cs_sles_t  *sles = cs_sles_find_or_add(mom_eqp->sles_param.field_id, NULL);
+  cs_sles_t  *sles = cs_sles_find_or_add(mom_eqp->sles_param->field_id, NULL);
 
   cs_equation_solve_scalar_system(3*n_faces,
-                                  mom_eqp->name,
                                   mom_eqp->sles_param,
                                   matrix,
                                   mom_rs,
@@ -1292,9 +1295,8 @@ cs_cdofb_predco_compute_implicit(const cs_mesh_t              *mesh,
 
   _update_variables(sc);
 
-  if (nsp->n_pressure_bc_defs == 0)
-    cs_cdofb_navsto_set_zero_mean_pressure(quant, pr_c);
-
+  if (sc->pressure_rescaling == CS_BOUNDARY_PRESSURE_RESCALING)
+    cs_cdofb_navsto_rescale_pressure_to_ref(nsp, quant, pr_c);
 }
 
 /*----------------------------------------------------------------------------*/

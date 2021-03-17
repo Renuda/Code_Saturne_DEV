@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -535,7 +535,8 @@ class study:
             for f in data_files:
                 abs_f = os.path.join(ref_data, f)
                 if os.path.isfile(abs_f) and \
-                       f not in [self.package.guiname,
+                       f not in ["SaturneGUI",
+                                 "NeptuneGUI",
                                  self.package.name]:
                     shutil.copy(abs_f, data)
                     unset_executable(os.path.join(data, f))

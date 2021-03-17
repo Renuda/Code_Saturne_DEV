@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -107,7 +107,7 @@ integer          nswmpr
 integer          isweep, niterf
 integer          imrgrp, nswrgp, imligp, iwarnp, iwgrp
 integer          iflmas, iflmab
-integer          idiffp, iconvp, ndircp
+integer          idiffp, iconvp, ndircp, imvisp
 integer          ibsize, iesize, iphydp
 integer          imucpp, f_id0, f_id
 double precision residu
@@ -235,8 +235,10 @@ call field_get_key_struct_var_cal_opt(ivarfl(ipr), vcopt)
 
 if (vcopt%idiff.ge.1) then
 
+  imvisp = vcopt%imvisf
+
     call viscfa &
-  ( imvisf ,                                                       &
+  ( imvisp ,                                                       &
     dt     ,                                                       &
     viscf  , viscb  )
 

@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -30,7 +30,7 @@ m4_define([cs_licence_c_comment],
 [/*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -676,11 +676,6 @@ if test "x$cs_have_internal_ple" = xyes; then
   AC_CONFIG_SUBDIRS([libple])
 fi
 
-AM_CONDITIONAL(HAVE_SALOME, test x$with_salome != xno)
-if test "x$with_salome" != xno; then
-  AC_CONFIG_SUBDIRS([salome])
-fi
-
 CS_AC_TEST_BLAS([$cs_have_openmp])
 CS_AC_TEST_MPI
 CS_AC_TEST_METIS
@@ -879,7 +874,6 @@ sys.stdout.write(path)]"
 
   AC_ARG_VAR([PYUIC4], [PyQt4 user interfaces compiler])
   AC_ARG_VAR([PYRCC4], [PyQt4 resources compiler])
-  AC_ARG_VAR([LRELEASE], [Qt message files generator])
 
   # On MinGW (MSYS) or Cygwin (BASH) build systems, and for MinGW hosts,
   # pyuic4 is a batch file and cannot be run from the shell.
@@ -927,7 +921,6 @@ sys.stdout.write(path)]"
 
   AC_ARG_VAR([PYUIC5], [PyQt5 user interfaces compiler])
   AC_ARG_VAR([PYRCC5], [PyQt5 resources compiler])
-  AC_ARG_VAR([LRELEASE], [Qt message files generator])
 
   if test "x$PYUIC5" = "x" ; then
     AC_PATH_PROG([PYUIC5], [pyuic5], [$CMDPYUIC5], [${PYPATH}:$PATH])
@@ -935,13 +928,6 @@ sys.stdout.write(path)]"
   if test "x$PYRCC5" = "x" ; then
     AC_PATH_PROG([PYRCC5], [pyrcc5], [],           [${PYPATH}:$PATH])
   fi
-
-  if test "x$LRELEASE" = "x" ; then
-    AC_PATH_PROGS([LRELEASE], [lrelease-qt5 lrelease])
-  fi
-
-  # lrelease not currently used (except in SALOME CFD extension, with a separate
-  # configure, so not an issue here
 
   if test "x$PYUIC5" = "x" -o "x$PYRCC5" = "x" ; then
     AC_MSG_FAILURE([cannot find PyQt5 dev tools, Graphical User Interface cannot be installed])

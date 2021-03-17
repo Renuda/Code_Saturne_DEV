@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -433,21 +433,40 @@ class meg_to_c_interpreter:
             pn = _pkg_fluid_prop_dict[self.module_name][kp]
             glob_tokens[kp] = 'const cs_real_t %s = %s->%s;' %(kp, gs, pn)
 
+        if name[-12:] == '_diffusivity':
+            name_ref = name + '_ref'
+            for s in symbols:
+                if s[0] == name_ref:
+                    base_name = name[:-12]
+                    glob_tokens[name_ref] = 'const cs_real_t %s\n' % (name_ref)
+                    glob_tokens[name_ref] += '      = cs_field_get_key_double(cs_field_by_name("%s"), cs_field_key_id("diffusivity_ref"));' % (base_name)
 
         # Fields
         label_not_name = ['Additional scalar', 'Thermal scalar', 'Pressure']
         for f in known_fields:
-            (fl, fn) = f
+            # Get label, name and dimension
+            try:
+                (fl, fn, fdim) = f
+                if fdim < 1:
+                    fdim = 1
+            except:
+                (fl, fn) = f
+                fdim = 1
+
             for lnn in label_not_name:
                 if lnn in fn:
                     fn = fl
 
-                glob_tokens[fl] = \
-                    'const cs_real_t *%s_vals = cs_field_by_name("%s")->val;' \
-                    % (fl, fn)
+            glob_tokens[fl] = \
+                 'const cs_real_t *%s_vals = cs_field_by_name("%s")->val;' \
+                 % (fl, fn)
 
+            if fdim == 1:
                 loop_tokens[fl] = 'const cs_real_t %s = %s_vals[c_id];' \
-                        % (fl, fl)
+                     % (fl, fl)
+            else:
+                loop_tokens[fl] = 'const cs_real_t *%s = %s_vals + %d*c_id;' \
+                     % (fl, fl, fdim)
 
         # ------------------------
 
@@ -654,6 +673,7 @@ class meg_to_c_interpreter:
 
         expression   = func_params['exp']
         symbols      = func_params['sym']
+
         known_fields = dict( zip([k[0] for k in func_params['knf']],
                                  [k[1] for k in func_params['knf']]))
         if type(func_params['req'][0]) == tuple:
@@ -696,17 +716,28 @@ class meg_to_c_interpreter:
         glob_tokens['xyz'] = \
         'const cs_real_3_t *xyz = (cs_real_3_t *)cs_glob_mesh_quantities->cell_cen;'
 
+        # For momentum also define u,v and w:
+        if source_type == "momentum_source_term":
+            glob_tokens['velocity'] = \
+            'const cs_real_3_t *vel = (cs_real_3_t *)CS_F_(vel)->val;'
+            for i, key in enumerate(['u', 'v', 'w']):
+                loop_tokens[key] = \
+                'const cs_real_t %s = vel[c_id][%d];' % (key, i)
+
+
         # Notebook variables
         for kn in self.notebook.keys():
             glob_tokens[kn] = \
             'const cs_real_t %s = cs_notebook_parameter_value_by_name("%s");' % (kn, kn)
 
         for f in known_fields.keys():
+            knf_name = known_fields[f]
             glob_tokens[f] = \
             'const cs_real_t *%s_vals = cs_field_by_name("%s")->val;' \
-            % (f, known_fields[f])
+            % (f, knf_name)
 
-            loop_tokens[f] = 'const cs_real_t %s = %s_vals[c_id];' % (f, f)
+            loop_tokens[f] = 'const %s = %s_vals[c_id];' % (f, f)
+
         # ------------------------
 
         for r in required:
@@ -1222,6 +1253,9 @@ class meg_to_c_interpreter:
 
         from code_saturne.model.LocalizationModel import LocalizationModel
         from code_saturne.model.GroundwaterLawModel import GroundwaterLawModel
+
+        vlm = LocalizationModel('VolumicZone', self.case)
+
         if self.module_name == 'code_saturne':
             from code_saturne.model.FluidCharacteristicsModel \
                 import FluidCharacteristicsModel
@@ -1232,6 +1266,15 @@ class meg_to_c_interpreter:
                     exp, req, sca, sym = fcm.getFormulaComponents(fk)
                     self.init_block('vol', 'all_cells', fk,
                                     exp, req, sym, sca)
+                    for zone in vlm.getZones():
+                        zname = zone.getLabel()
+                        z_id  = str(zone.getCodeNumber())
+                        if zname != "all_cells" and \
+                                zone.isNatureActivated('physical_properties'):
+                            exp, req, sca, sym = \
+                            fcm.getFormulaComponents(fk, zone=z_id)
+                            self.init_block('vol', zname, fk,
+                                            exp, req, sym, sca)
 
             slist = fcm.m_sca.getUserScalarNameList()
             for s in fcm.m_sca.getScalarsVarianceList():
@@ -1239,22 +1282,32 @@ class meg_to_c_interpreter:
             if slist != []:
                 for s in slist:
                     diff_choice = fcm.m_sca.getScalarDiffusivityChoice(s)
-                    if diff_choice == 'variable':
+                    if diff_choice == 'user_law':
                         dname = fcm.m_sca.getScalarDiffusivityName(s)
                         exp, req, sca, sym, = \
-                        fcm.getFormulaComponents('scalar_diffusivity', s)
+                        fcm.getFormulaComponents('scalar_diffusivity',
+                                                 scalar=s)
                         self.init_block('vol', 'all_cells', dname,
                                         exp, req, sym, sca)
+                        for zone in vlm.getZones():
+                            zname = zone.getLabel()
+                            z_id = str(zone.getCodeNumber())
+                            if zname != "all_cells" and \
+                            zone.isNatureActivated('physical_properties'):
+                                exp, req, sca, sym = \
+                                fcm.getFormulaComponents('scalar_diffusivity', scalar=s, zone=z_id)
+                                self.init_block('vol', zname, dname,
+                                                exp, req, sym, sca)
 
             # ALE mesh viscosity
             from code_saturne.model.MobileMeshModel import MobileMeshModel
             ale_model = MobileMeshModel(self.case)
-            exp, req, sca, sym = ale_model.getFormulaViscComponents()
-            self.init_block('vol', 'all_cells', 'mesh_viscosity',
-                            exp, req, sym, sca)
+            if ale_model.getMethod() != 'off':
+                exp, req, sca, sym = ale_model.getFormulaViscComponents()
+                self.init_block('vol', 'all_cells', 'mesh_viscosity',
+                                exp, req, sym, sca)
 
             # GroundWater Flows Law
-            vlm = LocalizationModel('VolumicZone', self.case)
             glm = None
 
             for zone in vlm.getZones():
@@ -1279,9 +1332,11 @@ class meg_to_c_interpreter:
         elif self.module_name == 'neptune_cfd':
             from code_saturne.model.ThermodynamicsModel import ThermodynamicsModel
             from code_saturne.model.MainFieldsModel import MainFieldsModel
+            from code_saturne.model.InterfacialEnthalpyModel import InterfacialEnthalpyModel
 
             tm = ThermodynamicsModel(self.case)
             mfm = MainFieldsModel(self.case)
+            iem = InterfacialEnthalpyModel(self.case)
 
             authorized_fields = ['density', 'molecular_viscosity',
                                  'specific_heat', 'thermal_conductivity']
@@ -1294,48 +1349,74 @@ class meg_to_c_interpreter:
                               'd_Hsat_d_P_Liquid', 'd_Hsat_d_P_Gas']
 
             user_gas_liq_fields = False
-            # surface tenstion
+            # surface tension
             if tm:
-                if tm.getPropertyMode('none', 'surface_tension') == 'user_law':
-                    name = 'SurfaceTension'
-                    exp, req, sca, sym = tm.getFormulaComponents('none',
-                                                                 'surface_tension')
-                    self.init_block('vol', 'all_cells', name,
-                                    exp, req, sym, sca)
+                ## Deactivated for 7.0, might be reactivated in the future
+                # if tm.getPropertyMode('none', 'surface_tension') == 'user_law':
+                #     name = 'SurfaceTension'
+                #     exp, req, sca, sym = tm.getFormulaComponents('none',
+                #                                                  'surface_tension')
+                #     self.init_block('vol', 'all_cells', name,
+                #                     exp, req, sym, sca)
 
                 for fieldId in tm.getFieldIdList():
                     if tm.getMaterials(fieldId) == 'user_material':
-                        user_gas_liq_fields = True
                         for fk in authorized_fields:
                             if tm.getPropertyMode(fieldId, fk) == 'user_law':
                                 name = fk + '_' + str(fieldId)
-                                exp, req, sca, sym = tm.getFormulaComponents(fieldId,fk)
-                                self.init_block('vol', 'all_cells', name,
-                                                exp, req, sym, sca)
+                                for zone in vlm.getZones():
+                                    zname = zone.getLabel()
+                                    z_id = str(zone.getCodeNumber())
+                                    if zone.isNatureActivated('physical_properties'):
+                                        exp, req, sca, sym = tm.getFormulaComponents(fieldId,fk,zone=z_id)
+                                        self.init_block('vol', zname, name,
+                                                        exp, req, sym, sca)
 
                         if mfm.getCompressibleStatus(fieldId) == 'on':
                             for fk in compressible_fields:
                                 name = fk + '_' + str(fieldId)
-                                exp, req, sca, sym = tm.getFormulaComponents(fieldId,fk)
-                                self.init_block('vol', 'all_cells', name,
-                                                exp, req, sym, sca)
+                                for zone in vlm.getZones():
+                                    zname = zone.getLabel()
+                                    z_id = str(zone.getCodeNumber())
+                                    if zone.isNatureActivated('physical_properties'):
+                                        exp, req, sca, sym = tm.getFormulaComponents(fieldId,fk,zone=z_id)
+                                        self.init_block('vol', zname, name,
+                                                        exp, req, sym, sca)
 
                         # Temperature as a function of enthalpy
                         if mfm.getEnergyResolution(fieldId) == 'on':
                             name = 'temperature_' + str(fieldId)
-                            exp, req, sca, sym = tm.getFormulaComponents(fieldId,
-                                                                        'temperature')
-                            self.init_block('vol', 'all_cells', name,
-                                            exp, req, sym, sca)
+                            for zone in vlm.getZones():
+                                zname = zone.getLabel()
+                                z_id = str(zone.getCodeNumber())
+                                if zone.isNatureActivated('physical_properties'):
+                                    exp, req, sca, sym = \
+                                        tm.getFormulaComponents(fieldId,
+                                                                'temperature',
+                                                                zone=z_id)
+                                    self.init_block('vol', zname, name,
+                                                    exp, req, sym, sca)
 
             # User properties for Water/Steam kind flows
-            if mfm.getPredefinedFlow() != 'None' and \
-               mfm.getPredefinedFlow() != "particles_flow":
-                if user_gas_liq_fields:
-                    for fk in gas_liq_fields:
-                        exp, req, sca, sym = tm.getFormulaComponents('none', fk)
-                        self.init_block('vol', 'all_cells', fk,
-                                        exp, req, sym, sca)
+            if tm:
+                cpl_field_ids = iem.getEnthalpyCoupleFieldId()
+                if cpl_field_ids:
+                    id_a = cpl_field_ids[0]
+                    id_b = cpl_field_ids[1]
+                    if tm.getMethod(id_a) == "user_properties" and \
+                            tm.getMethod(id_b) == "user_properties":
+                        user_gas_liq_fields = True
+
+
+            if user_gas_liq_fields:
+                for fk in gas_liq_fields:
+                    for zone in vlm.getZones():
+                        zname = zone.getLabel()
+                        z_id = str(zone.getCodeNumber())
+                        if zone.isNatureActivated('physical_properties'):
+                            exp, req, sca, sym = tm.getFormulaComponents('none', fk, zone=z_id)
+                            self.init_block('vol', zname, fk,
+                                            exp, req, sym, sca)
 
 
         # Porosity for both solvers
@@ -1655,8 +1736,9 @@ class meg_to_c_interpreter:
                     if zone.getNature()['momentum_source_term'] == 'on':
                         if gwm.getGroundwaterModel() == 'off':
                             exp, req, sym = stm.getMomentumFormulaComponents(z_id)
+                            knf = [('rho','density')]
                             self.init_block('src', zone_name, "momentum",
-                                            exp, req, sym, [],
+                                            exp, req, sym, knf,
                                             source_type="momentum_source_term")
                         else:
                             exp, req, sym = stm.getRichardsFormulaComponents(z_id)
@@ -1671,15 +1753,21 @@ class meg_to_c_interpreter:
                         if gwm.getGroundwaterModel() == 'off':
                             for sca in sca_list:
                                 exp, req, sym = stm.getSpeciesFormulaComponents(z_id, sca)
+
+                                knf = [(sca, sca)]
+
                                 self.init_block('src', zone_name, sca,
-                                                exp, req, sym, [],
+                                                exp, req, sym, knf,
                                                 source_type="scalar_source_term")
                         else:
                             for sca in sca_list:
                                 exp, req, sym = \
                                 stm.getGroundWaterSpeciesFormulaComponents(z_id, sca)
+
+                                knf = [(sca, sca)]
+
                                 self.init_block('src', zone_name, sca,
-                                                exp, req, sym, [],
+                                                exp, req, sym, knf,
                                                 source_type="scalar_source_term")
 
                 if 'thermal_source_term' in nature_list:
@@ -1687,8 +1775,11 @@ class meg_to_c_interpreter:
                         th_sca_name = stm.therm.getThermalScalarName()
                         exp, req, sym = stm.getThermalFormulaComponents(z_id,
                                                                         th_sca_name)
+
+                        knf = [(th_sca_name, th_sca_name)]
+
                         self.init_block('src', zone_name, th_sca_name,
-                                        exp, req, sym, [],
+                                        exp, req, sym, knf,
                                         source_type="thermal_source_term")
         else:
             from code_saturne.model.LocalizationModel import LocalizationModel
@@ -2118,6 +2209,18 @@ class meg_to_c_interpreter:
 
     #---------------------------------------------------------------------------
 
+    def clean_lines(self, code_to_write):
+
+        lines = code_to_write.split('\n')
+        code_to_write = ""
+
+        for i, l in enumerate(lines):
+            lines[i] = l.rstrip()
+
+        return '\n'.join(lines)
+
+    #---------------------------------------------------------------------------
+
     def save_file(self, c_file_name, code_to_write, hard_path=None):
 
         if code_to_write != '':
@@ -2126,7 +2229,7 @@ class meg_to_c_interpreter:
             try:
                 fpath = self.__file_path__(c_file_name, hard_path=hard_path)
                 new_file = open(fpath, 'w')
-                new_file.write(code_to_write)
+                new_file.write(self.clean_lines(code_to_write))
                 new_file.close()
                 return 1
 

@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -719,7 +719,7 @@ class FluidStructureInteractionView(QWidget, Ui_FluidStructureInteractionForm):
     """
     Main class.
     """
-    def __init__(self, parent, case):
+    def __init__(self, parent=None):
         """
         Constructor
         """
@@ -728,6 +728,8 @@ class FluidStructureInteractionView(QWidget, Ui_FluidStructureInteractionForm):
 
         Ui_FluidStructureInteractionForm.__init__(self)
         self.setupUi(self)
+
+    def setup(self, case):
 
         self.case = case
         self.case.undoStopGlobal()

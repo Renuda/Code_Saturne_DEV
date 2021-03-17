@@ -32,7 +32,7 @@ _code_saturne() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Possible commands except "help", as given by "code_saturne help"
-    cmds="studymanager smgr studymanagergui smgrgui bdiff bdump compile config create gui info run trackcvg"
+    cmds="studymanager smgr studymanagergui smgrgui bdiff bdump compile config cplgui create gui info run trackcvg parametric submit symbol2line update up"
 
     # Help and Case options
     local helpOpts="-h --help"
@@ -145,19 +145,20 @@ _code_saturne() {
                 *) cmdOpts="-r --reader -g --guide --modules --version"
             esac
             ;;
-        run)
+        run | submit)
             case ${prev} in
                 -p|--param)              _filedir; return 0;;
                 --case)                  _filedir -d; return 0;;
                 --compute-build)         _filedir -d; return 0;;
+                --dest)                  _filedir -d; return 0;;
                 --id)                    COMPREPLY=( ); return 0;;
                 --id-prefix)             COMPREPLY=( ); return 0;;
                 --id-suffix)             COMPREPLY=( ); return 0;;
-                --n|--nprocs)            COMPREPLY=( ); return 0;;
+                --n|--n-procs)            COMPREPLY=( ); return 0;;
                 --nt|--threads-per-task) COMPREPLY=( ); return 0;;
                 *) cmdOpts="-p --param --case --id --id-prefix --id-suffix \
                      --suggest-id --force --stage --initialize --compute \
-                     --finalize -n --nprocs --nt --threads-per-task";;
+                     --finalize -n --n-procs --nt --threads-per-task";;
             esac
             ;;
         studymanage | smgr)
@@ -172,9 +173,6 @@ _code_saturne() {
                 -p|--param)  _filedir; return 0;;
                 *) cmdOpts="-p --param -n --new";;
             esac
-            ;;
-        submit)
-            _filedir; return 0
             ;;
         trackcvg)
             case ${prev} in

@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -840,7 +840,7 @@ if (f_id.ge.0) then
       bpro_rad_inc(c_id, ifac) = pi * var
     enddo
 
-    ! Store the (downward and upward) absortion coefficient of the 1D model
+    ! Store the (downward and upward) absorption coefficient of the 1D model
     do iel = 1, ncel
 
       ! Interpolate at zent

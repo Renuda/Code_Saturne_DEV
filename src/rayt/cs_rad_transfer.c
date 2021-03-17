@@ -4,7 +4,7 @@
 
 /* This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -155,37 +155,30 @@ BEGIN_C_DECLS
   \var  cs_rad_transfer_params_t::restart
         Indicates whether the radiation variables should be initialized or
         read from a restart file.
-  \var  cs_rad_transfer_params_t::nfreqr
-        Period of the radiation module.
-        The radiation module is called every \ref nfreqr time steps (more precisely,
-        every time \ref optcal::ntcabs "ntcabs" is a multiple of \ref nfreqr).
-        Also, in order to have proper initialization of the variables, whatever
-        the value of \ref nfreqr, the radiation module is called at
-        the first time step of a calculation (restart or not).
   \var  cs_rad_transfer_params_t::nwsgg
         Spectral radiation models (ADF and FSCK).\n
         Number of ETRs to solve.
   \var  cs_rad_transfer_params_t::wq
         Weights of the Gaussian quadrature
   \var  cs_rad_transfer_params_t::itpimp
-        Wall face with imposed temperature.
+        \deprecated See CS_BOUNDARY_RAD_WALL_GRAY.
   \var  cs_rad_transfer_params_t::ipgrno
-        For a grey or black wall face, calculation of the
-        temperature by means of a flux balance.
+        \deprecated See CS_BOUNDARY_RAD_WALL_GRAY_EXTERIOR_T.
   \var  cs_rad_transfer_params_t::iprefl
-        For a reflecting wall face, calculation of the
-        temperature by means of a flux balance. This is
-        fixed at 2000 in radiat and cannot be modified.
+        \deprecated See CS_BOUNDARY_RAD_WALL_REFL_EXTERIOR_T.
   \var  cs_rad_transfer_params_t::ifgrno
-        Grey or black wall face to which a conduction flux is imposed.
+        \deprecated See CS_BOUNDARY_RAD_WALL_GRAY_COND_FLUX.
   \var  cs_rad_transfer_params_t::ifrefl
-        Reflecting wall face to which a conduction flux is imposed,
-        which is equivalent to impose this flux directly to the fluid.
+        \deprecated see CS_BOUNDARY_RAD_WALL_REFL_COND_FLUX.
   \var  cs_rad_transfer_params_t::itpt1d
-        Calculation of the temperature with the 1D wall thermal module,
-        which solves a heat equation.
+        See CS_BOUNDARY_RAD_WALL_GRAY_1D_T
   \var  cs_rad_transfer_params_t::ifinfe
         Modeling of an infinite extrusion for open boundaries.
+  \var  cs_rad_transfer_params_t::time_control
+        Determines at which time steps the variables are updated
+        Also, in order to have proper initialization of the variables,
+        the radiation module should always be called at
+        the first time step of a calculation (restart or not).
 */
 
 /*----------------------------------------------------------------------------*/
@@ -222,38 +215,53 @@ const char *cs_rad_transfer_quadrature_name[] = {
   "LC11",
   "DCT020_2468"};
 
-cs_rad_transfer_params_t _rt_params = {.type = CS_RAD_TRANSFER_NONE,
-                                       .nrphas = 0,
-                                       .iimpar = 0,
-                                       .verbosity = 0,
-                                       .imodak = 0,
-                                       .imoadf = 0,
-                                       .iwrp1t = 0,
-                                       .imfsck = 0,
-                                       .xnp1mx = 0.,
-                                       .idiver = 0,
-                                       .i_quadrature = 0,
-                                       .ndirec = 0,
-                                       .ndirs = 0,
-                                       .vect_s = NULL,
-                                       .angsol = NULL,
-                                       .restart = 0,
-                                       .nfreqr = 0,
-                                       .nwsgg = 1,
-                                       .wq = NULL,
-                                       .itpimp = 1,
-                                       .ipgrno = 21,
-                                       .iprefl = 22,
-                                       .ifgrno = 31,
-                                       .ifrefl = 32,
-                                       .itpt1d = 4,
-                                       .ifinfe = 5,
-                                       .atmo_model = CS_RAD_ATMO_3D_NONE,
-                                       .atmo_dr_id = -1,
-                                       .atmo_df_id = -1,
-                                       .atmo_ir_id = -1,
-                                       .dispersion = false,
-                                       .dispersion_coeff = 1.};
+cs_rad_transfer_params_t _rt_params = {
+  .type = CS_RAD_TRANSFER_NONE,
+  .nrphas = 0,
+  .iimpar = 0,
+  .verbosity = 0,
+  .imodak = 0,
+  .imoadf = 0,
+  .iwrp1t = 0,
+  .imfsck = 0,
+  .xnp1mx = 0.,
+  .idiver = 0,
+  .i_quadrature = 0,
+  .ndirec = 0,
+  .ndirs = 0,
+  .vect_s = NULL,
+  .angsol = NULL,
+  .restart = 0,
+  .nwsgg = 1,
+  .wq = NULL,
+  .itpimp = CS_BOUNDARY_RAD_WALL_GRAY,
+  .ipgrno = CS_BOUNDARY_RAD_WALL_GRAY_EXTERIOR_T,
+  .iprefl = CS_BOUNDARY_RAD_WALL_REFL_EXTERIOR_T,
+  .ifgrno = CS_BOUNDARY_RAD_WALL_GRAY_COND_FLUX,
+  .ifrefl = CS_BOUNDARY_RAD_WALL_REFL_COND_FLUX,
+  .itpt1d = CS_BOUNDARY_RAD_WALL_GRAY_1D_T,
+  .ifinfe = 5,
+  .atmo_model = CS_RAD_ATMO_3D_NONE,
+  .atmo_dr_id = -1,
+  .atmo_df_id = -1,
+  .atmo_ir_id = -1,
+  .dispersion = false,
+  .dispersion_coeff = 1.,
+  .time_control = {
+    .type = CS_TIME_CONTROL_TIME_STEP,
+    .at_start = false,
+    .at_end = false,
+    .start_nt = -1,
+    .end_nt = -1,
+    .interval_nt = 1,
+    .control_func = NULL,
+    .control_input = NULL,
+    .current_state = false,
+    .current_time_step = -1,
+    .last_nt = -2,
+    .last_t = -HUGE_VAL
+  }
+};
 
 cs_rad_transfer_params_t *cs_glob_rad_transfer_params = &_rt_params;
 
@@ -264,7 +272,6 @@ cs_rad_transfer_params_t *cs_glob_rad_transfer_params = &_rt_params;
 
 void
 cs_rad_transfer_get_pointers(int  **p_iirayo,
-                             int  **p_nfreqr,
                              int  **p_rad_atmo_model);
 
 /*============================================================================
@@ -273,11 +280,9 @@ cs_rad_transfer_get_pointers(int  **p_iirayo,
 
 void
 cs_rad_transfer_get_pointers(int  **p_iirayo,
-                             int  **p_nfreqr,
                              int  **p_rad_atmo_model)
 {
   *p_iirayo = &_rt_params.type;
-  *p_nfreqr = &_rt_params.nfreqr;
   *p_rad_atmo_model = &_rt_params.atmo_model;
 }
 

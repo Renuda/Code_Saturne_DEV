@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -191,6 +191,41 @@ _setup_velocity_gamg(void)
 /*! (DOXYGEN_SHOULD_SKIP_THIS) \endcond */
 
 /*============================================================================
+ * User function prototypes
+ *============================================================================*/
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief User-defined algorithm to solve a saddle point problem (the system is
+ *        stored in a hybrid way). Please refer to cs_saddle_system_t structure
+ *        and cs_saddle_block_precond_t structure definitions.
+ *
+ * \param[in]      nslesp  pointer to a cs_navsto_param_sles_t structure
+ * \param[in]      ssys    pointer to a cs_saddle_system_t structure
+ * \param[in, out] sbp     Block-preconditioner for the Saddle-point problem
+ * \param[in, out] x1      array for the first part
+ * \param[in, out] x2      array for the second part
+ * \param[in, out] info    pointer to a cs_iter_algo_info_t structure
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_user_navsto_sles_solve(const cs_navsto_param_sles_t    *nslesp,
+                          cs_saddle_system_t              *ssys,
+                          cs_saddle_block_precond_t       *sbp,
+                          cs_real_t                       *x1,
+                          cs_real_t                       *x2,
+                          cs_iter_algo_info_t             *info)
+{
+  CS_UNUSED(nslesp);
+  CS_UNUSED(ssys);
+  CS_UNUSED(sbp);
+  CS_UNUSED(x1);
+  CS_UNUSED(x2);
+  CS_UNUSED(info);
+}
+
+/*============================================================================
  * Public function prototypes
  *============================================================================*/
 
@@ -211,7 +246,7 @@ cs_navsto_sles_amg_block_hook(void     *context,
   const cs_navsto_param_t  *nsp = (cs_navsto_param_t *)context;
 
   cs_equation_param_t  *eqp = cs_navsto_param_get_velocity_param(nsp);
-  cs_param_sles_t  slesp = eqp->sles_param;
+  cs_param_sles_t  *slesp = eqp->sles_param;
 
   cs_fp_exception_disable_trap(); /* Avoid trouble with a too restrictive
                                      SIGFPE detection */
@@ -227,12 +262,12 @@ cs_navsto_sles_amg_block_hook(void     *context,
   PetscInt  maxit;
   KSPGetTolerances(ksp, &rtol, &abstol, &dtol, &maxit);
   KSPSetTolerances(ksp,
-                   slesp.eps,         /* relative convergence tolerance */
+                   slesp->eps,        /* relative convergence tolerance */
                    abstol,            /* absolute convergence tolerance */
                    dtol,              /* divergence tolerance */
-                   slesp.n_max_iter); /* max number of iterations */
+                   slesp->n_max_iter); /* max number of iterations */
 
-  switch (slesp.resnorm_type) {
+  switch (slesp->resnorm_type) {
 
   case CS_PARAM_RESNORM_NORM2_RHS: /* Try to have "true" norm */
     KSPSetNormType(ksp, KSP_NORM_UNPRECONDITIONED);
@@ -268,7 +303,7 @@ cs_navsto_sles_amg_block_hook(void     *context,
   PCFieldSplitGetSubKSP(pc, &n_split, &uvw_subksp);
   assert(n_split == 3);
 
-  switch(slesp.amg_type) {
+  switch(slesp->amg_type) {
 
   case CS_PARAM_AMG_HYPRE_BOOMER:
 #if defined(PETSC_HAVE_HYPRE)
@@ -296,7 +331,7 @@ cs_navsto_sles_amg_block_hook(void     *context,
     KSPSetType(_ksp, KSPPREONLY);
     KSPGetPC(_ksp, &_pc);
 
-    switch(slesp.amg_type) {
+    switch(slesp->amg_type) {
 
     case CS_PARAM_AMG_HYPRE_BOOMER:
 #if defined(PETSC_HAVE_HYPRE)
@@ -332,10 +367,10 @@ cs_navsto_sles_amg_block_hook(void     *context,
   KSPSetUp(ksp);
 
   /* Dump the setup related to PETSc in a specific file */
-  if (!slesp.setup_done) {
+  if (!slesp->setup_done) {
 
     cs_sles_petsc_log_setup(ksp);
-    slesp.setup_done = true;
+    slesp->setup_done = true;
 
   }
 

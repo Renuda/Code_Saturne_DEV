@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -462,6 +462,15 @@ class NonCondensableView(QWidget, Ui_NonCondensable):
 
         for noncond in self.mdl.getNonCondensableNameList():
             self.tableModelNonCondensable.newItem(noncond)
+
+        # Disable page if no gas phase is present
+        if self.mdl.checkNonCondensableRequirements():
+            self.labelNoGas.hide()
+        else:
+            self.labelNoGas.show()
+            for _ in self.mdl.getNonCondensableNameList():
+                self.tableModelNonCondensable.deleteItem(0)
+            self.setEnabled(False)
 
         self.case.undoStartGlobal()
 

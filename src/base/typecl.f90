@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -121,6 +121,7 @@ integer          keyvar, keycpl
 integer          iivar, icpl
 integer          f_id, i_dim, f_type, nfld, f_dim, f_id_yplus, f_id_z_ground
 integer          modntl
+integer          kturt, turb_flux_model, turb_flux_model_type
 
 double precision pref
 double precision flumbf, flumty(ntypmx)
@@ -164,6 +165,8 @@ call field_get_val_prev_s(ivarfl(ipr), cvara_pr)
 call field_get_key_struct_var_cal_opt(ivarfl(iu), vcopt)
 
 call field_get_key_id("variable_id", keyvar)
+
+call field_get_key_id('turbulent_flux_model', kturt)
 
 call field_get_id_try("wall_yplus", f_id_yplus)
 call field_get_id_try("z_ground", f_id_z_ground)
@@ -880,10 +883,8 @@ do ivar = 1, nvar
   endif
 enddo
 
-
 ! Free memory
 deallocate(pripb)
-
 
 ! Symmetry
 ! =========
@@ -1005,7 +1006,10 @@ enddo
 
 ! Turbulent fluxes
 do iscal = 1, nscal
-  if (ityturt(iscal).eq.3) then
+  call field_get_key_int(ivarfl(isca(iscal)), kturt, turb_flux_model)
+  turb_flux_model_type = turb_flux_model / 10
+
+  if (turb_flux_model_type.eq.3) then
     ! Name of the scalar ivar
     call field_get_name(ivarfl(isca(iscal)), fname)
 
@@ -1031,7 +1035,7 @@ do iscal = 1, nscal
   endif
 
   ! EB-GGDH/AFM/DFM alpha boundary conditions
-  if (iturt(iscal).eq.11 .or. iturt(iscal).eq.21 .or. iturt(iscal).eq.31) then
+  if (turb_flux_model.eq.11  .or. turb_flux_model.eq.21 .or. turb_flux_model.eq.31) then
     ! Name of the scalar ivar
     call field_get_name(ivarfl(isca(iscal)), fname)
 
@@ -1115,7 +1119,10 @@ enddo
 
 ! Turbulent fluxes
 do iscal = 1, nscal
-  if (ityturt(iscal).eq.3) then
+  call field_get_key_int(ivarfl(isca(iscal)), kturt, turb_flux_model)
+  turb_flux_model_type = turb_flux_model / 10
+
+  if (turb_flux_model_type.eq.3) then
     ! Name of the scalar ivar
     call field_get_name(ivarfl(isca(iscal)), fname)
 
@@ -1140,8 +1147,7 @@ do iscal = 1, nscal
     enddo
   endif
 
-  ! EB-GGDH/AFM/DFM alpha boundary conditions
-  if (iturt(iscal).eq.11 .or. iturt(iscal).eq.21 .or. iturt(iscal).eq.31) then
+  if (turb_flux_model.eq.11  .or. turb_flux_model.eq.21 .or. turb_flux_model.eq.31) then
     ! Name of the scalar ivar
     call field_get_name(ivarfl(isca(iscal)), fname)
 
@@ -1505,6 +1511,29 @@ do f_id = 0, nfld - 1
   endif
 enddo
 
+!===============================================================================
+! Automatic treatment for some variables
+!===============================================================================
+
+! Put homogeneous Neumann on hydrostatic pressure for iphydr=1
+! if not modified by the user
+
+call field_get_id_try("hydrostatic_pressure", f_id)
+if (f_id.ge.0) then
+  call field_get_type(f_id, f_type)
+  ! Is the field of type FIELD_VARIABLE?
+  if (iand(f_type, FIELD_VARIABLE).eq.FIELD_VARIABLE) then
+    if (iand(f_type, FIELD_CDO)/=FIELD_CDO) then
+      call field_get_key_int(f_id, keyvar, ivar)
+      do ifac = 1, nfabor
+        if(icodcl(ifac,ivar).eq.0) then
+          icodcl(ifac,ivar) = 3
+        endif
+      enddo
+    endif
+  endif
+endif
+
 ! ensure that for all variables of dimension higher than 1 and which components
 ! are coupled, icodcl is the same for all the components
 call field_get_key_id('coupled', keycpl)
@@ -1516,7 +1545,6 @@ do f_id = 0, nfld - 1
     if (iand(f_type, FIELD_CDO)/=FIELD_CDO) then
       call field_get_dim (f_id, f_dim)
       call field_get_key_int(f_id, keycpl, icpl)
-
       if (f_dim.gt.1.and.icpl.eq.1) then
         call field_get_key_int(f_id, keyvar, ivar)
         do ifac = 1, nfabor
@@ -1553,6 +1581,25 @@ do iscal = 1, nscal
     enddo
   endif
 enddo
+
+! Put homogeneous Neumann on wall distance
+! if not modified by the user
+
+call field_get_id_try("wall_distance", f_id)
+if (f_id.ge.0) then
+  call field_get_type(f_id, f_type)
+  ! Is the field of type FIELD_VARIABLE?
+  if (iand(f_type, FIELD_VARIABLE).eq.FIELD_VARIABLE) then
+    if (iand(f_type, FIELD_CDO)/=FIELD_CDO) then
+      call field_get_key_int(f_id, keyvar, ivar)
+      do ifac = 1, nfabor
+        if(icodcl(ifac,ivar).eq.0) then
+          icodcl(ifac,ivar) = 3
+        endif
+      enddo
+    endif
+  endif
+endif
 
 !===============================================================================
 ! 7.  RENFORCEMENT DIAGONALE DE LA MATRICE SI AUCUN POINTS DIRICHLET

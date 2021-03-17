@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -478,6 +478,7 @@ _define_profiles(void)
         output_frequency = v[0];
       else
         output_frequency = 1;
+      output_at_end = true;  /* Debatable, but consistent with v6.0 behavior */
     }
     else if (cs_gui_strcmp(output_type, "end")) {
       output_at_end = true;
@@ -566,13 +567,20 @@ _define_profiles(void)
 
     cs_probe_set_auto_var(pset, false);
 
-    /* TODO: add option in GUI to select betwen "snap to cell center"
-       and interpolation (or other combinations) */
-#if 1
-    cs_probe_set_snap_mode(pset, CS_PROBE_SNAP_ELT_CENTER);
-#else
-    cs_probe_set_option(pset, "interpolation", "1");
-#endif
+    /* Set snap mode. Default is "SNAP_TO_CENTER" */
+    const char *snap_mode = cs_tree_node_get_child_value_str(tn, "snap_mode");
+    if (cs_gui_strcmp(snap_mode, "snap_to_vertex"))
+      cs_probe_set_snap_mode(pset, CS_PROBE_SNAP_VERTEX);
+    else if (cs_gui_strcmp(snap_mode, "none"))
+      cs_probe_set_snap_mode(pset, CS_PROBE_SNAP_NONE);
+    else
+      cs_probe_set_snap_mode(pset, CS_PROBE_SNAP_ELT_CENTER);
+
+    /* Activate interpolation if needed. Default is no */
+    const char *activate_interpolation
+      = cs_tree_node_get_child_value_str(tn, "interpolation");
+    if (cs_gui_strcmp(activate_interpolation, "yes"))
+      cs_probe_set_option(pset, "interpolation", "1");
 
     if (cs_glob_mesh->time_dep > CS_MESH_FIXED)
       cs_probe_set_option(pset, "transient_location", "true");
@@ -705,11 +713,14 @@ cs_gui_output(void)
     if (f->type & CS_FIELD_VARIABLE)
       _field_post("variable", f->id);
     else if (   (f->type & CS_FIELD_PROPERTY)
-             || (f->type & CS_FIELD_POSTPROCESS))
+             || (f->type & CS_FIELD_POSTPROCESS)) {
+      if (moment_id != NULL) {
+        if (moment_id[f_id] > -1) {
+          _field_post("time_average", f->id);
+          continue;
+        }
+      }
       _field_post("property", f->id);
-    else if (moment_id != NULL) {
-      if (moment_id[f_id] > -1)
-        _field_post("time_average", f->id);
     }
   }
 
@@ -852,10 +863,31 @@ cs_gui_postprocess_meshes(void)
       strcpy(probe_labels[i], pn);
     }
 
-    cs_probe_set_create_from_array("probes",
-                                   n_probes,
-                                   (const cs_real_3_t *)p_coords,
-                                   (const char **)probe_labels);
+    cs_probe_set_t *pset =
+      cs_probe_set_create_from_array("probes",
+                                     n_probes,
+                                     (const cs_real_3_t *)p_coords,
+                                     (const char **)probe_labels);
+
+    /* Set snap mode. Default is "SNAP_TO_CENTER" */
+    const char *snap_mode
+      = cs_tree_node_get_tag(cs_tree_node_get_child(tn_o, "probes_snap"),
+                             "choice");
+    if (cs_gui_strcmp(snap_mode, "snap_to_vertex"))
+      cs_probe_set_snap_mode(pset, CS_PROBE_SNAP_VERTEX);
+    else if (cs_gui_strcmp(snap_mode, "none"))
+      cs_probe_set_snap_mode(pset, CS_PROBE_SNAP_NONE);
+    else
+      cs_probe_set_snap_mode(pset, CS_PROBE_SNAP_ELT_CENTER);
+
+    /* Activate interpolation if needed. Default is no */
+    const char *activate_interpolation
+      = cs_tree_node_get_tag(cs_tree_node_get_child(tn_o,
+                                                    "probes_interpolation"),
+                             "choice");
+    if (cs_gui_strcmp(activate_interpolation, "yes"))
+      cs_probe_set_option(pset, "interpolation", "1");
+
 
     BFT_FREE(p_coords);
 
@@ -864,29 +896,6 @@ cs_gui_postprocess_meshes(void)
     BFT_FREE(probe_labels);
 
   }
-
-  v_i = cs_tree_node_get_child_values_int(tn_o, "probe_recording_frequency");
-  int frequency_n = (v_i != NULL) ? v_i[0] : 1;
-
-  v_r = cs_tree_node_get_child_values_real
-    (tn_o, "probe_recording_frequency_time");
-  cs_real_t frequency_t = (v_r != NULL) ? v_r[0] : -1.;
-
-  /* Time plot (probe) format string */
-  const char *fmt_opts
-    = cs_tree_node_get_tag(cs_tree_node_get_child(tn_o, "probe_format"),
-                           "choice");
-
-  cs_post_define_writer(CS_POST_WRITER_PROBES,   /* writer_id */
-                        "",                      /* case_name */
-                        "monitoring",            /* dir_name */
-                        "time_plot",
-                        fmt_opts,
-                        FVM_WRITER_FIXED_MESH,
-                        false,                   /* output_at_start */
-                        false,                   /* output_at_end */
-                        frequency_n,
-                        frequency_t);
 
   /* Profile definitions;
      note that this may lead to additional writer definitions, as
@@ -990,6 +999,33 @@ cs_gui_postprocess_writers(void)
                           time_step,
                           time_value);
   }
+
+  /* Probes default writer */
+
+  const int *v_i
+    = cs_tree_node_get_child_values_int(tn_o, "probe_recording_frequency");
+  int frequency_n = (v_i != NULL) ? v_i[0] : 1;
+
+  const cs_real_t *v_r
+    = cs_tree_node_get_child_values_real(tn_o, "probe_recording_frequency_time");
+  cs_real_t frequency_t = (v_r != NULL) ? v_r[0] : -1.;
+
+  /* Time plot (probe) format string */
+  const char *fmt_opts
+    = cs_tree_node_get_tag(cs_tree_node_get_child(tn_o, "probe_format"),
+                           "choice");
+
+  cs_post_define_writer(CS_POST_WRITER_PROBES,   /* writer_id */
+                        "",                      /* case_name */
+                        "monitoring",            /* dir_name */
+                        "time_plot",
+                        fmt_opts,
+                        FVM_WRITER_FIXED_MESH,
+                        false,                   /* output_at_start */
+                        false,                   /* output_at_end */
+                        frequency_n,
+                        frequency_t);
+
 }
 
 /*----------------------------------------------------------------------------*/

@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -36,20 +36,29 @@ except Exception:
 
 class package:
 
-    def __init__(self, scriptdir=None, reload_config=False):
+    def __init__(self,
+                 scriptdir=None,
+                 reload_config=False,
+                 name="@PACKAGE_NAME@"):
 
         # System configuration (compilers, pre-requisites, ...)
 
         if reload_config:
             import importlib
-            config = importlib.import_module('cs_config')
-            self.config = config.config()
+            try:
+                config = importlib.import_module('cs_config', package='code_saturne')
+                self.config = config.config()
+            except Exception:  # Upon installation
+                import traceback
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                          limit=2, file=sys.stderr)
         else:
             self.config = cs_config.config()
 
         # Package information
 
-        self.name = "@PACKAGE_NAME@"
+        self.name = name
         self.tarname = "@PACKAGE_TARNAME@"
         self.pkgversion = "@PACKAGE_VERSION@"
         self.string = "@PACKAGE_STRING@"
@@ -63,10 +72,9 @@ class package:
         self.code_name = "Code_Saturne"
 
         self.preprocessor = "cs_preprocess" + self.config.exeext
-        self.solver = "cs_solver" + self.config.exeext
+        self.solver = self.config.solver_modules[name]['solver']
         self.check_syntax = "cs_check_syntax" + self.config.exeext
         self.io_dump = "cs_io_dump" + self.config.exeext
-        self.guiname = "SaturneGUI" + self.config.shext
         self.runcase = "runcase" + self.config.shext
         self.runsolver = "run_solver" + self.config.shext
         self.configfile = "code_saturne" + self.config.cfgext
@@ -104,6 +112,17 @@ class package:
                      'pdfdir': (os.path.join("share", "doc", self.name),
                                 "@pdfdir@"),
                      'sysconfdir': ("etc", "@sysconfdir@")}
+
+        # Adjust docdir for additional modules.
+
+        # We should try to find a cleaner/more conistant solution,
+        # perhaps storing all documents in the main module's
+        # directory (code_saturne).
+
+        docdir_1 = self.dirs['docdir'][1]
+        docdir_1 = os.path.join(os.path.split(docdir_1)[0], name)
+        self.dirs['docdir'] = (self.dirs['docdir'][0],
+                               docdir_1)
 
     def get_dir(self, installdir):
 
@@ -229,12 +248,21 @@ class package:
                 reload(cs_config)
                 import cs_package
                 reload(cs_package)
-                pkg = cs_package.package()
+                pkg = cs_package.package(name=self.name)
             else:
                 import importlib
                 importlib.invalidate_caches()
-                package = importlib.import_module('cs_package')
-                pkg = package.package(reload_config=True)
+                try:
+                    package = importlib.import_module('cs_package',
+                                                      package='code_saturne')
+                    pkg = package.package(reload_config=True,
+                                          name=self.name)
+                except Exception:
+                    import traceback
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                              limit=2, file=sys.stderr)
+                    pkg = self
             sys.path.pop(0)
             if pkg.config.features['relocatable'] != "no":
                 pkg.dirs['cs_root_dir'] = os.path.normpath(os.path.join(pythondir,

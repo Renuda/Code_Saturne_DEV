@@ -7,7 +7,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -208,6 +208,7 @@ _get_time_eval(const cs_gwf_t  *const gw,
   case CS_TIME_SCHEME_EULER_EXPLICIT:
   case CS_TIME_SCHEME_THETA:    /* One assumes that theta != 0 and != 1 */
   case CS_TIME_SCHEME_CRANKNICO:
+  case CS_TIME_SCHEME_BDF2:
     theta = cs_equation_get_theta_time_val(gw->richards);
     t_eval = t_cur + theta*dt_cur;
     break;
@@ -1365,18 +1366,8 @@ cs_gwf_compute_steady_state(const cs_mesh_t              *mesh,
   if (cs_equation_is_steady(richards) ||
       gw->flag & CS_GWF_FORCE_RICHARDS_ITERATIONS) {
 
-    if (cs_equation_uses_new_mechanism(richards))
-      cs_equation_solve_steady_state(mesh, richards);
-
-    else { /* Deprecated */
-
-      /* Define the algebraic system */
-      cs_equation_build_system(mesh, richards);
-
-      /* Solve the algebraic system */
-      cs_equation_solve_deprecated(richards);
-
-    }
+    /* Solve the algebraic system */
+    cs_equation_solve_steady_state(mesh, richards);
 
     /* Update the variables related to the groundwater flow system */
     cs_gwf_update(mesh, connect, cdoq, time_step, true);
@@ -1389,18 +1380,8 @@ cs_gwf_compute_steady_state(const cs_mesh_t              *mesh,
 
     if (cs_equation_is_steady(tracer->eq)) {
 
-      if (cs_equation_uses_new_mechanism(tracer->eq))
-        cs_equation_solve_steady_state(mesh, tracer->eq);
-
-      else { /* Deprecated */
-
-        /* Define the algebraic system */
-        cs_equation_build_system(mesh, tracer->eq);
-
-        /* Solve the algebraic system */
-        cs_equation_solve_deprecated(tracer->eq);
-
-      }
+      /* Solve the algebraic system */
+      cs_equation_solve_steady_state(mesh, tracer->eq);
 
       if (tracer->update_precipitation != NULL)
         tracer->update_precipitation(tracer,
@@ -1443,19 +1424,9 @@ cs_gwf_compute(const cs_mesh_t              *mesh,
   if (!cs_equation_is_steady(richards) ||
       gw->flag & CS_GWF_FORCE_RICHARDS_ITERATIONS) {
 
-    if (cs_equation_uses_new_mechanism(richards))
-      /* By default, a current to previous operation is performed */
-      cs_equation_solve(cur2prev, mesh, richards);
-
-    else { /* Deprecated */
-
-      /* Define the algebraic system */
-      cs_equation_build_system(mesh, richards);
-
-      /* Solve the algebraic system */
-      cs_equation_solve_deprecated(richards);
-
-    }
+    /* Solve the algebraic system. By default, a current to previous operation
+       is performed */
+    cs_equation_solve(cur2prev, mesh, richards);
 
     /* Update the variables related to the groundwater flow system */
     cs_gwf_update(mesh, connect, cdoq, time_step, cur2prev);
@@ -1468,19 +1439,9 @@ cs_gwf_compute(const cs_mesh_t              *mesh,
 
     if (!cs_equation_is_steady(tracer->eq)) { /* unsteady ? */
 
-      if (cs_equation_uses_new_mechanism(tracer->eq))
-        /* By default, a current to previous operation is performed */
-        cs_equation_solve(cur2prev, mesh, tracer->eq);
-
-      else { /* Deprecated */
-
-        /* Define the algebraic system */
-        cs_equation_build_system(mesh, tracer->eq);
-
-        /* Solve the algebraic system */
-        cs_equation_solve_deprecated(tracer->eq);
-
-      }
+      /* Solve the algebraic system. By default, a current to previous operation
+         is performed */
+      cs_equation_solve(cur2prev, mesh, tracer->eq);
 
       if (tracer->update_precipitation != NULL)
         tracer->update_precipitation(tracer,

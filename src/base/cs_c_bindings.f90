@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -93,6 +93,7 @@ module cs_c_bindings
     integer(c_int) :: isstpc
     integer(c_int) :: nswrgr
     integer(c_int) :: nswrsm
+    integer(c_int) :: imvisf
     integer(c_int) :: imrgra
     integer(c_int) :: imligr
     integer(c_int) :: ircflu
@@ -1368,6 +1369,172 @@ module cs_c_bindings
 
     !---------------------------------------------------------------------------
 
+    ! Interface to C function
+    !> \brief Get reference value of a physical property
+
+    !> \param[in] name  property name
+    !> \return reference value (c_double)
+
+    function cs_physical_property_get_ref_value(name) result(val) &
+      bind(C, name='cs_physical_property_get_ref_value')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      character(kind=c_char, len=1), dimension(*), intent(in) :: name
+      real(c_double)                                          :: val
+    end function cs_physical_property_get_ref_value
+
+    !---------------------------------------------------------------------------
+
+    ! Interface to C function
+    !> \brief Set reference value for a physical property
+
+    !> \param[in] name  property name
+    !> \param[in] val   new value to set
+
+    subroutine cs_physical_property_set_ref_value(name, val) &
+      bind(C, name='cs_physical_property_set_ref_value')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      character(kind=c_char, len=1), dimension(*), intent(in) :: name
+      real(kind=c_double), value, intent(in)                  :: val
+    end subroutine cs_physical_property_set_ref_value
+
+    !---------------------------------------------------------------------------
+
+    ! Interface to C function
+    !> \brief Create physical property
+
+    !> \param[in] name    property name
+    !> \param[in] dim     property dimension
+    !> \param[in] refval  reference value
+
+    subroutine cs_physical_property_create(name, dim, refval) &
+      bind(C, name='cs_physical_property_create')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      character(kind=c_char, len=1), dimension(*), intent(in) :: name
+      integer(c_int), value, intent(in)                       :: dim
+      real(kind=c_double), value, intent(in)                  :: refval
+    end subroutine cs_physical_property_create
+
+    !---------------------------------------------------------------------------
+
+    ! Interface to C function
+    !> \brief Get property reference values for a given zone
+
+    !> \param[in] name    property name
+    !> \param[in] zname   zone name
+    !> \param[in] retval  array of values to return
+
+    subroutine cs_physical_property_get_zone_values(name, zname, retval) &
+      bind(C, name='cs_physical_property_get_zone_values')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      character(kind=c_char, len=1), dimension(*), intent(in) :: name
+      character(kind=c_char, len=1), dimension(*), intent(in) :: zname
+      real(kind=c_double), dimension(*), intent(out)          :: retval
+    end subroutine cs_physical_property_get_zone_values
+
+    !---------------------------------------------------------------------------
+
+    ! Interface to C function
+    !> \brief Update reference values for a property on a given zone
+
+    !> \param[in] name   property name
+    !> \param[in] zname  zone name
+    !> \param[in] vals   array of values to set
+
+    subroutine cs_physical_property_update_zone_values(name, zname, vals) &
+      bind(C, name='cs_physical_property_update_zone_values')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      character(kind=c_char, len=1), dimension(*), intent(in) :: name
+      character(kind=c_char, len=1), dimension(*), intent(in) :: zname
+      real(kind=c_double), dimension(*), intent(in)           :: vals
+    end subroutine cs_physical_property_update_zone_values
+
+    !---------------------------------------------------------------------------
+
+    ! Interface to C function
+    !> \brief Add a property definition on a given zone using a single value
+
+    !> \param[in] name   property name
+    !> \param[in] zname  zone name
+    !> \param[in] dim    property dimension
+    !> \param[in] val    reference value for the zone
+
+    subroutine cs_physical_property_define_from_value(name, zname, dim, val) &
+      bind(C, name='cs_physical_property_define_from_value')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      character(kind=c_char, len=1), dimension(*), intent(in) :: name
+      character(kind=c_char, len=1), dimension(*), intent(in) :: zname
+      integer(c_int), value                                   :: dim
+      real(kind=c_double), value, intent(in)                  :: val
+    end subroutine cs_physical_property_define_from_value
+
+    !---------------------------------------------------------------------------
+
+    ! Interface to C function
+    !> \brief Add a property multi-diemnsional definition on a given zone
+
+    !> \param[in] name   property name
+    !> \param[in] zname  zone name
+    !> \param[in] dim    property dimension (>1)
+    !> \param[in] vals   array of values to set
+
+    subroutine cs_physical_property_define_from_values(name, zname, dim, vals) &
+      bind(C, name='cs_physical_property_define_from_values')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      character(kind=c_char, len=1), dimension(*), intent(in) :: name
+      character(kind=c_char, len=1), dimension(*), intent(in) :: zname
+      integer(c_int), value                                   :: dim
+      real(kind=c_double), dimension(*), intent(in)           :: vals
+    end subroutine cs_physical_property_define_from_values
+
+    !---------------------------------------------------------------------------
+
+    ! Interface to C function
+    !> \brief Add a property definition based on a cs_field_t. Field is created if needed
+
+    !> \param[in] name          property name
+    !> \param[in] type_flag     field type flag
+    !> \param[in] location_id   location id flag
+    !> \param[in] dim           field dimension
+    !> \param[in] has_previous  does the field has val_pre
+
+    subroutine cs_physical_property_define_from_field(name, type_flag, &
+      location_id, dim, has_previous) &
+      bind(C, name='cs_physical_property_define_from_field')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      character(kind=c_char, len=1), dimension(*), intent(in) :: name
+      integer(c_int), value                                   :: type_flag
+      integer(c_int), value                                   :: location_id
+      integer(c_int), value                                   :: dim
+      logical(c_bool), value                                  :: has_previous
+    end subroutine cs_physical_property_define_from_field
+
+    !---------------------------------------------------------------------------
+
+    ! Interface to C function
+    !> \brief Return id of field associated to property
+
+    !> \param[in] name  property name
+    !> \return field id (int)
+
+    function cs_physical_property_field_id_by_name(name) &
+      result(f_id) &
+      bind(C, name='cs_physical_property_field_id_by_name')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      character(kind=c_char, len=1), dimension(*), intent(in) :: name
+      integer(c_int)                                          :: f_id
+    end function cs_physical_property_field_id_by_name
+
+    !---------------------------------------------------------------------------
+
     ! Interface to C function for uniform distribution random number
 
     subroutine cs_random_uniform(n, a) &
@@ -2296,6 +2463,16 @@ module cs_c_bindings
 
     !---------------------------------------------------------------------------
 
+    !> \brief  Binding to cs_gui_internal_coupling
+
+    subroutine cs_gui_internal_coupling()  &
+      bind(C, name='cs_gui_internal_coupling')
+      use, intrinsic :: iso_c_binding
+      implicit none
+    end subroutine cs_gui_internal_coupling
+
+    !---------------------------------------------------------------------------
+
     !> \brief  Binding to cs_user_internal_coupling
 
     subroutine cs_user_internal_coupling()  &
@@ -2907,11 +3084,11 @@ module cs_c_bindings
 
     ! Interface to C function to count number of buoyant scalars.
 
-    subroutine cs_parameters_set_n_buoyant_scalars()   &
-      bind(C, name='cs_parameters_set_n_buoyant_scalars')
+    subroutine cs_velocity_pressure_set_n_buoyant_scalars()   &
+      bind(C, name='cs_velocity_pressure_set_n_buoyant_scalars')
       use, intrinsic :: iso_c_binding
       implicit none
-    end subroutine cs_parameters_set_n_buoyant_scalars
+    end subroutine cs_velocity_pressure_set_n_buoyant_scalars
 
     !---------------------------------------------------------------------------
 
@@ -3071,6 +3248,18 @@ module cs_c_bindings
       integer(c_int), value :: cell_id
       integer(kind=c_int) :: is_active
     end function cs_f_porous_model_cell_is_active
+
+    !---------------------------------------------------------------------------
+
+    ! Interface to C function returning 1 for 1d cells
+
+    function cs_f_velocity_pressure_cell_is_1d(cell_id) result(is_1d) &
+      bind(C, name='cs_f_velocity_pressure_cell_is_1d')
+      use, intrinsic :: iso_c_binding
+      implicit none
+      integer(c_int), value :: cell_id
+      integer(kind=c_int) :: is_1d
+    end function cs_f_velocity_pressure_cell_is_1d
 
     !---------------------------------------------------------------------------
 
@@ -5038,1093 +5227,6 @@ contains
 
   !=============================================================================
 
-  !> \brief This function solves an advection diffusion equation with source
-  !>        terms for one time step for the variable \f$ a \f$.
-
-  !> The equation reads:
-  !>
-  !> \f[
-  !> f_s^{imp}(a^{n+1}-a^n)
-  !> + \divs \left( a^{n+1} \rho \vect{u} - \mu \grad a^{n+1} \right)
-  !> = Rhs
-  !> \f]
-  !>
-  !> This equation is rewritten as:
-  !>
-  !> \f[
-  !> f_s^{imp} \delta a
-  !> + \divs \left( \delta a \rho \vect{u} - \mu \grad \delta a \right)
-  !> = Rhs^1
-  !> \f]
-  !>
-  !> where \f$ \delta a = a^{n+1} - a^n\f$ and
-  !> \f$ Rhs^1 = Rhs - \divs( a^n \rho \vect{u} - \mu \grad a^n)\f$
-  !>
-  !> It is in fact solved with the following iterative process:
-  !>
-  !> \f[
-  !> f_s^{imp} \delta a^k
-  !> + \divs \left(\delta a^k \rho \vect{u}-\mu\grad\delta a^k \right)
-  !> = Rhs^k
-  !> \f]
-  !>
-  !> where \f$Rhs^k=Rhs-f_s^{imp}(a^k-a^n)
-  !> - \divs \left( a^k\rho\vect{u}-\mu\grad a^k \right)\f$
-
-  !> Be careful, it is forbidden to modify \f$ f_s^{imp} \f$ here!
-
-  !> \param[in]     idtvar        indicator of the temporal scheme
-  !> \param[in]     iterns        external sub-iteration number
-  !> \param[in]     f_id          field id (or -1)
-  !> \param[in]     iconvp        indicator
-  !>                               - 1 convection,
-  !>                               - 0 otherwise
-  !> \param[in]     idiffp        indicator
-  !>                               - 1 diffusion,
-  !>                               - 0 otherwise
-  !> \param[in]     ndircp        indicator (0 if the diagonal is stepped aside)
-  !> \param[in]     imrgra        indicator
-  !>                               - 0 iterative gradient
-  !>                               - 1 least squares gradient
-  !> \param[in]     nswrsp        number of reconstruction sweeps for the
-  !>                               Right Hand Side
-  !> \param[in]     nswrgp        number of reconstruction sweeps for the
-  !>                               gradients
-  !> \param[in]     imligp        clipping gradient method
-  !>                               - < 0 no clipping
-  !>                               - = 0 thank to neighboring gradients
-  !>                               - = 1 thank to the mean gradient
-  !> \param[in]     ircflp        indicator
-  !>                               - 1 flux reconstruction,
-  !>                               - 0 otherwise
-  !> \param[in]     ischcp        indicator
-  !>                               - 0 SOLU
-  !>                               - 1 centered
-  !>                               - 2 SOLU with upwind gradient reconstruction
-  !>                               - 3 blending SOLU centered
-  !>                               - 4 NVD/TVD
-  !> \param[in]     isstpp        indicator
-  !>                               - 0 with slope test
-  !>                               - 1 without slope test
-  !>                               - 2 with beta limiter
-  !> \param[in]     iescap        compute the predictor indicator if 1
-  !> \param[in]     imucpp        indicator
-  !>                               - 0 do not multiply the convectiv term by Cp
-  !>                               - 1 do multiply the convectiv term by Cp
-  !> \param[in]     idftnp        diffusivity type indicator
-  !> \param[in]     iswdyp        indicator
-  !>                               - 0 no dynamic relaxation
-  !>                               - 1 dynamic relaxation depending on
-  !>                                 \f$ \delta \varia^k \f$
-  !>                               - 2 dynamic relaxation depending on
-  !>                                 \f$ \delta \varia^k \f$  and
-  !>                                 \f$ \delta \varia^{k-1} \f$
-  !> \param[in]     iwarnp        verbosity
-  !> \param[in]     normp         (optional) norm residual
-  !> \param[in]     blencp        fraction of upwinding
-  !> \param[in]     epsilp        precision pour resol iter
-  !> \param[in]     epsrsp        relative precision for the iterative process
-  !> \param[in]     epsrgp        relative precision for the gradient
-  !>                               reconstruction
-  !> \param[in]     climgp        clipping coefficient for the computation of
-  !>                               the gradient
-  !> \param[in]     relaxp        coefficient of relaxation
-  !> \param[in]     thetap        weighting coefficient for the theta-schema,
-  !>                               - thetap = 0: explicit scheme
-  !>                               - thetap = 0.5: time-centered
-  !>                               scheme (mix between Crank-Nicolson and
-  !>                               Adams-Bashforth)
-  !>                               - thetap = 1: implicit scheme
-  !> \param[in]     pvara         variable at the previous time step
-  !>                               \f$ a^n \f$
-  !> \param[in]     pvark         variable at the previous sub-iteration
-  !>                               \f$ a^k \f$.
-  !>                               If you sub-iter on Navier-Stokes, then
-  !>                               it allows to initialize by something else
-  !>                               than pvara (usually pvar=pvara)
-  !> \param[in]     coefap        boundary condition array for the variable
-  !>                               (explicit part)
-  !> \param[in]     coefbp        boundary condition array for the variable
-  !>                               (implicit part)
-  !> \param[in]     cofafp        boundary condition array for the diffusion
-  !>                               of the variable (explicit part)
-  !> \param[in]     cofbfp        boundary condition array for the diffusion
-  !>                               of the variable (implicit part)
-  !> \param[in]     i_massflux    mass flux at interior faces
-  !> \param[in]     b_massflux    mass flux at boundary faces
-  !> \param[in]     i_viscm       \f$ \mu_\fij \dfrac{S_\fij}{\ipf \jpf} \f$
-  !>                               at interior faces for the matrix
-  !> \param[in]     b_viscm       \f$ \mu_\fib \dfrac{S_\fib}{\ipf \centf} \f$
-  !>                               at boundary faces for the matrix
-  !> \param[in]     i_visc        \f$ \mu_\fij \dfrac{S_\fij}{\ipf \jpf} \f$
-  !>                               at interior faces for the r.h.s.
-  !> \param[in]     b_visc        \f$ \mu_\fib \dfrac{S_\fib}{\ipf \centf} \f$
-  !>                               at boundary faces for the r.h.s.
-  !> \param[in]     viscel        symmetric cell tensor
-  !>                              \f$ \tens{\mu}_\celli \f$
-  !> \param[in]     weighf        internal face weight between cells i j in case
-  !>                               of tensor diffusion
-  !> \param[in]     weighb        boundary face weight for cells i in case
-  !>                               of tensor diffusion
-  !> \param[in]     icvflb        global indicator of boundary convection flux
-  !>                               - 0 upwind scheme at all boundary faces
-  !>                               - 1 imposed flux at some boundary faces
-  !> \param[in]     icvfli        boundary face indicator array of convection
-  !>                              flux
-  !>                               - 0 upwind scheme
-  !>                               - 1 imposed flux
-  !> \param[in]     rovsdt        \f$ f_s^{imp} \f$
-  !> \param[in]     smbrp         Right hand side \f$ Rhs^k \f$
-  !> \param[in,out] pvar          current variable
-  !> \param[in,out] dpvar         last variable increment
-  !> \param[in]     xcpp          array of specific heat (Cp)
-  !> \param[out]    eswork        prediction-stage error estimator
-  !>                              (if iescap > 0)
-
-  subroutine codits (idtvar, iterns,                                           &
-                     f_id  , iconvp, idiffp, ndircp, imrgra, nswrsp,           &
-                     nswrgp, imligp, ircflp, ischcp, isstpp, iescap, imucpp,   &
-                     idftnp, iswdyp, iwarnp, normp,                            &
-                     blencp, epsilp, epsrsp, epsrgp,                           &
-                     climgp, relaxp, thetap, pvara, pvark, coefap,             &
-                     coefbp, cofafp, cofbfp, i_massflux, b_massflux, i_viscm,  &
-                     b_viscm, i_visc, b_visc, viscel, weighf, weighb, icvflb,  &
-                     icvfli, rovsdt, smbrp, pvar, dpvar, xcpp, eswork)
-
-    use, intrinsic :: iso_c_binding
-    use entsor, only:nomva0
-    use numvar
-    use cplsat
-
-    implicit none
-
-    ! Arguments
-
-    integer, intent(in) :: idtvar, iterns, f_id, iconvp, idiffp, ndircp, imrgra
-    integer, intent(in) :: nswrsp, nswrgp, imligp, ircflp, ischcp, isstpp
-    integer, intent(in) :: iescap, imucpp, idftnp, iswdyp, iwarnp
-    double precision, intent(in) :: normp
-    double precision, intent(in) :: blencp, epsilp, epsrsp, epsrgp, climgp
-    double precision, intent(in) :: relaxp, thetap
-    real(kind=c_double), dimension(*), intent(in) :: pvara, pvark, coefap
-    real(kind=c_double), dimension(*), intent(in) :: coefbp, cofafp, cofbfp
-    real(kind=c_double), dimension(*), intent(in) :: i_massflux, b_massflux
-    real(kind=c_double), dimension(*), intent(in) :: i_viscm, b_viscm
-    real(kind=c_double), dimension(*), intent(in) :: i_visc, b_visc, viscel
-    real(kind=c_double), dimension(*), intent(in) :: weighf, weighb
-    integer, intent(in) :: icvflb
-    integer(c_int), dimension(*), intent(in) :: icvfli
-    real(kind=c_double), dimension(*), intent(in) :: rovsdt, xcpp
-    real(kind=c_double), dimension(*), intent(inout) :: smbrp, pvar, dpvar
-    real(kind=c_double), dimension(*), intent(inout) :: eswork
-
-    ! Local variables
-    character(len=len_trim(nomva0)+1, kind=c_char) :: c_name
-    type(var_cal_opt), target   :: vcopt
-    type(var_cal_opt), pointer  :: p_k_value
-    type(c_ptr)                 :: c_k_value
-
-    c_name = trim(nomva0)//c_null_char
-
-    vcopt%iwarni = iwarnp
-    vcopt%iconv  = iconvp
-    vcopt%istat  = -1
-    vcopt%icoupl = -1
-    vcopt%ndircl = ndircp
-    vcopt%idiff  = idiffp
-    vcopt%idifft = -1
-    vcopt%idften = idftnp
-    vcopt%iswdyn = iswdyp
-    vcopt%ischcv = ischcp
-    vcopt%isstpc = isstpp
-    vcopt%nswrgr = nswrgp
-    vcopt%nswrsm = nswrsp
-    vcopt%imrgra = imrgra
-    vcopt%imligr = imligp
-    vcopt%ircflu = ircflp
-    vcopt%iwgrec = 0 ! Warning, may be overwritten if a field
-    vcopt%thetav = thetap
-    vcopt%blencv = blencp
-    vcopt%blend_st = 0 ! Warning, may be overwritten if a field
-    vcopt%epsilo = epsilp
-    vcopt%epsrsm = epsrsp
-    vcopt%epsrgr = epsrgp
-    vcopt%climgr = climgp
-    vcopt%relaxv = relaxp
-
-    p_k_value => vcopt
-    c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
-
-    call cs_equation_iterative_solve_scalar(idtvar, iterns,                    &
-                                            f_id, c_name,                      &
-                                            iescap, imucpp, normp, c_k_value,  &
-                                            pvara, pvark,                      &
-                                            coefap, coefbp, cofafp, cofbfp,    &
-                                            i_massflux, b_massflux,            &
-                                            i_viscm, b_viscm, i_visc, b_visc,  &
-                                            viscel, weighf, weighb,            &
-                                            icvflb, icvfli,                    &
-                                            rovsdt, smbrp, pvar, dpvar,        &
-                                            xcpp, eswork)
-
-    return
-
-  end subroutine codits
-
-  !=============================================================================
-  !> \brief This function solves an advection diffusion equation with source
-  !>        terms for one time step for the vector variable \f$ \vect{a} \f$.
-
-  !> The equation reads:
-  !>
-  !> \f[
-  !> \tens{f_s}^{imp}(\vect{a}^{n+1}-\vect{a}^n)
-  !> + \divv \left( \vect{a}^{n+1} \otimes \rho \vect {u}
-  !>              - \mu \gradt \vect{a}^{n+1}\right)
-  !> = \vect{Rhs}
-  !> \f]
-  !>
-  !> This equation is rewritten as:
-  !>
-  !> \f[
-  !> \tens{f_s}^{imp} \delta \vect{a}
-  !> + \divv \left( \delta \vect{a} \otimes \rho \vect{u}
-  !>              - \mu \gradt \delta \vect{a} \right)
-  !> = \vect{Rhs}^1
-  !> \f]
-  !>
-  !> where \f$ \delta \vect{a} = \vect{a}^{n+1} - \vect{a}^n\f$ and
-  !> \f$ \vect{Rhs}^1 = \vect{Rhs}
-  !> - \divv \left( \vect{a}^n \otimes \rho \vect{u}
-  !>              - \mu \gradt \vect{a}^n \right)\f$
-  !>
-  !> It is in fact solved with the following iterative process:
-  !>
-  !> \f[
-  !> \tens{f_s}^{imp} \delta \vect{a}^k
-  !> + \divv \left( \delta \vect{a}^k \otimes \rho \vect{u}
-  !>              - \mu \gradt \delta \vect{a}^k \right)
-  !> = \vect{Rhs}^k
-  !> \f]
-  !>
-  !> where \f$ \vect{Rhs}^k = \vect{Rhs}
-  !> - \tens{f_s}^{imp} \left(\vect{a}^k-\vect{a}^n \right)
-  !> - \divv \left( \vect{a}^k \otimes \rho \vect{u}
-  !>              - \mu \gradt \vect{a}^k \right)\f$
-  !>
-  !> Be careful, it is forbidden to modify \f$ \tens{f_s}^{imp} \f$ here!
-
-  !> \param[in]     idtvar        indicator of the temporal scheme
-  !> \param[in]     iterns        external sub-iteration number
-  !> \param[in]     f_id          field id (or -1)
-  !> \param[in]     iconvp        indicator
-  !>                               - 1 convection,
-  !>                               - 0 otherwise
-  !> \param[in]     idiffp        indicator
-  !>                               - 1 diffusion,
-  !>                               - 0 otherwise
-  !> \param[in]     ndircp        indicator (0 if the diagonal is stepped aside)
-  !> \param[in]     imrgra        indicateur
-  !>                               - 0 iterative gradient
-  !>                               - 1 least squares gradient
-  !> \param[in]     nswrsp        number of reconstruction sweeps for the
-  !>                               Right Hand Side
-  !> \param[in]     nswrgp        number of reconstruction sweeps for the
-  !>                               gradients
-  !> \param[in]     imligp        clipping gradient method
-  !>                               - < 0 no clipping
-  !>                               - = 0 thank to neighboring gradients
-  !>                               - = 1 thank to the mean gradient
-  !> \param[in]     ircflp        indicator
-  !>                               - 1 flux reconstruction,
-  !>                               - 0 otherwise
-  !> \param[in]     ivisep        indicator to take \f$ \divv
-  !>                               \left(\mu \gradt \transpose{\vect{a}} \right)
-  !>                               -2/3 \grad\left( \mu \dive \vect{a} \right)\f$
-  !>                               - 1 take into account,
-  !>                               - 0 otherwise
-  !> \param[in]     ischcp        indicator
-  !>                               - 0 SOLU
-  !>                               - 1 centered
-  !>                               - 2 SOLU with upwind gradient reconstruction
-  !>                               - 3 blending SOLU centered
-  !>                               - 4 NVD/TVD
-  !> \param[in]     isstpp        indicator
-  !>                               - 0 with slope test
-  !>                               - 1 without slope test
-  !>                               - 2 with beta limiter
-  !> \param[in]     iescap        compute the predictor indicator if 1
-  !> \param[in]     idftnp        indicator
-  !>                               - 1 the diffusivity is scalar
-  !>                               - 6 the diffusivity is a symmetric tensor
-  !> \param[in]     iswdyp        indicator
-  !>                               - 0 no dynamic relaxation
-  !>                               - 1 dynamic relaxation depending on
-  !>                                 \f$ \delta \vect{\varia}^k \f$
-  !>                               - 2 dynamic relaxation depending on
-  !>                                 \f$ \delta \vect{\varia}^k \f$  and
-  !>                                 \f$ \delta \vect{\varia}^{k-1} \f$
-  !> \param[in]     iwarnp        verbosity
-  !> \param[in]     blencp        fraction of upwinding
-  !> \param[in]     epsilp        precision pour resol iter
-  !> \param[in]     epsrsp        relative precision for the iterative process
-  !> \param[in]     epsrgp        relative precision for the gradient
-  !>                               reconstruction
-  !> \param[in]     climgp        clipping coefficient for the computation of
-  !>                               the gradient
-  !> \param[in]     relaxp        coefficient of relaxation
-  !> \param[in]     thetap        weighting coefficient for the theta-schema,
-  !>                               - thetap = 0: explicit scheme
-  !>                               - thetap = 0.5: time-centered
-  !>                               scheme (mix between Crank-Nicolson and
-  !>                               Adams-Bashforth)
-  !>                               - thetap = 1: implicit scheme
-  !> \param[in]     pvara         variable at the previous time step
-  !>                               \f$ \vect{a}^n \f$
-  !> \param[in]     pvark         variable at the previous sub-iteration
-  !>                               \f$ \vect{a}^k \f$.
-  !>                               If you sub-iter on Navier-Stokes, then
-  !>                               it allows to initialize by something else
-  !>                               than pvara (usually pvar=pvara)
-  !> \param[in]     coefav        boundary condition array for the variable
-  !>                               (explicit part)
-  !> \param[in]     coefbv        boundary condition array for the variable
-  !>                               (implicit part)
-  !> \param[in]     cofafv        boundary condition array for the diffusion
-  !>                               of the variable (Explicit part)
-  !> \param[in]     cofbfv        boundary condition array for the diffusion
-  !>                               of the variable (Implicit part)
-  !> \param[in]     i_massflux    mass flux at interior faces
-  !> \param[in]     b_massflux    mass flux at boundary faces
-  !> \param[in]     i_viscm       \f$ \mu_\fij \dfrac{S_\fij}{\ipf \jpf} \f$
-  !>                               at interior faces for the matrix
-  !> \param[in]     b_viscm       \f$ \mu_\fib \dfrac{S_\fib}{\ipf \centf} \f$
-  !>                               at boundary faces for the matrix
-  !> \param[in]     i_visc        \f$ \mu_\fij \dfrac{S_\fij}{\ipf \jpf} \f$
-  !>                               at interior faces for the r.h.s.
-  !> \param[in]     b_visc        \f$ \mu_\fib \dfrac{S_\fib}{\ipf \centf} \f$
-  !>                               at boundary faces for the r.h.s.
-  !> \param[in]     secvif        secondary viscosity at interior faces
-  !> \param[in]     secvib        secondary viscosity at boundary faces
-  !> \param[in]     viscce        symmetric cell tensor \f$ \tens{\mu}_\celli \f$
-  !> \param[in]     weighf        internal face weight between cells i j in case
-  !>                               of tensor diffusion
-  !> \param[in]     weighb        boundary face weight for cells i in case
-  !>                               of tensor diffusion
-  !> \param[in]     icvflb        global indicator of boundary convection flux
-  !>                               - 0 upwind scheme at all boundary faces
-  !>                               - 1 imposed flux at some boundary faces
-  !> \param[in]     icvfli        boundary face indicator array of convection flux
-  !>                               - 0 upwind scheme
-  !>                               - 1 imposed flux
-  !> \param[in]     fimp          \f$ \tens{f_s}^{imp} \f$
-  !> \param[in]     smbrp         Right hand side \f$ \vect{Rhs}^k \f$
-  !> \param[in,out] pvar          current variable
-  !> \param[out]    eswork        prediction-stage error estimator
-  !>                              (if iescap > 0)
-
-  subroutine coditv (idtvar, iterns,                                           &
-                     f_id  , iconvp, idiffp, ndircp, imrgra, nswrsp,           &
-                     nswrgp, imligp, ircflp, ivisep, ischcp, isstpp, iescap,   &
-                     idftnp, iswdyp, iwarnp, blencp, epsilp, epsrsp, epsrgp,   &
-                     climgp, relaxp, thetap, pvara , pvark , coefav, coefbv,   &
-                     cofafv, cofbfv, i_massflux, b_massflux, i_viscm,          &
-                     b_viscm, i_visc, b_visc, secvif, secvib,                  &
-                     viscce, weighf, weighb, icvflb, icvfli,                   &
-                     fimp, smbrp, pvar, eswork)
-
-    use, intrinsic :: iso_c_binding
-    use entsor, only:nomva0
-    use numvar
-    use cplsat
-
-    implicit none
-
-    ! Arguments
-
-    integer, intent(in) :: idtvar, iterns, f_id, iconvp, idiffp, ndircp, imrgra
-    integer, intent(in) :: nswrsp, nswrgp, imligp, ircflp, ischcp, isstpp
-    integer, intent(in) :: iescap, ivisep, idftnp, iswdyp, iwarnp
-    double precision, intent(in) :: blencp, epsilp, epsrsp, epsrgp, climgp
-    double precision, intent(in) :: relaxp, thetap
-    real(kind=c_double), dimension(*), intent(in) :: pvara, pvark, coefav
-    real(kind=c_double), dimension(*), intent(in) :: coefbv, cofafv, cofbfv
-    real(kind=c_double), dimension(*), intent(in) :: i_massflux, b_massflux
-    real(kind=c_double), dimension(*), intent(in) :: i_visc, b_visc
-    real(kind=c_double), dimension(*), intent(in) :: i_viscm, b_viscm
-    real(kind=c_double), dimension(*), intent(in) :: secvif, secvib
-    real(kind=c_double), dimension(*), intent(in) :: viscce
-    real(kind=c_double), dimension(*), intent(in) :: weighf, weighb
-    integer, intent(in) :: icvflb
-    integer(c_int), dimension(*), intent(in) :: icvfli
-    real(kind=c_double), dimension(*), intent(inout) :: fimp
-    real(kind=c_double), dimension(*), intent(inout) :: smbrp, pvar, eswork
-
-    ! Local variables
-    character(len=len_trim(nomva0)+1, kind=c_char) :: c_name
-    type(var_cal_opt), target   :: vcopt
-    type(var_cal_opt), pointer  :: p_k_value
-    type(c_ptr)                 :: c_k_value
-
-    c_name = trim(nomva0)//c_null_char
-
-    vcopt%iwarni = iwarnp
-    vcopt%iconv  = iconvp
-    vcopt%istat  = -1
-    vcopt%ndircl = ndircp
-    vcopt%idiff  = idiffp
-    vcopt%idifft = -1
-    vcopt%idften = idftnp
-    vcopt%iswdyn = iswdyp
-    vcopt%ischcv = ischcp
-    vcopt%isstpc = isstpp
-    vcopt%nswrgr = nswrgp
-    vcopt%nswrsm = nswrsp
-    vcopt%imrgra = imrgra
-    vcopt%imligr = imligp
-    vcopt%ircflu = ircflp
-    vcopt%iwgrec = 0
-    vcopt%thetav = thetap
-    vcopt%blencv = blencp
-    vcopt%blend_st = 0 ! Warning, may be overwritten if a field
-    vcopt%epsilo = epsilp
-    vcopt%epsrsm = epsrsp
-    vcopt%epsrgr = epsrgp
-    vcopt%climgr = climgp
-    vcopt%extrag = 0
-    vcopt%relaxv = relaxp
-
-    p_k_value => vcopt
-    c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
-
-    call cs_equation_iterative_solve_vector(idtvar, iterns,                    &
-                                            f_id, c_name,                      &
-                                            ivisep, iescap, c_k_value,         &
-                                            pvara, pvark,                      &
-                                            coefav, coefbv, cofafv, cofbfv,    &
-                                            i_massflux, b_massflux, i_viscm,   &
-                                            b_viscm, i_visc, b_visc, secvif,   &
-                                            secvib, viscce, weighf, weighb,    &
-                                            icvflb, icvfli,                    &
-                                            fimp, smbrp, pvar, eswork)
-    return
-
-  end subroutine coditv
-
-  !=============================================================================
-  !> \brief This function solves an advection diffusion equation with source
-  !>        terms for one time step for the symmetric tensor variable
-  !>        \f$ \tens{\variat} \f$.
-
-  !> The equation reads:
-  !>
-  !> \f[
-  !> \tens{f_s}^{imp}(\tens{\variat}^{n+1}-\tens{\variat}^n)
-  !> + \divt \left( \tens{\variat}^{n+1} \otimes \rho \vect {u}
-  !>              - \mu \gradtt \tens{\variat}^{n+1}\right)
-  !> = \tens{Rhs}
-  !> \f]
-  !>
-  !> This equation is rewritten as:
-  !>
-  !> \f[
-  !> \tens{f_s}^{imp} \delta \tens{\variat}
-  !> + \divt \left( \delta \tens{\variat} \otimes \rho \vect{u}
-  !>              - \mu \gradtt \delta \tens{\variat} \right)
-  !> = \tens{Rhs}^1
-  !> \f]
-  !>
-  !> where \f$ \delta \tens{\variat} = \tens{\variat}^{n+1} -\tens{\variat}^n\f$
-  !> and \f$ \tens{Rhs}^1 = \tens{Rhs}
-  !> - \divt \left( \tens{\variat}^n \otimes \rho \vect{u}
-  !>              - \mu \gradtt \tens{\variat}^n \right)\f$
-  !>
-  !> It is in fact solved with the following iterative process:
-  !>
-  !> \f[
-  !> \tens{f_s}^{imp} \delta \tens{\variat}^k
-  !> + \divt \left( \delta \tens{\variat}^k \otimes \rho \vect{u}
-  !>              - \mu \gradtt \delta \tens{\variat}^k \right)
-  !> = \tens{Rhs}^k
-  !> \f]
-  !>
-  !> where \f$ \tens{Rhs}^k = \tens{Rhs}
-  !> - \tens{f_s}^{imp} \left(\tens{\variat}^k-\tens{\variat}^n \right)
-  !> - \divt \left( \tens{\variat}^k \otimes \rho \vect{u}
-  !>              - \mu \gradtt \tens{\variat}^k \right)\f$
-  !>
-  !> Be careful, it is forbidden to modify \f$ \tens{f_s}^{imp} \f$ here!
-
-  !> \param[in]     idtvar        indicator of the temporal scheme
-  !> \param[in]     f_id          field id (or -1)
-  !> \param[in]     iconvp        indicator
-  !>                               - 1 convection,
-  !>                               - 0 otherwise
-  !> \param[in]     idiffp        indicator
-  !>                               - 1 diffusion,
-  !>                               - 0 otherwise
-  !> \param[in]     ndircp        indicator (0 if the diagonal is stepped aside)
-  !> \param[in]     imrgra        indicateur
-  !>                               - 0 iterative gradient
-  !>                               - 1 least squares gradient
-  !> \param[in]     nswrsp        number of reconstruction sweeps for the
-  !>                               Right Hand Side
-  !> \param[in]     nswrgp        number of reconstruction sweeps for the
-  !>                               gradients
-  !> \param[in]     imligp        clipping gradient method
-  !>                               - < 0 no clipping
-  !>                               - = 0 thank to neighboring gradients
-  !>                               - = 1 thank to the mean gradient
-  !> \param[in]     ircflp        indicator
-  !>                               - 1 flux reconstruction,
-  !>                               - 0 otherwise
-  !> \param[in]     ischcp        indicator
-  !>                               - 0 SOLU
-  !>                               - 1 centered
-  !>                               - 2 SOLU with upwind gradient reconstruction
-  !>                               - 3 blending SOLU centered
-  !>                               - 4 NVD/TVD
-  !> \param[in]     isstpp        indicator
-  !>                               - 0 with slope test
-  !>                               - 1 without slope test
-  !>                               - 2 with beta limiter
-  !> \param[in]     idftnp        indicator
-  !>                               - 1 the diffusivity is scalar
-  !>                               - 6 the diffusivity is a symmetric tensor
-  !> \param[in]     iswdyp        indicator
-  !>                               - 0 no dynamic relaxation
-  !>                               - 1 dynamic relaxation depending on
-  !>                                 \f$ \delta \vect{\varia}^k \f$
-  !>                               - 2 dynamic relaxation depending on
-  !>                                 \f$ \delta \vect{\varia}^k \f$  and
-  !>                                 \f$ \delta \vect{\varia}^{k-1} \f$
-  !> \param[in]     iwarnp        verbosity
-  !> \param[in]     blencp        fraction of upwinding
-  !> \param[in]     epsilp        precision pour resol iter
-  !> \param[in]     epsrsp        relative precision for the iterative process
-  !> \param[in]     epsrgp        relative precision for the gradient
-  !>                               reconstruction
-  !> \param[in]     climgp        clipping coefficient for the computation of
-  !>                               the gradient
-  !> \param[in]     relaxp        coefficient of relaxation
-  !> \param[in]     thetap        weighting coefficient for the theta-schema,
-  !>                               - thetap = 0: explicit scheme
-  !>                               - thetap = 0.5: time-centered
-  !>                               scheme (mix between Crank-Nicolson and
-  !>                               Adams-Bashforth)
-  !>                               - thetap = 1: implicit scheme
-  !> \param[in]     pvara         variable at the previous time step
-  !>                               \f$ \vect{a}^n \f$
-  !> \param[in]     pvark         variable at the previous sub-iteration
-  !>                               \f$ \vect{a}^k \f$.
-  !>                               If you sub-iter on Navier-Stokes, then
-  !>                               it allows to initialize by something else
-  !>                               than pvara (usually pvar=pvara)
-  !> \param[in]     coefats        boundary condition array for the variable
-  !>                               (Explicit part)
-  !> \param[in]     coefbts        boundary condition array for the variable
-  !>                               (Impplicit part)
-  !> \param[in]     cofafts        boundary condition array for the diffusion
-  !>                               of the variable (Explicit part)
-  !> \param[in]     cofbfts        boundary condition array for the diffusion
-  !>                               of the variable (Implicit part)
-  !> \param[in]     i_massflux    mass flux at interior faces
-  !> \param[in]     b_massflux    mass flux at boundary faces
-  !> \param[in]     i_viscm       \f$ \mu_\fij \dfrac{S_\fij}{\ipf \jpf} \f$
-  !>                               at interior faces for the matrix
-  !> \param[in]     b_viscm       \f$ \mu_\fib \dfrac{S_\fib}{\ipf \centf} \f$
-  !>                               at boundary faces for the matrix
-  !> \param[in]     i_visc        \f$ \mu_\fij \dfrac{S_\fij}{\ipf \jpf} \f$
-  !>                               at interior faces for the r.h.s.
-  !> \param[in]     b_visc        \f$ \mu_\fib \dfrac{S_\fib}{\ipf \centf} \f$
-  !>                               at boundary faces for the r.h.s.
-  !> \param[in]     viscce        symmetric cell tensor \f$ \tens{\mu}_\celli \f$
-  !> \param[in]     weighf        internal face weight between cells i j in case
-  !>                               of tensor diffusion
-  !> \param[in]     weighb        boundary face weight for cells i in case
-  !>                               of tensor diffusion
-  !> \param[in]     icvflb        global indicator of boundary convection flux
-  !>                               - 0 upwind scheme at all boundary faces
-  !>                               - 1 imposed flux at some boundary faces
-  !> \param[in]     icvfli        boundary face indicator array of convection flux
-  !>                               - 0 upwind scheme
-  !>                               - 1 imposed flux
-  !> \param[in]     fimp          \f$ \tens{f_s}^{imp} \f$
-  !> \param[in]     smbrp         Right hand side \f$ \vect{Rhs}^k \f$
-  !> \param[in,out] pvar          current variable
-
-  subroutine coditts (idtvar, f_id  , iconvp, idiffp, ndircp, imrgra, nswrsp,  &
-                      nswrgp, imligp, ircflp, ischcp, isstpp, idftnp, iswdyp,  &
-                      iwarnp, blencp, epsilp, epsrsp, epsrgp, climgp, relaxp,  &
-                      thetap, pvara , pvark , coefats , coefbts , cofafts ,    &
-                      cofbfts , i_massflux, b_massflux, i_viscm, b_viscm,      &
-                      i_visc, b_visc, viscce, weighf , weighb , icvflb,        &
-                      icvfli , fimp, smbrp, pvar)
-
-    use, intrinsic :: iso_c_binding
-    use entsor, only:nomva0
-    use numvar
-    use cplsat
-
-    implicit none
-
-    ! Arguments
-
-    integer, intent(in) :: idtvar, f_id, iconvp, idiffp, ndircp, imrgra
-    integer, intent(in) :: nswrsp, nswrgp, imligp, ircflp, ischcp, isstpp
-    integer, intent(in) :: idftnp, iswdyp, iwarnp
-    double precision, intent(in) :: blencp, epsilp, epsrsp, epsrgp, climgp
-    double precision, intent(in) :: relaxp, thetap
-    real(kind=c_double), dimension(*), intent(in) :: pvara, pvark, coefats
-    real(kind=c_double), dimension(*), intent(in) :: coefbts, cofafts, cofbfts
-    real(kind=c_double), dimension(*), intent(in) :: i_massflux, b_massflux
-    real(kind=c_double), dimension(*), intent(in) :: i_visc, b_visc
-    real(kind=c_double), dimension(*), intent(in) :: i_viscm, b_viscm
-    real(kind=c_double), dimension(*), intent(in) :: viscce
-    real(kind=c_double), dimension(*), intent(in) :: weighf, weighb
-    integer, intent(in) :: icvflb
-    integer(c_int), dimension(*), intent(in) :: icvfli
-    real(kind=c_double), dimension(*), intent(in) :: fimp
-    real(kind=c_double), dimension(*), intent(inout) :: smbrp, pvar
-
-    ! Local variables
-    character(len=len_trim(nomva0)+1, kind=c_char) :: c_name
-    type(var_cal_opt), target   :: vcopt
-    type(var_cal_opt), pointer  :: p_k_value
-    type(c_ptr)                 :: c_k_value
-
-    c_name = trim(nomva0)//c_null_char
-
-    vcopt%iwarni = iwarnp
-    vcopt%iconv  = iconvp
-    vcopt%istat  = -1
-    vcopt%ndircl = ndircp
-    vcopt%idiff  = idiffp
-    vcopt%idifft = -1
-    vcopt%idften = idftnp
-    vcopt%iswdyn = iswdyp
-    vcopt%ischcv = ischcp
-    vcopt%isstpc = isstpp
-    vcopt%nswrgr = nswrgp
-    vcopt%nswrsm = nswrsp
-    vcopt%imrgra = imrgra
-    vcopt%imligr = imligp
-    vcopt%ircflu = ircflp
-    vcopt%iwgrec = 0
-    vcopt%thetav = thetap
-    vcopt%blencv = blencp
-    vcopt%blend_st = 0 ! Warning, may be overwritten if a field
-    vcopt%epsilo = epsilp
-    vcopt%epsrsm = epsrsp
-    vcopt%epsrgr = epsrgp
-    vcopt%climgr = climgp
-    vcopt%extrag = 0
-    vcopt%relaxv = relaxp
-
-    p_k_value => vcopt
-    c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
-
-    call cs_equation_iterative_solve_tensor(idtvar, f_id, c_name,              &
-                                            c_k_value,                         &
-                                            pvara, pvark,                      &
-                                            coefats, coefbts, cofafts, cofbfts,&
-                                            i_massflux, b_massflux, i_viscm,   &
-                                            b_viscm, i_visc, b_visc, viscce,   &
-                                            weighf, weighb , icvflb, icvfli,   &
-                                            fimp, smbrp, pvar)
-    return
-
-  end subroutine coditts
-
-  !=============================================================================
-  !> \brief Wrapper to the function which adds the explicit part of the
-  !>        convection/diffusion terms of a transport equation of
-  !>        a scalar field \f$ \varia \f$.
-
-  !> More precisely, the right hand side \f$ Rhs \f$ is updated as
-  !> follows:
-  !> \f[
-  !> Rhs = Rhs - \sum_{\fij \in \Facei{\celli}}      \left(
-  !>        \dot{m}_\ij \left( \varia_\fij - \varia_\celli \right)
-  !>      - \mu_\fij \gradv_\fij \varia \cdot \vect{S}_\ij  \right)
-  !> \f]
-  !>
-  !> Warning:
-  !> - \f$ Rhs \f$ has already been initialized before calling bilsca!
-  !> - mind the minus sign
-  !>
-  !> Options for the diffusive scheme:
-  !> - idftnp = 1: scalar diffusivity
-  !> - idftnp = 6: symmetric tensor diffusivity
-  !>
-  !> Options for the convective scheme:
-  !> - blencp = 0: upwind scheme for the advection
-  !> - blencp = 1: no upwind scheme except in the slope test
-  !> - ischcp = 0: SOLU
-  !> - ischcp = 1: centered
-  !> - ischcp = 2  SOLU with upwind gradient reconstruction
-  !> - ischcp = 3: blending SOLU centered
-  !> - ischcp = 4: NVD/TVD
-  !> - imucpp = 0: do not multiply the convective part by \f$ C_p \f$
-  !> - imucpp = 1: multiply the convective part by \f$ C_p \f$
-
-  !> \param[in]     idtvar        indicator of the temporal scheme
-  !> \param[in]     f_id          field id (or -1)
-  !> \param[in]     iconvp        indicator
-  !>                               - 1 convection,
-  !>                               - 0 otherwise
-  !> \param[in]     idiffp        indicator
-  !>                               - 1 diffusion,
-  !>                               - 0 otherwise
-  !> \param[in]     nswrgp        number of reconstruction sweeps for the
-  !>                               gradients
-  !> \param[in]     imligp        clipping gradient method
-  !>                               - < 0 no clipping
-  !>                               - = 0 by neighboring gradients
-  !>                               - = 1 by the mean gradient
-  !> \param[in]     ircflp        indicator
-  !>                               - 1 flux reconstruction,
-  !>                               - 0 otherwise
-  !> \param[in]     ischcp        indicator
-  !>                               - 0 SOLU
-  !>                               - 1 centered
-  !>                               - 2 SOLU with gradient reconstruction
-  !>                               - 3 blending SOLU centered
-  !>                               - 4 NVD/TVD
-  !> \param[in]     isstpp        indicator
-  !>                               - 0 with slope test
-  !>                               - 1 without slope test
-  !>                               - 2 with beta limiter
-  !> \param[in]     inc           indicator
-  !>                               - 0 when solving an increment
-  !>                               - 1 otherwise
-  !> \param[in]     imrgra        indicator
-  !>                               - 0 iterative gradient
-  !>                               - 1 least squares gradient
-  !> \param[in]     iccocg        indicator
-  !>                               - 1 re-compute cocg matrix
-  !>                                 (for iterative gradients)
-  !>                               - 0 otherwise
-  !> \param[in]     iwarnp        verbosity
-  !> \param[in]     imucpp        indicator
-  !>                               - 0 do not multiply the convective term by Cp
-  !>                               - 1 do multiply the convective term by Cp
-  !> \param[in]     idftnp        indicator
-  !>                               - 1 scalar diffusivity
-  !>                               - 6 symmetric tensor diffusivity
-  !> \param[in]     imasac        take mass accumulation into account?
-  !> \param[in]     blencp        fraction of upwinding
-  !> \param[in]     epsrgp        relative precision for the gradient
-  !>                               reconstruction
-  !> \param[in]     climgp        clipping coefficient for the computation of
-  !>                               the gradient
-  !> \param[in]     extrap        ignored
-  !> \param[in]     relaxp        coefficient of relaxation
-  !> \param[in]     thetap        weighting coefficient for the theta-schema,
-  !>                               - thetap = 0: explicit scheme
-  !>                               - thetap = 0.5: time-centered
-  !>                               scheme (mix between Crank-Nicolson and
-  !>                               Adams-Bashforth)
-  !>                               - thetap = 1: implicit scheme
-  !> \param[in]     pvar          solved variable (current time step)
-  !> \param[in]     pvara         solved variable (previous time step)
-  !> \param[in]     coefap        boundary condition array for the variable
-  !>                               (explicit part)
-  !> \param[in]     coefbp        boundary condition array for the variable
-  !>                               (implicit part)
-  !> \param[in]     cofafp        boundary condition array for the diffusion
-  !>                               of the variable (explicit part)
-  !> \param[in]     cofbfp        boundary condition array for the diffusion
-  !>                               of the variable (implicit part)
-  !> \param[in]     flumas        mass flux at interior faces
-  !> \param[in]     flumab        mass flux at boundary faces
-  !> \param[in]     viscf         \f$ \mu_\fij \dfrac{S_\fij}{\ipf \jpf} \f$
-  !>                               at interior faces for the r.h.s.
-  !> \param[in]     viscb         \f$ \mu_\fib \dfrac{S_\fib}{\ipf \centf} \f$
-  !>                               at boundary faces for the r.h.s.
-  !> \param[in]     viscce        symmetric cell tensor \f$ \tens{\mu}_\celli \f$
-  !> \param[in]     xcpp          array of specific heat (Cp)
-  !> \param[in]     weighf        internal face weight between cells i j in case
-  !>                               of tensor diffusion
-  !> \param[in]     weighb        boundary face weight for cells i in case
-  !>                               of tensor diffusion
-  !> \param[in]     icvflb        global indicator of boundary convection flux
-  !>                               - 0 upwind scheme at all boundary faces
-  !>                               - 1 imposed flux at some boundary faces
-  !> \param[in]     icvfli        boundary face indicator array of convection flux
-  !>                               - 0 upwind scheme
-  !>                               - 1 imposed flux
-  !> \param[in,out] smbrp         right hand side \f$ \vect{Rhs} \f$
-
-  subroutine bilsca (idtvar, f_id, iconvp, idiffp, nswrgp, imligp, ircflp,    &
-                     ischcp, isstpp, inc, imrgra, iccocg, iwarnp, imucpp,     &
-                     idftnp, imasac, blencp, epsrgp, climgp, extrap, relaxp,  &
-                     thetap, pvar, pvara, coefap, coefbp, cofafp, cofbfp,     &
-                     flumas, flumab, viscf, viscb, viscce, xcpp, weighf,      &
-                     weighb, icvflb, icvfli, smbrp)
-
-    use, intrinsic :: iso_c_binding
-    use numvar
-    use cplsat
-
-    implicit none
-
-    ! Arguments
-
-    integer, intent(in) :: idtvar, f_id, iconvp, idiffp, imrgra, imucpp
-    integer, intent(in) :: imligp, ircflp, ischcp, isstpp, inc, iccocg
-    integer, intent(in) :: idftnp, iwarnp, imasac, nswrgp
-    double precision, intent(in) :: blencp, epsrgp, climgp
-    double precision, intent(in) :: relaxp, thetap, extrap
-    real(kind=c_double), dimension(*), intent(in) :: pvar, pvara, coefap
-    real(kind=c_double), dimension(*), intent(in) :: coefbp, cofafp, cofbfp
-    real(kind=c_double), dimension(*), intent(in) :: flumas, flumab
-    real(kind=c_double), dimension(*), intent(in) :: viscf, viscb
-    real(kind=c_double), dimension(*), intent(in) :: viscce, xcpp
-    real(kind=c_double), dimension(*), intent(in) :: weighf, weighb
-    integer, intent(in) :: icvflb
-    integer(c_int), dimension(*), intent(in) :: icvfli
-    real(kind=c_double), dimension(*), intent(inout) :: smbrp
-
-    ! Local variables
-    type(var_cal_opt), target   :: vcopt
-    type(var_cal_opt), pointer  :: p_k_value
-    type(c_ptr)                 :: c_k_value
-
-    vcopt%iwarni = iwarnp
-    vcopt%iconv  = iconvp
-    vcopt%istat  = -1
-    vcopt%idiff  = idiffp
-    vcopt%idifft = -1
-    vcopt%idften = idftnp
-    vcopt%iswdyn = -1
-    vcopt%ischcv = ischcp
-    vcopt%isstpc = isstpp
-    vcopt%nswrgr = nswrgp
-    vcopt%nswrsm = -1
-    vcopt%imrgra = imrgra
-    vcopt%imligr = imligp
-    vcopt%ircflu = ircflp
-    vcopt%iwgrec = 0
-    vcopt%thetav = thetap
-    vcopt%blencv = blencp
-    vcopt%blend_st = 0 ! Warning, may be overwritten if a field
-    vcopt%epsilo = -1
-    vcopt%epsrsm = -1
-    vcopt%epsrgr = epsrgp
-    vcopt%climgr = climgp
-    vcopt%extrag = extrap
-    vcopt%relaxv = relaxp
-
-    p_k_value => vcopt
-    c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
-
-    call cs_balance_scalar(idtvar, f_id , imucpp, imasac, inc, iccocg,        &
-                           c_k_value, pvar , pvara , coefap, coefbp,          &
-                           cofafp, cofbfp, flumas, flumab, viscf, viscb,      &
-                           viscce, xcpp , weighf, weighb, icvflb, icvfli,     &
-                           smbrp)
-
-    return
-
-  end subroutine bilsca
-
-  !=============================================================================
-  !> \brief Wrapper to the function which adds the explicit part of the
-  !>        convection/diffusion terms of a transport equation of
-  !>        a vector field \f$ \vect{\varia} \f$.
-
-  !> More precisely, the right hand side \f$ \vect{Rhs} \f$ is updated as
-  !> follows:
-  !> \f[
-  !> \vect{Rhs} = \vect{Rhs} - \sum_{\fij \in \Facei{\celli}}      \left(
-  !>        \dot{m}_\ij \left( \vect{\varia}_\fij - \vect{\varia}_\celli \right)
-  !>      - \mu_\fij \gradt_\fij \vect{\varia} \cdot \vect{S}_\ij  \right)
-  !> \f]
-  !>
-  !> Remark:
-  !> if ivisep = 1, then we also take \f$ \mu \transpose{\gradt\vect{\varia}}
-  !> + \lambda \trace{\gradt\vect{\varia}} \f$, where \f$ \lambda \f$ is
-  !> the secondary viscosity, i.e. usually \f$ -\frac{2}{3} \mu \f$.
-  !>
-  !> Warning:
-  !> - \f$ \vect{Rhs} \f$ has already been initialized before calling bilscv!
-  !> - mind the sign minus
-  !>
-  !> Options for the diffusive scheme:
-  !> - idftnp = 1: scalar diffusivity
-  !> - idftnp = 6: symmetric tensor diffusivity
-  !>
-  !> Options for the convective scheme:
-  !> - blencp = 0: upwind scheme for the advection
-  !> - blencp = 1: no upwind scheme except in the slope test
-  !> - ischcp = 0: SOLU
-  !> - ischcp = 1: centered
-  !> - ischcp = 2  SOLU with upwind gradient reconstruction
-  !> - ischcp = 3: blending SOLU centered
-  !> - ischcp = 4: NVD/TVD
-
-  !> \param[in]     idtvar        indicator of the temporal scheme
-  !> \param[in]     f_id          field id (or -1)
-  !> \param[in]     iconvp        indicator
-  !>                               - 1 convection,
-  !>                               - 0 otherwise
-  !> \param[in]     idiffp        indicator
-  !>                               - 1 diffusion,
-  !>                               - 0 otherwise
-  !> \param[in]     nswrgp        number of reconstruction sweeps for the
-  !>                               gradients
-  !> \param[in]     imligp        clipping gradient method
-  !>                               - < 0 no clipping
-  !>                               - = 0 by neighboring gradients
-  !>                               - = 1 by the mean gradient
-  !> \param[in]     ircflp        indicator
-  !>                               - 1 flux reconstruction,
-  !>                               - 0 otherwise
-  !> \param[in]     ischcp        indicator
-  !>                               - 0 SOLU
-  !>                               - 1 centered
-  !>                               - 2 SOLU with gradient reconstruction
-  !>                               - 3 blending SOLU centered
-  !>                               - 4 NVD/TVD
-  !> \param[in]     isstpp        indicator
-  !>                               - 0 with slope test
-  !>                               - 1 without slope test
-  !>                               - 2 with beta limiter
-  !> \param[in]     inc           indicator
-  !>                               - 0 when solving an increment
-  !>                               - 1 otherwise
-  !> \param[in]     imrgra        indicator
-  !>                               - 0 iterative gradient
-  !>                               - 1 least squares gradient
-  !> \param[in]     ivisep        indicator to take \f$ \divv
-  !>                               \left(\mu \gradt \transpose{\vect{a}} \right)
-  !>                               -2/3 \grad\left( \mu \dive \vect{a} \right)\f$
-  !>                               - 1 take into account,
-  !>                               - 0 otherwise
-  !> \param[in]     iwarnp        verbosity
-  !> \param[in]     idftnp        indicator
-  !>                               - 1 scalar diffusivity
-  !>                               - 6 symmetric tensor diffusivity
-  !> \param[in]     imasac        take mass accumulation into account?
-  !> \param[in]     blencp        fraction of upwinding
-  !> \param[in]     epsrgp        relative precision for the gradient
-  !>                               reconstruction
-  !> \param[in]     climgp        clipping coefficient for the computation of
-  !>                               the gradient
-  !> \param[in]     relaxp        coefficient of relaxation
-  !> \param[in]     thetap        weighting coefficient for the theta-schema,
-  !>                               - thetap = 0: explicit scheme
-  !>                               - thetap = 0.5: time-centered
-  !>                               scheme (mix between Crank-Nicolson and
-  !>                               Adams-Bashforth)
-  !>                               - thetap = 1: implicit scheme
-  !> \param[in]     pvar          solved velocity (current time step)
-  !> \param[in]     pvara         solved velocity (previous time step)
-  !> \param[in]     coefav        boundary condition array for the variable
-  !>                               (explicit part)
-  !> \param[in]     coefbv        boundary condition array for the variable
-  !>                               (implicit part)
-  !> \param[in]     cofafv        boundary condition array for the diffusion
-  !>                               of the variable (explicit part)
-  !> \param[in]     cofbfv        boundary condition array for the diffusion
-  !>                               of the variable (implicit part)
-  !> \param[in]     flumas        mass flux at interior faces
-  !> \param[in]     flumab        mass flux at boundary faces
-  !> \param[in]     viscf         \f$ \mu_\fij \dfrac{S_\fij}{\ipf \jpf} \f$
-  !>                               at interior faces for the r.h.s.
-  !> \param[in]     viscb         \f$ \mu_\fib \dfrac{S_\fib}{\ipf \centf} \f$
-  !>                               at boundary faces for the r.h.s.
-  !> \param[in]     secvif        secondary viscosity at interior faces
-  !> \param[in]     secvib        secondary viscosity at boundary faces
-  !> \param[in]     viscce        symmetric cell tensor \f$ \tens{\mu}_\celli \f$
-  !> \param[in]     weighf        internal face weight between cells i j in case
-  !>                               of tensor diffusion
-  !> \param[in]     weighb        boundary face weight for cells i in case
-  !>                               of tensor diffusion
-  !> \param[in]     icvflb        global indicator of boundary convection flux
-  !>                               - 0 upwind scheme at all boundary faces
-  !>                               - 1 imposed flux at some boundary faces
-  !> \param[in]     icvfli        boundary face indicator of convection flux
-  !>                               - 0 upwind scheme
-  !>                               - 1 imposed flux
-  !> \param[in,out] smbrp         right hand side \f$ \vect{Rhs} \f$
-
-  subroutine bilscv (idtvar, f_id, iconvp, idiffp, nswrgp, imligp, ircflp,    &
-                     ischcp, isstpp, inc, imrgra, ivisep, iwarnp, idftnp,     &
-                     imasac, blencp, epsrgp, climgp, relaxp, thetap, pvar,    &
-                     pvara, coefav, coefbv, cofafv, cofbfv, flumas, flumab,   &
-                     viscf, viscb, secvif, secvib, viscce, weighf, weighb,    &
-                     icvflb, icvfli, smbrp)
-
-    use, intrinsic :: iso_c_binding
-    use numvar
-    use cplsat
-
-    implicit none
-
-    ! Arguments
-
-    integer, intent(in) :: idtvar, f_id, iconvp, idiffp, imrgra
-    integer, intent(in) :: imligp, ircflp, ischcp, isstpp, inc, ivisep
-    integer, intent(in) :: idftnp, iwarnp, imasac, nswrgp
-    double precision, intent(in) :: blencp, epsrgp, climgp
-    double precision, intent(in) :: relaxp, thetap
-    real(kind=c_double), dimension(*), intent(in) :: pvar, pvara, coefav
-    real(kind=c_double), dimension(*), intent(in) :: coefbv, cofafv, cofbfv
-    real(kind=c_double), dimension(*), intent(in) :: flumas, flumab
-    real(kind=c_double), dimension(*), intent(in) :: viscf, viscb
-    real(kind=c_double), dimension(*), intent(in) :: viscce, weighf, weighb
-    real(kind=c_double), dimension(*), intent(in) :: secvif, secvib
-    integer, intent(in) :: icvflb
-    integer(c_int), dimension(*), intent(in) :: icvfli
-    real(kind=c_double), dimension(*), intent(inout) :: smbrp
-
-    ! Local variables
-    type(var_cal_opt), target   :: vcopt
-    type(var_cal_opt), pointer  :: p_k_value
-    type(c_ptr)                 :: c_k_value
-
-    vcopt%iwarni = iwarnp
-    vcopt%iconv  = iconvp
-    vcopt%istat  = -1
-    vcopt%idiff  = idiffp
-    vcopt%idifft = -1
-    vcopt%idften = idftnp
-    vcopt%iswdyn = -1
-    vcopt%ischcv = ischcp
-    vcopt%isstpc = isstpp
-    vcopt%nswrgr = nswrgp
-    vcopt%nswrsm = -1
-    vcopt%imrgra = imrgra
-    vcopt%imligr = imligp
-    vcopt%ircflu = ircflp
-    vcopt%iwgrec = 0
-    vcopt%thetav = thetap
-    vcopt%blencv = blencp
-    vcopt%blend_st = 0 ! Warning, may be overwritten if a field
-    vcopt%epsilo = -1
-    vcopt%epsrsm = -1
-    vcopt%epsrgr = epsrgp
-    vcopt%climgr = climgp
-    vcopt%extrag = -1
-    vcopt%relaxv = relaxp
-
-    p_k_value => vcopt
-    c_k_value = equation_param_from_vcopt(c_loc(p_k_value))
-
-    call cs_balance_vector(idtvar, f_id, imasac, inc, ivisep,                &
-                           c_k_value, pvar, pvara , coefav, coefbv, cofafv,  &
-                           cofbfv, flumas, flumab, viscf, viscb, secvif,     &
-                           secvib, viscce, weighf, weighb,                   &
-                           icvflb, icvfli, smbrp)
-
-    return
-
-  end subroutine bilscv
-
-  !=============================================================================
-
   !> \brief Return pointer to coupling face indicator for a field
 
   !> \param[in]     f_id      id of given field
@@ -6233,6 +5335,35 @@ contains
     call cs_atmo_set_meteo_file_name(c_name)
 
   end subroutine atmo_set_meteo_file_name
+
+  !=============================================================================
+
+  !> \brief Indicate if a cell is 1d
+
+  !> \param[in]     iel       cell number (cell_id + 1)
+  !> \result        is_1d
+
+  function cell_is_1d(iel) result(is_1d)
+
+    use, intrinsic :: iso_c_binding
+    implicit none
+
+    ! Arguments
+
+    integer :: iel
+    integer :: is_1d
+
+    ! Local variables
+
+    integer(kind=c_int) :: c_cell_id
+    integer(kind=c_int) :: c_is_1d
+
+
+    c_cell_id = iel - 1
+    c_is_1d = cs_f_velocity_pressure_cell_is_1d(c_cell_id)
+    is_1d = c_is_1d
+
+  end function cell_is_1d
 
   !=============================================================================
 

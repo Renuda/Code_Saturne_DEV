@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -214,12 +214,12 @@ cs_variable_field_create(const char  *name,
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Access a field's equation parameters for read only.
+ * \brief Access a field's equation parameters.
  *
  * If the equation parameters were never initialized, they will be initialized
  * based on the current defaults.
  *
- * If the field does not have associated equaton paremeters (i.e. is not
+ * If the field does not have associated equation paremeters (i.e. is not
  * a variable field or is a CDO field (which is referenced by but does not
  * directly reference equations), NULL is returned.
  *
@@ -246,18 +246,18 @@ cs_field_get_equation_param(cs_field_t  *f)
 
 /*----------------------------------------------------------------------------*/
 /*!
- * \brief Access a field's equation parameters.
+ * \brief Access a field's equation parameters for read only.
  *
- * If the equation parameters were never initialized, the currect default
+ * If the equation parameters were never initialized, the current default
  * parameters will be returned instead.
  *
- * If the field does not have associated equaton paremeters (i.e. is not
+ * If the field does not have associated equation parameters (i.e. is not
  * a variable field or is a CDO field (which is referenced by but does not
  * directly reference equations), NULL is returned.
  *
  * \param[in]  f  pointer to associated field
  *
- * \return  const-qaulified pointer to field's equation parameters, or NULL
+ * \return  const-qualified pointer to field's equation parameters, or NULL
  */
 /*----------------------------------------------------------------------------*/
 

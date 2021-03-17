@@ -3,6 +3,164 @@ Master (not on release branches yet)
 
 User changes:
 
+- GUI: Remove legacy definitions of syrthes coupling when opening old XML file:
+  * Strating from v7.0 a syrthes coupling is defined as a boundary
+    condition and no longer as an independent model.
+  * Pre v7.0 definitions are saved to a file
+    'deprecated_syrthes_coupling_data.txt' and are then removed from the
+    XML file.
+  * A warning pop-up informs the user of the change.
+
+- GUI: Add more options for probes/profiles:
+  * User can now choose whether or not to snap a probe/profile point
+    which is currently the default behavior. When snap is activated for
+    a set of points and several are contained within the same cell, we
+    only keep the one closest to the cell center.
+  * User can now activate the interpolation for probes/profiles, hence
+    providing an interpolated value at the chosen coordinate instead of
+    the value of the closest cell center.
+  * For better robustness for the interpolation, users can now only
+    define fields as output for probes/profiles, and no longer only a
+    component. For example, for the velocity, all 3 components will be
+    written. For older xml files which contained components, the latter
+    are kept for the sake of compatibility.
+
+- GUI: User formulae for physical properties can now be defined
+  over multiple zones.
+  * This changes the handling of physical properties.
+  * Physical properties are now defined as a volumic condition, with
+    the zone "all_cells" as the default one.
+  * User-laws for physical properties can now be defined over multiple
+    zones using the MEG mechanism. This requires the definition of a
+    variable property over the main zone ("all_cells").
+  * A zone can now be defined as solid, which then allows activating the
+    internal coupling functions for a given set of scalars (see the
+    "Coupling parameters" page).
+  * The internal coupling function is now available in the GUI.
+
+Numerics:
+
+- Add GCR (Generalized Conjugate Residual) which enables a flexible
+  preconditioning for non-symmetric linear system. Equivalent to a flexible
+  GMRES.
+
+- Several improvements for the MUMPS interface
+  * Add a MUMPS interface for native matrices (with or without symmetric
+    storage).
+  * Add a MUMPS interface to handle single-precision arithmetic. This
+  functionnality allows one to get a better efficiency without degrading
+  the accuracy when considering MUMPS as a preconditioner while reducing
+  the memory consumption.
+
+- CDO: Add block preconditioning for symmetric saddle-point problem and a
+  MINRES algorithm (relying on a tuned storage of the saddle-point system).
+  GCR algorithm for more complex block preconditionning such upper/lower Schur
+  block preconditioning or Symmetric Gauss-Seidel block preconditioning.
+  Several approximations of the Schur complement are available.
+
+- CDO: Add an Uzawa algorithm accelerated with a CG (conjuguate gradient)
+  strategy and preconditioned with a Cahouet-Chabard technique. This is
+  another solver to solve saddle-point problem arising from the monolithic
+  coupling of CDO face-based schemes for the (Navier-)Stokes equations.
+
+Architectural changes:
+
+- Move salome extensions (CFDSTUDY module) to a separate repository.
+
+Release 7.0.0 (unreleased)
+--------------------------
+
+User changes:
+
+- Add a `cs_base_get_run_identity` utility function, allowing the
+  user to query the run_id, case and study name from a running
+  computation's user-defined functions.
+
+- Major evolution concerning coupling with external codes
+  * Create a generic "Coupling parameters" page after boundary
+    conditions in the tree view. This page gathers the parameters for
+    Syrthes, code_aster and cathare couplings.
+  * The definition of a coupling with Syrthes is now done directly as a
+    thermal boundary condition (like flux or temperature).
+  * Display external coupling tab as deprecated.
+
+- GUI: Change available options for time-stepping.
+  * Previous steady option ("Steady (constant relaxation coefficient)"),
+    `idtvar` = -1, is now only available if it is activated in the
+    opened xml file. It is then named "Deprecated: Steady ..."
+    to indicate its new status.
+  * Previous "pseduo steady" option, `idtvar` = 2, is renamed as
+    "Steady (local time step)" and is now the de-facto steady algorithm.
+
+- Rename and reorganize `cs_stokes_model_t` and `cs_piso_t` structures.
+  * Structures are renamed to `cs_velocity_coupling_model_t` and
+    `cs_velocity_coupling_param_t`, and members are distributed in a more
+    logical and consistent manner.
+
+- When solving for enthalpy, multiplying a face's boundary condition
+  code (icodcl) by -1 allows defining it by temperature instead.
+
+- Add a `code_saturne symbol2line` command.
+  This command can be used with debug symbols from a stack trace in order
+  to find the origin of the call.
+  Usage example for the line:
+  1: 0x55834c6102d7 <cs_function+0x17>             (cs_solver)
+  Run:
+  code_saturne symbol2line -s cs_function+0x17
+  Additional info is provided using 'code_saturne symbol2line --help'
+
+Bug fixes:
+
+- GUI: fix incomplete handling of compressible boundary conditions
+  preventing run unless completed in user subroutines.
+
+- Fix off-by-one return values in cs_selector_get_family_list
+  (advanced user selection).
+
+- Gas combustion: do not ignore handle GUI-defined settings of model scalar
+  numerical parameters.
+
+- Avoid division by zero in parallel when trying to output empty profiles.
+
+Numerics and physical modeling:
+
+- Change default precision for linear solvers
+  from 1e-8 to 1e-5 except for the pressure field.
+
+- Activate improved hydrostatic pressure interpolation (iphydr) by default.
+
+- Add an explicit treatment of the advection term in CDO face-based equations
+
+Release 6.3.0 (December 21 2020)
+--------------------------------
+
+User changes:
+
+- GUI: volume and boundary zones are now defined under the "Mesh"
+  section, so that their selection can be used in a consistent
+  manner in all following sections.
+  * some specific boundary conditions, such as those for the Lagrangian
+    model, are now grouped with standard zone boundary conditions rather
+    than appeating in a separate "Additional BC models" section.
+
+- Add `--dest` option to `code_saturne run` and `code_saturne submit`
+  commands. This allows specifying a top directory separate from the
+  one in which a case is present.
+
+- Change default options for the VOF model (convective scheme is now
+  CICSAM by default, with a continuous limiter ensuring
+  bounds).
+
+- Make dynamic relaxation option for pure diffusion equation default option.
+  (iswdyn = 2). This make the iterative process solving of the legacy
+  solver more robust (especially for pressure).
+
+- Add a `code_saturne parametric` command which currently allows the
+  modification of several parameters of a case and the creation of a
+  case  based on a reference case.
+  Integration with studymanager and cfdstudy (for parametric studies)
+  is to be added soon (before v7.0 release).
+
 - Preprocessing: added mesh modification flag types to more easily
   activate re-partitioning.
 
@@ -31,7 +189,7 @@ User changes:
 - When creating a case with `code_saturne create`, the `--noref` option is
   enabled by default. It can be cancelled using the `--copy-ref` option.
 
--GUI: user source file editor can now also use reference files from the
+- GUI: user source file editor can now also use reference files from the
   installation directory.
 
 - code_saturne mesh format (.csm) is now treated in the same way as external
@@ -119,7 +277,7 @@ Architectural changes:
   modules.
 
 Release 6.2.0 (August 27 2020)
---------------------------
+------------------------------
 
 User changes:
 

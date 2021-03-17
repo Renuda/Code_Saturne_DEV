@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -247,7 +247,7 @@ cs_maxwell_update(const cs_mesh_t             *mesh,
 /*!
  * \brief  Predefined extra-operations for the Maxwell module
  *
- * \param[in]  connect   pointer to a cs_cdo_connect_t structure
+ * \param[in]  connect    pointer to a cs_cdo_connect_t structure
  * \param[in]  quant      pointer to a cs_cdo_quantities_t structure
  */
 /*----------------------------------------------------------------------------*/

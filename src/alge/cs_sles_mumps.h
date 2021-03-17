@@ -2,13 +2,13 @@
 #define __CS_SLES_MUMPS_H__
 
 /*============================================================================
- * Sparse Linear Equation Solvers using MUMPS
+ * Sparse Linear Equation Solvers using MUMPS (a sparse direct solver library)
  *============================================================================*/
 
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -32,6 +32,7 @@
  *----------------------------------------------------------------------------*/
 
 #include <dmumps_c.h>
+#include <smumps_c.h>
 
 /*----------------------------------------------------------------------------
  *  Local headers
@@ -40,6 +41,7 @@
 #include "cs_base.h"
 #include "cs_halo_perio.h"
 #include "cs_matrix.h"
+#include "cs_param_sles.h"
 #include "cs_time_plot.h"
 #include "cs_sles.h"
 
@@ -61,6 +63,16 @@ BEGIN_C_DECLS
 
 #define CS_SLES_MUMPS_JOB_INIT -1
 
+/* Set of macros defined in order to match MUMPS documentation (because of the
+ * difference between C/FORTRAN programming language
+ */
+#define ICNTL(I)   icntl[(I)-1]
+#define CNTL(I)    cntl[(I)-1]
+#define INFOG(I)   infog[(I)-1]
+#define INFO(I)    info[(I)-1]
+#define RINFOG(I)  rinfog[(I)-1]
+#define RINFO(I)   rinfo[(I)-1]
+
 /*============================================================================
  * Type definitions
  *============================================================================*/
@@ -74,16 +86,20 @@ BEGIN_C_DECLS
  * when the selection function is called so that value or structure should
  * not be temporary (i.e. local);
  *
- * \param[in, out] context  pointer to optional (untyped) value or structure
- * \param[in, out] dmumps   pointer to DMUMPS_STRUCT_C structure
+ * \param[in]      slesp     pointer to the related cs_param_sles_t structure
+ * \param[in, out] context   pointer to optional (untyped) value or structure
+ * \param[in, out] dmumps    pointer to DMUMPS_STRUC_C (double-precision)
+ * \param[in, out] smumps    pointer to SMUMPS_STRUC_C (single-precision)
  */
 /*----------------------------------------------------------------------------*/
 
 typedef void
-(cs_sles_mumps_setup_hook_t) (void              *context,
-                              DMUMPS_STRUC_C    *dmumps);
+(cs_sles_mumps_setup_hook_t) (const cs_param_sles_t   *slesp,
+                              void                    *context,
+                              DMUMPS_STRUC_C          *dmumps,
+                              SMUMPS_STRUC_C          *smumps);
 
-/* Iterative linear solver context (opaque) */
+/* MUMPS solver context (opaque) */
 
 typedef struct _cs_sles_mumps_t  cs_sles_mumps_t;
 
@@ -104,14 +120,18 @@ typedef struct _cs_sles_mumps_t  cs_sles_mumps_t;
  * when the selection function is called so that structure should
  * not be temporary (i.e. local);
  *
- * \param[in, out] context  pointer to optional (untyped) value or structure
- * \param[in, out] mumps    pointer to DMUMPS_STRUCT_C structure
+ * \param[in]      slesp      pointer to the related cs_param_sles_t structure
+ * \param[in, out] context    pointer to optional (untyped) value or structure
+ * \param[in, out] dmumps     pointer to DMUMPS_STRUC_C (double-precision)
+ * \param[in, out] smumps     pointer to SMUMPS_STRUC_C (single-precision)
  */
 /*----------------------------------------------------------------------------*/
 
 void
-cs_user_sles_mumps_hook(void               *context,
-                        DMUMPS_STRUC_C     *mumps);
+cs_user_sles_mumps_hook(const cs_param_sles_t   *slesp,
+                        void                    *context,
+                        DMUMPS_STRUC_C          *dmumps,
+                        SMUMPS_STRUC_C          *smumps);
 
 /*=============================================================================
  * Public function prototypes
@@ -129,37 +149,34 @@ cs_user_sles_mumps_hook(void               *context,
  * This is a utility function: if finer control is needed, see
  * \ref cs_sles_define and \ref cs_sles_mumps_create.
  *
- * Note that this function returns a pointer directly to the iterative solver
- * management structure. This may be used to set further options.
+ * Note that this function returns a pointer directly to the sparse direct
+ * solver management structure. This may be used to set further options.
  * If needed, \ref cs_sles_find may be used to obtain a pointer to the matching
  * \ref cs_sles_t container.
  *
  * \param[in]      f_id          associated field id, or < 0
  * \param[in]      name          associated name if f_id < 0, or NULL
- * \param[in]      sym           type of matrix (unsymmetric, SPD, symmetric)
- * \param[in]      verbosity     level of verbosity
+ * \param[in]      slesp         pointer to a cs_param_sles_t structure
  * \param[in]      setup_hook    pointer to optional setup epilogue function
  * \param[in,out]  context       pointer to optional (untyped) value or
  *                               structure for setup_hook, or NULL
  *
- * \return  pointer to newly created iterative solver info object.
+ * \return  pointer to newly created sparse direct solver info object.
  */
 /*----------------------------------------------------------------------------*/
 
 cs_sles_mumps_t *
-cs_sles_mumps_define(int                          f_id,
-                     const char                  *name,
-                     int                          sym,
-                     int                          verbosity,
-                     cs_sles_mumps_setup_hook_t  *setup_hook,
-                     void                        *context);
+cs_sles_mumps_define(int                            f_id,
+                     const char                    *name,
+                     const cs_param_sles_t         *slesp,
+                     cs_sles_mumps_setup_hook_t    *setup_hook,
+                     void                          *context);
 
 /*----------------------------------------------------------------------------*/
 /*!
  * \brief Create MUMPS linear system solver info and context.
  *
- * \param[in]      sym           type of matrix (unsymmetric, SPD, symmetric)
- * \param[in]      verbosity     level of verbosity
+ * \param[in]      slesp         pointer to a cs_param_sles_t structure
  * \param[in]      setup_hook    pointer to optional setup epilogue function
  * \param[in,out]  context       pointer to optional (untyped) value or
  *                               structure for setup_hook, or NULL
@@ -169,8 +186,7 @@ cs_sles_mumps_define(int                          f_id,
 /*----------------------------------------------------------------------------*/
 
 cs_sles_mumps_t *
-cs_sles_mumps_create(int                          sym,
-                     int                          verbosity,
+cs_sles_mumps_create(const cs_param_sles_t       *slesp,
                      cs_sles_mumps_setup_hook_t  *setup_hook,
                      void                        *context);
 
@@ -198,7 +214,7 @@ cs_sles_mumps_copy(const void   *context);
  * buffers and preconditioning but does not free the whole context,
  * as info used for logging (especially performance data) is maintained.
  *
- * \param[in, out]  context  pointer to iterative solver info and context
+ * \param[in, out]  context  pointer to sparse direct solver info and context
  *                           (actual type: cs_sles_mumps_t  *)
  */
 /*----------------------------------------------------------------------------*/
@@ -210,7 +226,7 @@ cs_sles_mumps_free(void  *context);
 /*!
  * \brief Destroy MUMPS linear system solver info and context.
  *
- * \param[in, out]  context  pointer to iterative solver info and context
+ * \param[in, out]  context  pointer to sparse direct solver info and context
  *                           (actual type: cs_sles_mumps_t  **)
  */
 /*----------------------------------------------------------------------------*/
@@ -222,7 +238,7 @@ cs_sles_mumps_destroy(void   **context);
 /*!
  * \brief Setup MUMPS linear equation solver.
  *
- * \param[in, out]  context    pointer to iterative solver info and context
+ * \param[in, out]  context    pointer to sparse direct solver info and context
  *                             (actual type: cs_sles_mumps_t  *)
  * \param[in]       name       pointer to system name
  * \param[in]       a          associated matrix
@@ -240,8 +256,8 @@ cs_sles_mumps_setup(void               *context,
 /*!
  * \brief Call MUMPS linear equation solver.
  *
- * \param[in, out]  context        pointer to iterative solver info and context
- *                                 (actual type: cs_sles_mumps_t  *)
+ * \param[in, out]  context        pointer to sparse direct solver info and
+ *                                 context (actual type: cs_sles_mumps_t  *)
  * \param[in]       name           pointer to system name
  * \param[in]       a              matrix
  * \param[in]       verbosity      associated verbosity
@@ -279,7 +295,7 @@ cs_sles_mumps_solve(void                *context,
 /*!
  * \brief Log sparse linear equation solver info.
  *
- * \param[in]  context   pointer to iterative solver info and context
+ * \param[in]  context   pointer to sparse direct solver info and context
  *                       (actual type: cs_sles_mumps_t  *)
  * \param[in]  log_type  log type
  */

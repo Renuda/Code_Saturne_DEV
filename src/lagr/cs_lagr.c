@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -170,8 +170,8 @@ static cs_lagr_model_t  _lagr_model
   = {.physical_model = CS_LAGR_PHYS_OFF,
      .n_temperature_layers = 1,
      .modcpl = 1,
-     .idistu = 1,
-     .idiffl = 0,
+     .idistu = -1,
+     .idiffl = -1,
      .deposition = 0,
      .dlvo = 0,
      .roughness = 0,
@@ -1720,8 +1720,8 @@ cs_lagr_solve_initialize(const cs_real_t  *dt)
   cs_lnum_t ncelet = cs_glob_mesh->n_cells_with_ghosts;
 
   BFT_MALLOC(extra->grad_pr, ncelet, cs_real_3_t);
-  if (cs_glob_lagr_model->modcpl == 1
-      || cs_glob_lagr_model->shape > 0 )
+  if (   cs_glob_lagr_model->modcpl > 0
+      || cs_glob_lagr_model->shape > 0)
     BFT_MALLOC(extra->grad_vel, ncelet, cs_real_33_t);
 
   /* For frozen field:

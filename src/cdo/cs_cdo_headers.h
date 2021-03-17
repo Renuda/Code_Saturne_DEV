@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -39,7 +39,6 @@
 #include "cs_cdo_local.h"
 #include "cs_cdo_main.h"
 #include "cs_cdo_quantities.h"
-#include "cs_cdo_time.h"
 #include "cs_cdo_turbulence.h"
 #include "cs_cdoeb_vecteq.h"
 #include "cs_cdofb_ac.h"
@@ -81,6 +80,7 @@
 #include "cs_property.h"
 #include "cs_quadrature.h"
 #include "cs_reco.h"
+#include "cs_saddle_itsol.h"
 #include "cs_scheme_geometry.h"
 #include "cs_sdm.h"
 #include "cs_solidification.h"

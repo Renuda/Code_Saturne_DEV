@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -59,8 +59,8 @@ class SpeciesModel(MainFieldsModel, Variables, Model):
         default['carrierField']     = 1
         default['diffusion_coefficient']    = 1e-5
         default['schmidt']          = 0.9
-        default['minValue']         = 0
-        default['maxValue']         = 1
+        default['minValue']         = 0.0
+        default['maxValue']         = 1.0
         default['timeDependStatus'] = "on"
         default['diffusionStatus']  = "on"
         default['coupledModel']     = "coupled"

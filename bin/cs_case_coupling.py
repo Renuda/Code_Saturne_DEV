@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -44,6 +44,7 @@ from code_saturne import cs_runcase
 def coupling(package,
              domains,
              casedir,
+             dest_dir = None,
              staging_dir = None,
              verbose = True,
              package_compute = None):
@@ -87,7 +88,7 @@ def coupling(package,
         # First, determine parameter file to use for code_saturne
         # or associated modules (ensuring backwards compatibiliy)
 
-        if solver_s in package.config.solver_modules \
+        if solver_s in package.config.solver_modules.keys() \
            or solver_s == 'cathare':
 
             param = None
@@ -139,7 +140,7 @@ def coupling(package,
 
         # Now build case domain for the different solvers:
 
-        if solver_s in package.config.solver_modules:
+        if solver_s in package.config.solver_modules.keys():
 
             dom = domain(package,
                          package_compute = package_compute,
@@ -242,6 +243,7 @@ def coupling(package,
     c = case(package,
              package_compute = package_compute,
              case_dir = casedir,
+             dest_dir = dest_dir,
              staging_dir = staging_dir,
              domains = sat_domains + nep_domains + cat_domains,
              syr_domains = syr_domains,

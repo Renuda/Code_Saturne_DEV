@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -131,7 +131,7 @@ write(nfecra, *) '==================================================='
 write(nfecra, *) 'printing aerosol concentrations'
 
 do jb = 1, n_aer
-  write(nfecra,*) "Aerosol number ",jb
+  write(nfecra,*) "Size bin number ",jb
   do jsp = 1, nlayer_aer
     isc = isca_chem(nespg + jb + (jsp-1)*n_aer)
     f_id = ivarfl(isca(isc))

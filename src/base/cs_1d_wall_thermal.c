@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1193,6 +1193,7 @@ cs_1d_wall_thermal_free(void)
     BFT_FREE(_1d_wall_thermal.local_models->z);
   BFT_FREE(_1d_wall_thermal.local_models);
   BFT_FREE(_1d_wall_thermal.ifpt1d);
+  BFT_FREE(_1d_wall_thermal.tppt1d);
 }
 
 /*----------------------------------------------------------------------------*/

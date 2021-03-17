@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -157,13 +157,13 @@ _entry_create(const char  *name,
   size_t l = strlen(name);
   const char *addr_0 = NULL, *addr_1 = NULL;
 
-  /* Check that the name is not allready used */
+  /* Check that the name is not already used */
   int id = cs_map_name_to_id_try(_entry_map, name);
   if (id > -1)
     bft_error(__FILE__, __LINE__, 0,
               _("Error creating entry:\n"
                 "  name:        \"%s\"\n\n"
-                "An entry with that name has allready been defined:\n"
+                "An entry with that name has already been defined:\n"
                 "  id: %d\n"),
               name, id);
 

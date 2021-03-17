@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -68,11 +68,11 @@
 #include "cs_physical_model.h"
 #include "cs_prototypes.h"
 #include "cs_rotation.h"
-#include "cs_stokes_model.h"
 #include "cs_thermal_model.h"
 #include "cs_time_step.h"
 #include "cs_turbulence_model.h"
 #include "cs_turbulence_rotation.h"
+#include "cs_velocity_pressure.h"
 
 #include "cs_clip_ke.h"
 
@@ -280,8 +280,6 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
   const cs_real_t *cell_f_vol = fvq->cell_f_vol;
   const cs_real_t *distb = fvq->b_dist;
   const cs_lnum_t *b_face_cells = m->b_face_cells;
-
-  int imvisf = cs_glob_space_disc->imvisf;
 
   const cs_time_scheme_t *time_scheme = cs_get_glob_time_scheme();
   const cs_real_t thets  = time_scheme->thetst;
@@ -879,7 +877,7 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
 
     /* Boussinesq approximation, only for the thermal scalar for the moment */
 
-    if (cs_glob_stokes_model->idilat == 0) {
+    if (cs_glob_velocity_pressure_model->idilat == 0) {
 
       cs_field_gradient_scalar(f_thm,
                                true,
@@ -954,7 +952,7 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
       xk    = cvara_k[c_id];
       ttke  = xk / xeps;
 
-      /* Implicit Buoyant terms when negativ */
+      /* Implicit Buoyant terms when negative */
       tinstk[c_id] += fmax(rho*cell_f_vol[c_id]*cs_turb_cmu*ttke*grad_dot_g[c_id], 0.);
 
       /* Explicit Buoyant terms */
@@ -1002,7 +1000,7 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
 
     cs_face_viscosity(m,
                       fvq,
-                      imvisf,
+                      vcopt_k->imvisf,
                       w3,
                       viscf,
                       viscb);
@@ -1088,8 +1086,8 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
     /* Take into account the Cazalbou rotation/curvature correction if necessary */
     if (cs_glob_turb_rans_model->irccor == 1) {
       for (cs_lnum_t c_id = 0; c_id < n_cells; c_id++) {
-        w10[c_id] = w10[c_id]*ce2rc[c_id]/cs_turb_ccaze2;
-        w11[c_id] = w11[c_id]*ce2rc[c_id]/cs_turb_ccaze2;
+        w10[c_id] *= ce2rc[c_id]/cs_turb_ccaze2;
+        w11[c_id] *= ce2rc[c_id]/cs_turb_ccaze2;
       }
     }
 
@@ -1247,11 +1245,9 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
         xk   = cvara_k[c_id];
         rho = crom[c_id];
         ttke = xk / xeps;
-        tinstk[c_id] = tinstk[c_id]
-                     + rho*cell_f_vol[c_id]/ttke
+        tinstk[c_id] += rho*cell_f_vol[c_id]/ttke
                      + fmax(d2s3*rho*cell_f_vol[c_id]*divu[c_id], 0.);
-        tinste[c_id] = tinste[c_id]
-                     + ce2rc[c_id]*rho*cell_f_vol[c_id]/ttke
+        tinste[c_id] += ce2rc[c_id]*rho*cell_f_vol[c_id]/ttke
                      + fmax(d2s3*ce1rc[c_id]*rho*cell_f_vol[c_id]*divu[c_id], 0.);
       }
     }
@@ -1563,7 +1559,7 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
 
       cs_face_viscosity(m,
                         fvq,
-                        imvisf,
+                        vcopt_k->imvisf,
                         w4,
                         viscf,
                         viscb);
@@ -1630,7 +1626,7 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
 
       cs_face_viscosity(m,
                         fvq,
-                        imvisf,
+                        vcopt_eps->imvisf,
                         w4,
                         viscf,
                         viscb);
@@ -1803,7 +1799,7 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
 
     cs_face_viscosity(m,
                       fvq,
-                      imvisf,
+                      vcopt_k->imvisf,
                       w1,
                       viscf,
                       viscb);
@@ -1883,7 +1879,7 @@ cs_turbulence_ke(cs_lnum_t        ncesmp,
 
     cs_face_viscosity(m,
                       fvq,
-                      imvisf,
+                      vcopt_eps->imvisf,
                       w1,
                       viscf,
                       viscb);

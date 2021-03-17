@@ -2,7 +2,7 @@
 
 ! This file is part of Code_Saturne, a general-purpose CFD tool.
 !
-! Copyright (C) 1998-2020 EDF S.A.
+! Copyright (C) 1998-2021 EDF S.A.
 !
 ! This program is free software; you can redistribute it and/or modify it under
 ! the terms of the GNU General Public License as published by the Free Software
@@ -74,6 +74,7 @@ integer          iok
 integer          f_id, idftnp
 integer          iest
 integer          key_buoyant_id, is_buoyant_fld
+integer          kturt, turb_flux_model
 
 double precision gravn2
 
@@ -87,6 +88,7 @@ type(var_cal_opt) :: vcopt
 
 ! Key id for buoyant field (inside the Navier Stokes loop)
 call field_get_key_id("is_buoyant", key_buoyant_id)
+call field_get_key_id('turbulent_flux_model', kturt)
 
 ! Determine itycor now that irccor is known (iturb/itytur known much earlier)
 ! type of rotation/curvature correction for turbulent viscosity models
@@ -171,10 +173,10 @@ else if (iphydr.eq.1.and.icalhy.eq.-1) then
   endif
 endif
 
-!   Schemas en temps
-!       en LES : Ordre 2 ; sinon Ordre 1
-!       (en particulier, ordre 2 impossible en k-eps couple)
-if (ischtp.eq.-999) then
+!   Global time stepping
+!       for LES: 2nd order; 1st order otherwise
+!       (2nd order forbidden for "coupled" k-epsilon)
+if (ischtp.eq.-1) then
   if (itytur.eq.4) then
     ischtp = 2
   else
@@ -230,11 +232,10 @@ do iscal = 1, nscal
     endif
   endif
 
-  ! Model for turbulent fluxes u'T' (SGDH, GGDH, AFM, DFM)
-  ityturt(iscal) = iturt(iscal)/10
+  call field_get_key_int(ivarfl(isca(iscal)), kturt, turb_flux_model)
 
   if (iscal.eq.iscalt) then
-    if (iturt(iscalt).gt.0.and.irovar.eq.1) then
+    if (turb_flux_model.gt.0.and.irovar.eq.1) then
       call add_property_field_1d('thermal_expansion', 'Beta', ibeta)
     endif
   endif

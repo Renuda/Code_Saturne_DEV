@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -204,14 +204,14 @@ cs_syr_coupling_recv_boundary(int        nvar,
 /*!
  * \brief  Send field/variable values relative to a SYRTHES coupling.
  *
- * \param[in]  h_wall  wall thermal exchange coefficient
- * \param[in]  t_wall  wall thermal variable
+ * \param[in]  h_wall   wall thermal exchange coefficient
+ * \param[in]  v_fluid  near-wall fluid thermal variable
  */
 /*----------------------------------------------------------------------------*/
 
 void
 cs_syr_coupling_send_boundary(const cs_real_t  h_wall[],
-                              cs_real_t        t_wall[]);
+                              cs_real_t        v_fluid[]);
 
 /*----------------------------------------------------------------------------*/
 /*!

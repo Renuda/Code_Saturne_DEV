@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1361,10 +1361,11 @@ cs_gui_physical_model_select(void)
           bft_error(__FILE__, __LINE__, 0,
                     _("Invalid gas combustion flow model: %s."),
                     model_value);
-        
+
         /* Read uniform variable thermodynamical pressure (ipthrm) */
         cs_fluid_properties_t *phys_pp = cs_get_glob_fluid_properties();
-        cs_gui_node_get_child_status_int(tn, "thermodynamical_pressure", &(phys_pp->ipthrm));
+        cs_gui_node_get_child_status_int(tn, "thermodynamical_pressure",
+                                         &(phys_pp->ipthrm));
 
         /* Read the soot model (isoot, rosoot, xsoot) */
         cs_combustion_model_t   *cm = cs_glob_combustion_model;
@@ -1376,11 +1377,14 @@ cs_gui_physical_model_select(void)
         if (model_soot != NULL && !cs_gui_strcmp(model_soot, "off")) {
           if (cs_gui_strcmp(model_soot, "constant_soot_yield")) {
             cm->isoot = 0;
-            cs_gui_node_get_child_real(tn_soot, "soot_density", &(cm->gas.rosoot));
-            cs_gui_node_get_child_real(tn_soot, "soot_fraction", &(cm->gas.xsoot));}
+            cs_gui_node_get_child_real(tn_soot, "soot_density",
+                                       &(cm->gas.rosoot));
+            cs_gui_node_get_child_real(tn_soot, "soot_fraction",
+                                       &(cm->gas.xsoot));}
           else if (cs_gui_strcmp(model_soot, "moss")) {
             cm->isoot = 1;
-            cs_gui_node_get_child_real(tn_soot, "soot_density", &(cm->gas.rosoot));}
+            cs_gui_node_get_child_real(tn_soot, "soot_density",
+                                       &(cm->gas.rosoot));}
         }
       }
     }

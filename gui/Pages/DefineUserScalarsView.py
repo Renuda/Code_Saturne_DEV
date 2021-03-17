@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -623,7 +623,7 @@ class DefineUserScalarsView(QWidget, Ui_DefineUserScalarsForm):
         for name in self.mdl.getScalarsVarianceList():
             self.modelVariance.newItem(name)
         if GasCombustionModel(self.case).getGasCombustionModel() == "d3p":
-            for name in self.mdl.getGasCombScalarsNameList(): 
+            for name in self.mdl.getGasCombScalarsNameList():
                 self.modelScalars.newModelItem(name)
                 self.modelVariance.newModelItem(name)
 

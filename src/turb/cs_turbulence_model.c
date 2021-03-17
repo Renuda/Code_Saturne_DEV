@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -357,7 +357,7 @@ _turb_rans_model =
   .idifre     =    1,
   .iclsyr     =    1,
   .iclptr     =    0,
-  .xlomlg      =-1e13
+  .xlomlg     = -1e13
 };
 
 const cs_turb_rans_model_t  *cs_glob_turb_rans_model = &_turb_rans_model;
@@ -439,14 +439,13 @@ double cs_turb_dpow = -1.;
 
 /*!
  * Constant \f$C_\mu\f$ for all the RANS turbulence models except for the
- * v2f model (see \ref cs_turb_cv2fmu for the value of \f$C_\mu\f$ in case of v2f
- * modelling). Useful if and only if \ref iturb = 20, 21, 30, 31 or 60
+ * Warning: different value for v2f models. Useful if and only if \ref iturb = 20, 21, 30, 31, 50, 51 or 60
  * (\f$k-\varepsilon\f$, \f$R_{ij}-\varepsilon\f$ or \f$k-\omega\f$).
  */
 double cs_turb_cmu = 0.09;
 
 /*! \f$ C_\mu^\frac{1}{4} \f$ */
-double cs_turb_cmu025;
+double cs_turb_cmu025 = 0.547722557; /* computed more precisely later */
 
 /*!
  * Constant \f$C_{\varepsilon 1}\f$ for all the RANS turbulence models except
@@ -603,9 +602,6 @@ const double cs_turb_cpale3 = 2.3;
 
 /*! Specific constant of v2f "BL-v2k" (or phi-alpha). */
 const double cs_turb_cpale4 = 0.4;
-
-/*! Specific constant of v2f "BL-v2k" (or phi-alpha). */
-const double cs_turb_cpalmu = 0.22;
 
 /*! Specific constant of v2f "BL-v2k" (or phi-alpha). */
 const double cs_turb_cpalc1 = 1.7;
@@ -842,7 +838,7 @@ double cs_turb_csmago = 0.065;
  *
  * Useful if and only if \ref iturb = 41.
  */
-const double cs_turb_xlesfd = 1.5;
+double cs_turb_xlesfd = 1.5;
 
 /*!
  * Maximum allowed value for the variable \f$C\f$ appearing in the LES dynamic
@@ -852,7 +848,7 @@ const double cs_turb_xlesfd = 1.5;
  *
  * Useful if and only if \ref iturb = 41.
  */
-double cs_turb_smagmx = -1.;
+double cs_turb_csmago_max = -1.;
 
 /*!
  * Minimum allowed value for the variable \f$C\f$ appearing in the LES dynamic
@@ -862,7 +858,7 @@ double cs_turb_smagmx = -1.;
  *
  * Useful if and only if \ref iturb = 41.
  */
-double cs_turb_smagmn = 0.;
+double cs_turb_csmago_min = 0.;
 
 /*!
  * Van Driest constant appearing in the van Driest damping function applied to
@@ -871,7 +867,7 @@ double cs_turb_smagmn = 0.;
  *
  * Useful if and only if \ref iturb = 40 or 41.
  */
-const double cs_turb_cdries = 26.0;
+double cs_turb_cdries = 26.0;
 
 /*!
  * Constant \f$a_1\f$ for the v2f \f$\varphi\f$-model.
@@ -884,12 +880,6 @@ const double cs_turb_cv2fa1 = 0.05;
  * Useful if and only if \ref iturb=50 (v2f \f$\varphi\f$-model).
  */
 const double cs_turb_cv2fe2 = 1.85;
-
-/*!
- * Constant \f$C_\mu\f$ for the v2f \f$\varphi\f$-model.
- * Useful if and only if \ref iturb=50 (v2f \f$\varphi\f$-model).
- */
-const double cs_turb_cv2fmu = 0.22;
 
 /*!
  * Constant \f$C_1\f$ for the v2f \f$\varphi\f$-model.
@@ -1017,8 +1007,18 @@ cs_f_turb_reference_values(double  **almax,
 void
 cs_f_turb_model_constants_get_pointers(double  **cmu,
                                        double  **cmu025,
-                                       double **crij1,
-                                       double **crij2);
+                                       double  **crij1,
+                                       double  **crij2,
+                                       double  **csmago,
+                                       double  **xlesfd,
+                                       double  **smagmx,
+                                       double  **smagmn,
+                                       double  **cwale,
+                                       double  **xlesfl,
+                                       double  **ales  ,
+                                       double  **bles  ,
+                                       double  **cdries
+                                       );
 
 /*============================================================================
  * Private function definitions
@@ -1160,18 +1160,46 @@ cs_f_turb_reference_values(double  **almax,
  *   cmu025 --> pointer to cs_turb_cmu025
  *   crij1  --> pointer to cs_turb_crij1
  *   crij2  --> pointer to cs_turb_crij2
+ *   csmago --> pointer to cs_turb_csmago
+ *   xlesfd --> pointer to cs_turb_xlesfd
+ *   smagmx --> pointer to cs_turb_smago_max
+ *   smagmn --> pointer to cs_turb_smago_min
+ *   cwale  --> pointer to cs_turb_cwale
+ *   xlesfl --> pointer to cs_turb_xlesfl
+ *   ales   --> pointer to cs_turb_ales
+ *   bles   --> pointer to cs_turb_bles
+ *   cdries --> pointer to cs_turb_cdries
  *----------------------------------------------------------------------------*/
 
 void
 cs_f_turb_model_constants_get_pointers(double  **cmu,
                                        double  **cmu025,
-                                       double **crij1,
-                                       double **crij2)
+                                       double  **crij1,
+                                       double  **crij2,
+                                       double  **csmago,
+                                       double  **xlesfd,
+                                       double  **smagmx,
+                                       double  **smagmn,
+                                       double  **cwale,
+                                       double  **xlesfl,
+                                       double  **ales  ,
+                                       double  **bles  ,
+                                       double  **cdries)
 {
   *cmu    = &cs_turb_cmu;
   *cmu025 = &cs_turb_cmu025;
   *crij1 = &cs_turb_crij1;
   *crij2 = &cs_turb_crij2;
+  *csmago= &cs_turb_csmago;
+  *xlesfd= &cs_turb_xlesfd;
+  *csmago= &cs_turb_csmago;
+  *smagmx= &cs_turb_csmago_max;
+  *smagmn= &cs_turb_csmago_min;
+  *cwale = &cs_turb_cwale;
+  *xlesfl= &cs_turb_xlesfl;
+  *ales  = &cs_turb_ales;
+  *bles  = &cs_turb_bles;
+  *cdries= &cs_turb_cdries;
 }
 
 /*============================================================================
@@ -1377,6 +1405,11 @@ cs_set_type_order_turbulence_model(void)
     _turb_model.type = CS_TURB_LES;
     _turb_model.order = CS_TURB_ALGEBRAIC;
   }
+
+  else {
+    _turb_model.iturb = 0;
+    _turb_model.itytur = CS_TURB_TYPE_NONE;
+  }
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1418,27 +1451,29 @@ void
 cs_turb_compute_constants(void)
 {
   cs_turb_dpow   = 1./(1.+cs_turb_bpow);
-  cs_turb_cmu025 = pow(cs_turb_cmu,0.25);
+  cs_turb_cmu025 = pow(cs_turb_cmu, 0.25);
   cs_turb_cstlog_alpha = exp(-cs_turb_xkappa
                              * (cs_turb_cstlog_rough - cs_turb_cstlog));
+
+  int k_turb_schmidt = cs_field_key_id("turbulent_schmidt");
 
   cs_field_pointer_ensure_init();
 
   if (CS_F_(k) != NULL)
-    cs_field_set_key_double(CS_F_(k), cs_field_key_id("turbulent_schmidt"), 1.);
+    cs_field_set_key_double(CS_F_(k), k_turb_schmidt, 1.);
 
   if (CS_F_(phi) != NULL)
-    cs_field_set_key_double(CS_F_(phi), cs_field_key_id("turbulent_schmidt"), 1.);
+    cs_field_set_key_double(CS_F_(phi), k_turb_schmidt, 1.);
 
   if (   cs_glob_turb_model->iturb == CS_TURB_RIJ_EPSILON_LRR
       || cs_glob_turb_model->iturb == CS_TURB_RIJ_EPSILON_SSG)
-    cs_field_set_key_double(CS_F_(eps), cs_field_key_id("turbulent_schmidt"), 1.22);
+    cs_field_set_key_double(CS_F_(eps), k_turb_schmidt, 1.22);
   else if (cs_glob_turb_model->iturb == CS_TURB_RIJ_EPSILON_EBRSM)
-    cs_field_set_key_double(CS_F_(eps), cs_field_key_id("turbulent_schmidt"), 1.15);
+    cs_field_set_key_double(CS_F_(eps), k_turb_schmidt, 1.15);
   else if (cs_glob_turb_model->iturb == CS_TURB_V2F_BL_V2K)
-    cs_field_set_key_double(CS_F_(eps), cs_field_key_id("turbulent_schmidt"), 1.5);
+    cs_field_set_key_double(CS_F_(eps), k_turb_schmidt, 1.5);
   else
-    cs_field_set_key_double(CS_F_(eps), cs_field_key_id("turbulent_schmidt"), 1.30);
+    cs_field_set_key_double(CS_F_(eps), k_turb_schmidt, 1.30);
 
   if (cs_glob_turb_model->iturb == CS_TURB_RIJ_EPSILON_EBRSM)
     cs_turb_csrij = 0.21;
@@ -1463,8 +1498,8 @@ cs_turb_compute_constants(void)
                    - xkappa2/(cs_turb_ckwsw2*sqrt(cs_turb_cmu));
   cs_turb_csaw1 =   cs_turb_csab1/xkappa2
                   + 1./cs_turb_csasig*(1. + cs_turb_csab2);
-  cs_turb_smagmx = cs_turb_csmago*cs_turb_csmago;
-  cs_turb_smagmn = 0.;
+  cs_turb_csmago_max = cs_turb_csmago*cs_turb_csmago;
+  cs_turb_csmago_min = 0.;
 
   /* LRR constants */
   cs_turb_crij1 = 1.80;
@@ -1709,7 +1744,7 @@ cs_turb_model_log_setup(void)
          "                                (dynamic model case)\n"),
          cs_turb_csmago, cs_turb_cwale, cs_turb_xlesfl,
          cs_turb_ales, cs_turb_bles, cs_glob_turb_les_model->idries,
-         cs_turb_cdries, cs_turb_xlesfd, cs_turb_smagmx);
+         cs_turb_cdries, cs_turb_xlesfd, cs_turb_csmago_max);
 
   }
   else if (   turb_model->iturb == CS_TURB_V2F_PHI
@@ -1912,14 +1947,14 @@ cs_turb_constants_log_setup(void)
       (CS_LOG_SETUP,
        _("    cv2fa1:      %14.5e (a1 to calculate Cepsilon1)\n"
          "    cv2fe2:      %14.5e (Cepsilon 2: dissip. coeff.)\n"
-         "    cv2fmu:      %14.5e (Cmu constant)\n"
+         "    cmu   :      %14.5e (Cmu constant)\n"
          "    cv2fct:      %14.5e (CT constant)\n"
          "    cv2fcl:      %14.5e (CL constant)\n"
          "    cv2fet:      %14.5e (C_eta constant)\n"
          "    cv2fc1:      %14.5e (C1 constant)\n"
          "    cv2fc2:      %14.5e (C2 constant)\n"),
          cs_turb_cv2fa1, cs_turb_cv2fe2,
-         cs_turb_cv2fmu, cs_turb_cv2fct,
+         cs_turb_cmu, cs_turb_cv2fct,
          cs_turb_cv2fcl, cs_turb_cv2fet, cs_turb_cv2fc1,
          cs_turb_cv2fc2);
 
@@ -1930,7 +1965,7 @@ cs_turb_constants_log_setup(void)
          "    cpale2:      %14.5e (Cepsilon 2 : Diss. coeff.)\n"
          "    cpale3:      %14.5e (Cepsilon 3 : E term coeff.)\n"
          "    cpale4:      %14.5e (Cepsilon 4 : Mod Diss. coef.)\n"
-         "    cpalmu:      %14.5e (Cmu constant)\n"
+         "    cmu   :      %14.5e (Cmu constant)\n"
          "    cpalct:      %14.5e (CT constant)\n"
          "    cpalcl:      %14.5e (CL constant)\n"
          "    cpalet:      %14.5e (C_eta constant)\n"
@@ -1938,7 +1973,7 @@ cs_turb_constants_log_setup(void)
          "    cpalc2:      %14.5e (C2 constant)\n"),
          cs_turb_cpale1, cs_turb_cpale2, cs_turb_cpale3,
          cs_turb_cpale4,
-         cs_turb_cpalmu, cs_turb_cpalct, cs_turb_cpalcl,
+         cs_turb_cmu, cs_turb_cpalct, cs_turb_cpalcl,
          cs_turb_cpalet, cs_turb_cpalc1, cs_turb_cpalc2);
 
   else if (turb_model->iturb == CS_TURB_K_OMEGA)

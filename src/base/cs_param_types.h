@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -226,6 +226,9 @@ typedef enum {
  *
  * \var CS_TIME_SCHEME_THETA
  * theta-scheme
+ *
+ * \var CS_TIME_SCHEME_BDF2
+ * theta-scheme
  */
 
 typedef enum {
@@ -235,6 +238,7 @@ typedef enum {
   CS_TIME_SCHEME_EULER_EXPLICIT,
   CS_TIME_SCHEME_CRANKNICO,
   CS_TIME_SCHEME_THETA,
+  CS_TIME_SCHEME_BDF2,
 
   CS_TIME_N_SCHEMES
 
@@ -402,7 +406,12 @@ typedef enum {
  * to zero.
  *
  * \var CS_PARAM_BC_NEUMANN
- * Neumann conditions. The value of the flux of variable is set to the user
+ * Neumann conditions (along the face normal). The value of the flux of
+ * variable is set to the user requirements.
+ *
+ * \var CS_PARAM_BC_NEUMANN_FULL
+ * Neumann conditions with full definition relative to all directions.
+ * The value of the flux of variable is set to the user
  * requirements.
  *
  * \var CS_PARAM_BC_ROBIN
@@ -425,6 +434,7 @@ typedef enum {
   CS_PARAM_BC_DIRICHLET,
   CS_PARAM_BC_HMG_NEUMANN,
   CS_PARAM_BC_NEUMANN,
+  CS_PARAM_BC_NEUMANN_FULL,
   CS_PARAM_BC_ROBIN,
   CS_PARAM_BC_SLIDING,
   CS_PARAM_BC_CIRCULATION,
@@ -528,6 +538,106 @@ typedef enum {
 
 } cs_param_amg_type_t;
 
+/*! \enum cs_param_schur_approx_t
+ *
+ *  \brief Strategy to build the Schur complement approximation. This appears
+ *  in block preconditioning or uzawa algorithms when a monolithic (fully
+ *  coupled approach) is used.
+ *  | A   B^t|
+ *  | B   0  |
+ *
+ *  \var CS_PARAM_SCHUR_NONE
+ *  There is no schur complement approximation.
+ *
+ *  \var CS_PARAM_SCHUR_DIAG_INVERSE
+ *  The schur complement approximation is defined as B.diag(A)^-1.B^t
+ *
+ *  \var CS_PARAM_SCHUR_ELMAN
+ *  The inverse of the schur complement matrix is approximated by
+ *  (BBt)^-1 B.A.B^t (B.Bt)^-1
+ *  This formulation is detailed in Elman'99, SIAM J. SCI. COMPUT.
+ *
+ *  \var CS_PARAM_SCHUR_IDENTITY
+ *  The schur complement approximation is simply the identity matrix
+ *
+ *  \var CS_PARAM_SCHUR_LUMPED_INVERSE
+ *  The schur complement approximation is defined as B.lumped(A^-1).B^t where
+ *  x=lumped(A^-1) results from A.x = 1 (1 is the array fills with 1 in each
+ *  entry)
+ *
+ *  \var CS_PARAM_SCHUR_MASS_SCALED
+ *  The schur complement approximation is simply a scaled diagonal mass matrix
+ *  related to the 22 block
+ *
+ *  \var CS_PARAM_SCHUR_MASS_SCALED_DIAG_INVERSE
+ *  The schur complement approximation is defined as
+ *  S \approx alpha.M22 + 1/dt*B.diag(A)^-1.B^t
+ *  where M22 is the mass matrix related to the (2,2) block
+ *
+ *  \var CS_PARAM_SCHUR_MASS_SCALED_LUMPED_INVERSE
+ *  The schur complement approximation is defined as
+ *  S \approx alpha.M22 + 1/dt*B.lumped(A^-1).B^t
+ *  where M22 is the mass matrix related to the (2,2) block and where
+ *  x=lumped(A^-1) results from A.x = 1 (1 is the array fills with 1 in each
+ *  entry)
+ */
+
+typedef enum {
+
+  CS_PARAM_SCHUR_NONE,
+
+  CS_PARAM_SCHUR_DIAG_INVERSE,
+  CS_PARAM_SCHUR_ELMAN,
+  CS_PARAM_SCHUR_IDENTITY,
+  CS_PARAM_SCHUR_LUMPED_INVERSE,
+  CS_PARAM_SCHUR_MASS_SCALED,
+  CS_PARAM_SCHUR_MASS_SCALED_DIAG_INVERSE,
+  CS_PARAM_SCHUR_MASS_SCALED_LUMPED_INVERSE,
+
+  CS_PARAM_N_SCHUR_APPROX
+
+} cs_param_schur_approx_t;
+
+/*!
+ * \enum cs_param_precond_block_t
+ * Type of preconditioning by block
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_NONE
+ * No block preconditioner is requested (default)
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_DIAG
+ * Only the diagonal blocks are considered in the preconditioner
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_LOWER_TRIANGULAR
+ * The diagonal blocks and the lower blocks are considered in the
+ * preconditioner
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_SYM_GAUSS_SEIDEL
+ * A symmetric Gauss-Seidel block preconditioning is considered
+ * (cf. Y. Notay, "A new analysis of block preconditioners for saddle-point
+ * problems" (2014), SIAM J. Matrix. Anal. Appl.)
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_UPPER_TRIANGULAR
+ * The diagonal blocks and the upper blocks are considered in the
+ * preconditioner
+ *
+ * \var CS_PARAM_PRECOND_BLOCK_UZAWA
+ * One iteration of block Uzawa is performed as preconditioner
+ */
+
+typedef enum {
+
+  CS_PARAM_PRECOND_BLOCK_NONE,
+  CS_PARAM_PRECOND_BLOCK_DIAG,
+  CS_PARAM_PRECOND_BLOCK_LOWER_TRIANGULAR,
+  CS_PARAM_PRECOND_BLOCK_SYM_GAUSS_SEIDEL,
+  CS_PARAM_PRECOND_BLOCK_UPPER_TRIANGULAR,
+  CS_PARAM_PRECOND_BLOCK_UZAWA,
+
+  CS_PARAM_N_PCD_BLOCK_TYPES
+
+} cs_param_precond_block_t;
+
 /*!
  * \enum cs_param_precond_type_t
  * Type of preconditioner to use with the iterative solver.
@@ -547,10 +657,6 @@ typedef enum {
  * \var CS_PARAM_PRECOND_AMG
  * Algebraic multigrid preconditioner (additional options may be set using
  * \ref cs_param_amg_type_t)
- *
- * \var CS_PARAM_PRECOND_AMG_BLOCK
- * Algebraic multigrid preconditioner by block (useful in case of vector
- * valued variables)
  *
  * \var CS_PARAM_PRECOND_AS
  * Additive Schwarz preconditioner
@@ -598,11 +704,10 @@ typedef enum {
   CS_PARAM_PRECOND_BJACOB_ILU0,
   CS_PARAM_PRECOND_BJACOB_SGS,
   CS_PARAM_PRECOND_AMG,
-  CS_PARAM_PRECOND_AMG_BLOCK,
   CS_PARAM_PRECOND_AS,          /*!< Only with PETSc */
   CS_PARAM_PRECOND_DIAG,
-  CS_PARAM_PRECOND_GKB_CG,
-  CS_PARAM_PRECOND_GKB_GMRES,
+  CS_PARAM_PRECOND_GKB_CG,      /*!< Only with PETSc */
+  CS_PARAM_PRECOND_GKB_GMRES,   /*!< Only with PETSc */
   CS_PARAM_PRECOND_ILU0,        /*!< Only with PETSc */
   CS_PARAM_PRECOND_ICC0,        /*!< Only with PETSc*/
   CS_PARAM_PRECOND_POLY1,
@@ -650,6 +755,10 @@ typedef enum {
  * \var CS_PARAM_ITSOL_GAUSS_SEIDEL
  * Gauss-Seidel
  *
+ * \var CS_PARAM_ITSOL_GCR
+ * Generalized conjugate residual (flexible iterative solver for symmetric or
+ * non-symmetric system)
+ *
  * \var CS_PARAM_ITSOL_GKB_CG
  * Golub-Kahan Bidiagonalization algorithm. Useful for solving saddle-point
  * systems. The inner solver is a (flexible) CG solver.
@@ -670,11 +779,25 @@ typedef enum {
  * \var CS_PARAM_ITSOL_MUMPS
  * MUMPS direct solver (LU factorization)
  *
+ * \var CS_PARAM_ITSOL_MUMPS_FLOAT
+ * MUMPS direct solver (LU factorization with float instead of double). This
+ * enables a saving of the memory consumption which is acceptable if one
+ * considers a preconditioner
+ *
+ * \var CS_PARAM_ITSOL_MUMPS_FLOAT_LDLT
+ * MUMPS direct solver (LDLT factorization also known as Cholesky
+ * factorization). This enables a saving of the memory consumption which is
+ * acceptable if one considers a preconditioner
+ *
  * \var CS_PARAM_ITSOL_MUMPS_LDLT
  * MUMPS direct solver (LDLT factorization also known as Cholesky factorization)
  *
  * \var CS_PARAM_ITSOL_SYM_GAUSS_SEIDEL
  * Symmetric Gauss-Seidel
+ *
+ * \var CS_PARAM_ITSOL_USER_DEFINED
+ * User-defined iterative solver. It relies on the implementation of the
+ * the function cs_user_sles_it_solver()
  *
  */
 
@@ -690,14 +813,18 @@ typedef enum {
   CS_PARAM_ITSOL_FCG,
   CS_PARAM_ITSOL_FGMRES,           /*!< Only with PETsc */
   CS_PARAM_ITSOL_GAUSS_SEIDEL,
+  CS_PARAM_ITSOL_GCR,
   CS_PARAM_ITSOL_GKB_CG,
   CS_PARAM_ITSOL_GKB_GMRES,
   CS_PARAM_ITSOL_GMRES,            /*!< Only with PETsc */
   CS_PARAM_ITSOL_JACOBI,
   CS_PARAM_ITSOL_MINRES,           /*!< Only with PETsc */
-  CS_PARAM_ITSOL_MUMPS,            /*!< Only with PETsc */
-  CS_PARAM_ITSOL_MUMPS_LDLT,       /*!< Only with PETsc */
+  CS_PARAM_ITSOL_MUMPS,            /*!< Only with PETsc/MUMPS */
+  CS_PARAM_ITSOL_MUMPS_FLOAT,      /*!< Only with MUMPS */
+  CS_PARAM_ITSOL_MUMPS_FLOAT_LDLT, /*!< Only with MUMPS */
+  CS_PARAM_ITSOL_MUMPS_LDLT,       /*!< Only with PETsc/MUMPS */
   CS_PARAM_ITSOL_SYM_GAUSS_SEIDEL,
+  CS_PARAM_ITSOL_USER_DEFINED,
 
   CS_PARAM_N_ITSOL_TYPES
 
@@ -723,34 +850,6 @@ typedef enum {
 
 } cs_param_resnorm_type_t;
 
-/*!
- * \struct cs_param_sles_t
- * \brief Structure storing all metadata related to the resolution of a linear
- *        system with an iterative solver.
- */
-
-typedef struct {
-
-  bool                     setup_done;   /*!< SLES setup step has been done */
-  int                      verbosity;    /*!< SLES verbosity */
-  int                      field_id;     /*!< Field id related to a SLES
-                                           By default, this is set to -1 */
-
-  cs_param_sles_class_t    solver_class; /*!< class of SLES to consider  */
-  cs_param_precond_type_t  precond;      /*!< type of preconditioner */
-  cs_param_itsol_type_t    solver;       /*!< type of solver */
-  cs_param_amg_type_t      amg_type;     /*!< type of AMG algorithm if needed */
-
-  /*! \var resnorm_type
-   *  normalized or not the norm of the residual used for the stopping criterion
-   *  See \ref CS_EQKEY_ITSOL_RESNORM_TYPE for more details.
-   */
-  cs_param_resnorm_type_t  resnorm_type;
-  int                      n_max_iter;   /*!< max. number of iterations */
-  double                   eps;          /*!< stopping criterion on accuracy */
-
-} cs_param_sles_t;
-
 /*============================================================================
  * Global variables
  *============================================================================*/
@@ -764,19 +863,6 @@ extern const char cs_med_sepline[50];
 /*============================================================================
  * Public function prototypes
  *============================================================================*/
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief   Copy a cs_param_sles_t structure from src to dst
- *
- * \param[in]   src      reference cs_param_sles_t structure to copy
- * \param[out]  dst      copy of the reference at exit
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_param_sles_copy_from(cs_param_sles_t    src,
-                        cs_param_sles_t   *dst);
 
 /*----------------------------------------------------------------------------*/
 /*!
@@ -922,6 +1008,32 @@ cs_param_get_solver_name(cs_param_itsol_type_t  solver);
 
 const char *
 cs_param_get_precond_name(cs_param_precond_type_t  precond);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief   Get the name of the type of block preconditioning
+ *
+ * \param[in] type     type of block preconditioning
+ *
+ * \return the associated type name
+ */
+/*----------------------------------------------------------------------------*/
+
+const char *
+cs_param_get_precond_block_name(cs_param_precond_block_t   type);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief   Get the name of the type of Schur complement approximation
+ *
+ * \param[in] type     type of Schur complement approximation
+ *
+ * \return the associated type name
+ */
+/*----------------------------------------------------------------------------*/
+
+const char *
+cs_param_get_schur_approx_name(cs_param_schur_approx_t   type);
 
 /*----------------------------------------------------------------------------*/
 /*!

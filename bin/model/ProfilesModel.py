@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -67,6 +67,7 @@ class ProfilesModel(Model):
         self.node_pro_vp    = self.node_model_vp.xmlGetNodeList('property')
 
         self.__var_prop_list = self.getVariablesAndVolumeProperties()
+        self.__var_prop_list_compat = self.dicoLabel2Name_compat.keys()
 
 
     def __defaultValues(self):
@@ -75,13 +76,15 @@ class ProfilesModel(Model):
         Returns a dictionnary with default values.
         """
         value = {}
-        value['nfreq']     = -1
-        value['formula']   =  "x = 0;\ny = s;\nz = 0;\n"
-        value['points']    =  200
-        value['label']     =  "profile"
-        value['choice']    =  "frequency"
-        value['frequency'] =  1
-        value['format']    =  "CSV"
+        value['nfreq']         = -1
+        value['formula']       =  "x = 0;\ny = s;\nz = 0;\n"
+        value['points']        =  200
+        value['label']         =  "profile"
+        value['choice']        =  "frequency"
+        value['frequency']     =  1
+        value['format']        =  "CSV"
+        value['snap_mode']     =  "snap_to_center"
+        value['interpolation'] =  "no"
 
         return value
 
@@ -95,6 +98,8 @@ class ProfilesModel(Model):
         mdl = OutputVolumicVariablesModel(self.case)
 
         self.dicoLabel2Name = mdl.getVolumeFieldsLabel2Name(time_averages=True)
+        self.dicoLabel2Name_compat = mdl.getVolumeFieldsLabel2Name(time_averages=True,
+                                                                   get_components=True)
 
         return list(self.dicoLabel2Name.keys())
 
@@ -161,6 +166,51 @@ class ProfilesModel(Model):
         self.isInList(label, self.getProfilesLabelsList())
         node = self.node_prof.xmlGetNode('profile', label = label)
         return node.xmlGetInt('points')
+
+
+    @Variables.undoLocal
+    def setSnapMode(self, label, mode):
+        """
+        """
+        node = self.node_prof.xmlGetNode('profile', label=label)
+        if mode == self.__defaultValues()['snap_mode']:
+            node.xmlRemoveChild('snap_mode')
+        else:
+            node.xmlSetData('snap_mode', mode)
+
+
+    @Variables.noUndo
+    def getSnapMode(self, label):
+        """
+        """
+        node = self.node_prof.xmlGetNode('profile', label = label)
+        mode = node.xmlGetString('snap_mode')
+        if not mode:
+            mode = self.__defaultValues()['snap_mode']
+        return mode
+
+
+    @Variables.undoLocal
+    def setProfileInterpolation(self, label, state):
+        """
+        """
+        node = self.node_prof.xmlGetNode('profile', label = label)
+        if state == self.__defaultValues()["interpolation"]:
+            node.xmlRemoveChild('interpolation')
+        else:
+            node.xmlSetData('interpolation', state)
+
+
+    @Variables.noUndo
+    def getProfileInterpolation(self, label):
+        """
+        """
+        node = self.node_prof.xmlGetNode('profile', label = label)
+        state = node.xmlGetString('interpolation')
+        if not state:
+            state = self.__defaultValues()["interpolation"]
+
+        return state
 
 
     @Variables.noUndo
@@ -237,8 +287,8 @@ class ProfilesModel(Model):
         node = self.node_prof.xmlGetNode('profile', label = label)
         node.xmlRemoveChild('var_prop')
         for var in lst:
-            self.isInList(var, self.__var_prop_list)
-            (name, comp) = self.dicoLabel2Name[var]
+            self.isInList(var, self.__var_prop_list_compat)
+            (name, comp) = self.dicoLabel2Name_compat[var]
             node.xmlAddChild('var_prop', name=name, component=comp)
 
 
@@ -312,8 +362,8 @@ class ProfilesModel(Model):
             self.setNbPoint(label, NbPoint)
 
         for var in node.xmlGetChildNodeList('var_prop'):
-            for name in self.__var_prop_list:
-                if self.dicoLabel2Name[name] == (var['name'], var['component']) :
+            for name in self.__var_prop_list_compat:
+                if self.dicoLabel2Name_compat[name] == (var['name'], var['component']) :
                     lst.append(name)
 
         return label, fmt, lst, choice, freq, formula, NbPoint

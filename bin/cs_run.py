@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -24,10 +24,6 @@
 
 """
 This module describes the script used to run a study/case for Code_Saturne.
-
-This module defines the following functions:
-- process_cmd_line
-- main
 """
 
 #===============================================================================
@@ -38,7 +34,6 @@ from __future__ import print_function
 
 import os, sys
 import types, string, re, fnmatch
-from argparse import ArgumentParser
 try:
     import ConfigParser  # Python2
     configparser = ConfigParser
@@ -108,13 +103,15 @@ def update_run_steps(s_c, run_conf, final=False):
             s_c[k] = True
 
 #-------------------------------------------------------------------------------
-# Process the command line arguments
+# Build command-line arguments parser
 #-------------------------------------------------------------------------------
 
-def process_cmd_line(argv, pkg):
+def arg_parser(argv, pkg):
     """
     Process the passed command line arguments.
     """
+
+    from argparse import ArgumentParser
 
     parser = ArgumentParser(description="Run a case or specified run stages.")
 
@@ -122,7 +119,7 @@ def process_cmd_line(argv, pkg):
                         metavar="<build>",
                         help="base name or full path to the compute build")
 
-    parser.add_argument("-n", "--nprocs", dest="nprocs", type=int,
+    parser.add_argument("-n", "--nprocs" , "--n-procs", dest="nprocs", type=int,
                         metavar="<nprocs>",
                         help="number of MPI processes for the computation")
 
@@ -137,6 +134,10 @@ def process_cmd_line(argv, pkg):
                         metavar="<case>",
                         help="path to the case's directory")
 
+    parser.add_argument("--dest", dest="dest", type=str,
+                        metavar="<dest>",
+                        help="path to the destination top directory")
+
     parser.add_argument("--id", dest="id", type=str,
                         metavar="<id>",
                         help="use the given run id")
@@ -150,11 +151,12 @@ def process_cmd_line(argv, pkg):
                         help="suffix the run id with the given string")
 
     parser.add_argument("--suggest-id", dest="suggest_id",
-                      action="store_true",
-                      help="suggest a run id for the next run")
+                        action="store_true",
+                        help="suggest a run id for the next run")
 
     parser.add_argument("--force", dest="force",
                         action="store_true",
+
                         help="run the data preparation stage even if " \
                               + "the matching execution directory exists")
 
@@ -186,10 +188,33 @@ def process_cmd_line(argv, pkg):
     parser.set_defaults(nprocs=None)
     parser.set_defaults(nthreads=None)
 
+    return parser
+
+#-------------------------------------------------------------------------------
+# Process the command line arguments
+#-------------------------------------------------------------------------------
+
+def parse_cmd_line(argv, pkg):
+    """
+    Process the passed command line arguments.
+    """
+
     # Note: we could use args to pass a calculation status file as an argument,
     # which would allow pursuing the later calculation stages.
 
+    parser = arg_parser(argv, pkg)
     options = parser.parse_args(argv)
+
+    return options
+
+#-------------------------------------------------------------------------------
+# Process the command line arguments
+#-------------------------------------------------------------------------------
+
+def process_options(options, pkg):
+    """
+    Process the passed command line arguments.
+    """
 
     # Stages to run (if no filter given, all are done).
 
@@ -258,7 +283,7 @@ def process_cmd_line(argv, pkg):
                                                 coupling=coupling,
                                                 id=run_id)
 
-    if casedir == None:
+    if casedir == None and staging_dir == None:
         cmd_line = sys.argv[0]
         for arg in sys.argv[1:]:
             cmd_line += ' ' + arg
@@ -268,12 +293,6 @@ def process_cmd_line(argv, pkg):
         print('which does not seem to be inside a case directory.', file = sys.stderr)
 
     param = options.param
-
-    # If no parameter file passed, and a setup.xml is present in DATA, run it
-    if param is None:
-        has_setup = os.path.isfile(os.path.join(casedir, 'DATA', 'setup.xml'))
-        if has_setup:
-            param = "setup.xml"
 
     compute_build = options.compute_build
 
@@ -285,6 +304,7 @@ def process_cmd_line(argv, pkg):
     # Return associated dictionary (also force number of ranks and threads)
 
     r_c = {'casedir': casedir,
+           'dest_dir': options.dest,
            'staging_dir': staging_dir,
            'run_id': run_id,
            'param': param,
@@ -309,15 +329,17 @@ def read_run_config_file(i_c, r_c, s_c, pkg, run_conf=None):
     Process the passed command line arguments.
     """
 
-    casedir = r_c['casedir']
     run_config_path = ""
-    setup_default_path = ""
 
-    if r_c['coupled_domains'] != []:
-        run_config_path = os.path.join(casedir, 'run.cfg')
-    else:
-        run_config_path = os.path.join(casedir, 'DATA', 'run.cfg')
-        setup_default_path = os.path.join(casedir, 'DATA', 'setup.xml')
+    if r_c['staging_dir']:
+        run_config_path = os.path.join(r_c['staging_dir'], 'run.cfg')
+
+    elif r_c['casedir']:
+        casedir = r_c['casedir']
+        if r_c['coupled_domains'] != []:
+            run_config_path = os.path.join(casedir, 'run.cfg')
+        else:
+            run_config_path = os.path.join(casedir, 'DATA', 'run.cfg')
 
     # Ensure some keys are set in all cases to simplify future tests
 
@@ -346,38 +368,22 @@ def read_run_config_file(i_c, r_c, s_c, pkg, run_conf=None):
     if not run_conf:
         run_conf = cs_run_conf.run_conf(run_config_path, package=pkg)
 
+    # Case path if not determined yet
+    # (when destination or staging directory is outside case directory)
+
+    if 'paths' in run_conf.sections:
+        if not r_c['casedir']:
+            if 'case' in run_conf.sections['paths']:
+                r_c['casedir'] = run_conf.sections['paths']['case']
+        if not r_c['dest_dir']:
+            if 'top_results_directory' in run_conf.sections['paths']:
+                r_c['dest_dir'] = run_conf.sections['paths']['top_results_directory']
+
     # Parameters file
 
     for kw in ('param',):
         if run_conf.get('setup', kw):
             r_c[kw] = run_conf.get('setup', kw)
-
-    if not r_c['param'] and setup_default_path:
-        if os.path.isfile(setup_default_path):
-            r_c['param'] = setup_default_path
-
-    # Print warning if setup.xml exists but another xml was provided
-    if r_c['param'] and setup_default_path:
-        if os.path.basename(r_c['param']) != os.path.basename(setup_default_path):
-            if os.path.isfile(setup_default_path):
-                msg  = '*****************************************************\n'
-                msg += 'Warning:\n'
-                msg += '  Both %s and %s exist in the DATA folder.\n' % \
-                         (os.path.basename(r_c['param']), \
-                         os.path.basename(setup_default_path))
-                msg += '  %s will be used for the computation.\n' % \
-                        os.path.basename(r_c['param'])
-                msg += '  Be aware that to follow code_saturne best practices\n'
-                msg += '  only one of the two should be present in DATA.\n'
-                msg += '*****************************************************\n'
-                print(msg, file = sys.stderr)
-
-    # Check that an XML file was provided
-    if not r_c['param'] and setup_default_path:
-        msg  = 'Remark:\n'
-        msg += '  No setup.xml file was provided in the DATA folder.\n'
-        msg += '  Default settings will be used.\n'
-        print(msg, file = sys.stderr)
 
     # Run id
 
@@ -467,6 +473,14 @@ def generate_run_config_file(path, resource_name, r_c, s_c, pkg):
 
     sections = {}
 
+    if path and r_c['casedir']:
+        in_case = cs_case.is_exec_dir_in_case(r_c['casedir'],
+                                              os.path.dirname(path))
+        if not in_case:
+            sections['paths'] = {'case': r_c['casedir']}
+            if r_c['dest_dir']:
+                sections['paths']['top_results_directory'] = r_c['dest_dir']
+
     if 'coupled_domains' in r_c:
         if r_c['coupled_domains'] != []:
             dom_str=''
@@ -481,7 +495,8 @@ def generate_run_config_file(path, resource_name, r_c, s_c, pkg):
 
             sections['setup'] = {'coupled_domains': dom_str}
 
-    sections['run'] = {'id': r_c['run_id'],
+    sections['run'] = {'compute_build': r_c['compute_build'],
+                       'id': r_c['run_id'],
                        'stage': False,
                        'initialize': s_c['initialize'],
                        'compute': s_c['run_solver'],
@@ -507,7 +522,7 @@ def generate_run_config_file(path, resource_name, r_c, s_c, pkg):
 # Run the calculation
 #===============================================================================
 
-def run(argv=[], pkg=None, submit_args=None):
+def run(argv=[], pkg=None, run_args=None, submit_args=None):
     """
     Run calculation;
     returns return code, run id, and results directory path when created.
@@ -517,13 +532,16 @@ def run(argv=[], pkg=None, submit_args=None):
         from code_saturne.cs_package import package
         pkg = package()
 
+    if run_args == None:
+        options = parse_cmd_line(argv, pkg)
+    else:
+        options = run_args
+
     i_c = cs_run_conf.get_install_config_info(pkg)
 
-    r_c, s_c, run_conf = process_cmd_line(argv, pkg)
+    r_c, s_c, run_conf = process_options(options, pkg)
 
-    casedir = r_c['casedir']
-
-    if not casedir:
+    if not r_c['casedir'] and not r_c['staging_dir']:
         return 1, None, None
 
     # Read run configuration
@@ -562,7 +580,8 @@ def run(argv=[], pkg=None, submit_args=None):
 
         c = cs_case_coupling.coupling(pkg,
                                       domains,
-                                      casedir,
+                                      r_c['casedir'],
+                                      r_c['dest_dir'],
                                       staging_dir=r_c['staging_dir'],
                                       verbose=verbose,
                                       package_compute=pkg_compute)
@@ -576,7 +595,8 @@ def run(argv=[], pkg=None, submit_args=None):
         # Now handle case for the corresponding calculation domain(s).
         c = cs_case.case(pkg,
                          package_compute=pkg_compute,
-                         case_dir=casedir,
+                         case_dir=r_c['casedir'],
+                         dest_dir=r_c['dest_dir'],
                          staging_dir=r_c['staging_dir'],
                          domains=d)
 

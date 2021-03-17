@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -77,6 +77,12 @@ BEGIN_C_DECLS
 
 /*! zone defined as solid during the simulation */
 #define CS_VOLUME_ZONE_SOLID                (1 << 6)
+
+/*! zone where 1d approach is used */
+#define CS_VOLUME_ZONE_1D                   (1 << 7)
+
+/*! zone defined for physical propertiescomputation */
+#define CS_VOLUME_ZONE_PHYSICAL_PROPERTIES  (1 << 8)
 
 /*! @} */
 
@@ -353,6 +359,25 @@ cs_volume_zone_n_type_cells(int  type_flag);
 void
 cs_volume_zone_select_type_cells(int        type_flag,
                                  cs_lnum_t  cell_ids[]);
+
+/*----------------------------------------------------------------------------*/
+/*!
+ * \brief Tag cells of a given zone type
+ *
+ * The tag array should be initialized. The given tag_value is associted
+ * to cells of the given zone type using a logical "or", so multiple flag
+ * bits can be handled using the same array if necessary.
+ *
+ * \param[in]       zone_type_flag  zone types to tag
+ * \param[in]       tag_value  tag value to add to cells of matching zones
+ * \param[in, out]  tag        tag value for each cell
+ */
+/*----------------------------------------------------------------------------*/
+
+void
+cs_volume_zone_tag_cell_type(int  zone_type_flag,
+                             int  tag_value,
+                             int  tag[]);
 
 /*----------------------------------------------------------------------------*/
 /*!

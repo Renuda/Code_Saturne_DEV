@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -115,17 +115,17 @@
 
   \snippet cs_user_parameters-base.c param_var_drift
 
+  To set model and parameter options for the velocity-pressure coupling and
+  resolution, see the \ref cs_velocity_pressure_model_t and
+  \ref cs_velocity_pressure_param_t structures.
 
-  To set options for the solving of the Stokes problem (velocity pressure coupling
-  see \ref cs_stokes_model_t structure):
+  For example, to set the Rhie and Chow multiplication factor:
 
-  \snippet cs_user_parameters-base.c param_stokes_model
+  \snippet cs_user_parameters-base.c param_vp_arak
 
-  To set options for the optional inner iterations (velocity pressure coupling
-  see \ref cs_piso_t structure):
+  To set the optional number of velocity-pressure inner iterations:
 
-  \snippet cs_user_parameters-base.c param_piso
-
+  \snippet cs_user_parameters-base.c param_vp_netrup
 
   \subsection cs_user_parameters_h_cs_user_parameters1 Special fields and activate some automatic post-processings
 

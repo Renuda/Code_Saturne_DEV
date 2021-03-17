@@ -5,7 +5,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -65,6 +65,35 @@ def check_exec_dir_stamp(d):
             retval = d
 
     return retval
+
+#-------------------------------------------------------------------------------
+# Check if an execution directory is inside a standard case structure
+#
+# This may not be the case if a separate staging directory or destination
+# directory has been specified.
+#-------------------------------------------------------------------------------
+
+def is_exec_dir_in_case(case_dir, exec_dir):
+    """
+    Check if an execution directory is inside a standard case structure.
+    """
+
+    in_case = False
+
+    if case_dir and exec_dir:
+        r_case_dir = os.path.normpath(case_dir)
+        r_exec_dir = os.path.normpath(exec_dir)
+        if not os.path.isabs(r_case_dir):
+            r_case_dir = os.path.abspath(r_case_dir)
+        if not os.path.isabs(r_exec_dir):
+            r_exec_dir = os.path.abspath(r_exec_dir)
+        if r_exec_dir.find(r_case_dir) == 0:
+            exec_parent_dir = os.path.split(r_exec_dir)[0]
+            if os.path.basename(exec_parent_dir) in ('RESU', 'RESU_COUPLING'):
+                if os.path.split(exec_parent_dir)[0] == case_dir:
+                    in_case = True
+
+    return in_case
 
 #-------------------------------------------------------------------------------
 
@@ -166,6 +195,7 @@ class case:
                  package,                     # main package
                  package_compute = None,      # package for compute environment
                  case_dir = None,
+                 dest_dir = None,
                  staging_dir = None,
                  domains = None,
                  syr_domains = None,
@@ -188,6 +218,11 @@ class case:
 
         cs_exec_environment.set_modules(self.package_compute)
         cs_exec_environment.source_rcfile(self.package_compute)
+
+        # Re-clean os.environment as the above calls may have indirectly
+        # restored some unwanted variables (such as lmod macros).
+
+        cs_exec_environment.clean_os_environ_for_shell()
 
         # Ensure we have tuples or lists to simplify later tests
 
@@ -231,7 +266,12 @@ class case:
         # associate case domains and set case directory
 
         self.case_dir = case_dir
+        self.dest_dir = dest_dir
+        self.__define_dest_dir__()
+
         self.result_dir = None
+
+        # Determine parent (or coupling group) study directory
 
         if (os.path.isdir(os.path.join(case_dir, 'DATA')) and n_domains == 1):
             # Simple domain case from standard directory structure
@@ -253,8 +293,7 @@ class case:
 
         n_nc_solver = 0
 
-        for d in ( self.domains + self.syr_domains \
-                 + self.py_domains ):
+        for d in (self.domains + self.syr_domains + self.py_domains):
             d.set_case_dir(self.case_dir, staging_dir)
             try:
                 solver_name = os.path.basename(d.solver_path)
@@ -306,6 +345,16 @@ class case:
         # Error reporting
         self.error = ''
         self.error_long = ''
+
+    #---------------------------------------------------------------------------
+
+    def __define_dest_dir__(self):
+
+        if self.dest_dir != None:
+            if not os.path.isabs(self.dest_dir):
+                dest_dir = os.path.join(os.path.split(self.case_dir)[0],
+                                        self.dest_dir)
+                self.dest_dir = os.path.abspath(dest_dir)
 
     #---------------------------------------------------------------------------
 
@@ -512,11 +561,9 @@ class case:
             exec_dir_name += '.' + self.run_id
             self.exec_dir = os.path.join(self.exec_prefix, exec_dir_name)
         else:
-            r = os.path.join(self.case_dir, 'RESU')
-            if len(self.domains) + len(self.syr_domains) \
-             + len(self.py_domains) > 1:
-                r += '_COUPLING'
-            self.exec_dir = os.path.join(r, self.run_id)
+            if not self.result_dir:
+                self.define_result_dir()
+            self.exec_dir = self.result_dir
 
     #---------------------------------------------------------------------------
 
@@ -551,7 +598,13 @@ class case:
 
     def define_result_dir(self):
 
-        r = os.path.join(self.case_dir, 'RESU')
+        if self.dest_dir != None:
+            base_dir = os.path.join(self.dest_dir,
+                                    os.path.basename(self.case_dir))
+        else:
+            base_dir = self.case_dir
+
+        r = os.path.join(base_dir, 'RESU')
 
         # Coupled case
         if len(self.domains) + len(self.syr_domains) \
@@ -559,7 +612,7 @@ class case:
             r += '_COUPLING'
 
         if not os.path.isdir(r):
-            os.mkdir(r)
+            os.makedirs(r)
 
         self.result_dir = os.path.join(r, self.run_id)
 
@@ -714,7 +767,7 @@ class case:
         # Copy single file
 
         dest = os.path.join(self.result_dir, os.path.basename(src))
-        if os.path.isfile(src) and src != dest:
+        if os.path.isfile(src) and os.path.abspath(src) != os.path.abspath(dest):
             shutil.copy2(src, dest)
 
     #---------------------------------------------------------------------------
@@ -761,7 +814,7 @@ class case:
             app_id += 1
 
         for d in self.domains:
-            s_args = d.solver_command(app_id=app_id)
+            s_args = d.solver_command()
             if len(cmd) > 0:
                 cmd += ' : '
             cmd += '-n ' + str(d.n_procs) \
@@ -870,7 +923,7 @@ class case:
                 + ' to the executable files.\n\n')
 
         e.write('MPI_RANK=`'
-                + self.package.pkgdatadir_script('runcase_mpi_rank')
+                + self.package.get_pkgdatadir_script('runcase_mpi_rank')
                 + ' $@`\n')
 
         app_id = 0
@@ -891,7 +944,7 @@ class case:
         for d in self.domains:
             nr += d.n_procs
             e.write(test_pf + str(nr) + test_sf)
-            s_args = d.solver_command(app_id=app_id)
+            s_args = d.solver_command()
             e.write('  cd ' + s_args[0] + '\n')
             e.write('  ' + s_args[1] + s_args[2] + ' $@\n')
             if app_id == 0:
@@ -1375,9 +1428,9 @@ class case:
                 if need_compile == False: # Print banner on first pass
                     need_compile = True
                     msg = \
-                        " ****************************************\n" \
-                        "  Compiling user subroutines and linking\n" \
-                        " ****************************************\n\n"
+                        " *********************************************\n" \
+                        "  Compiling and linking user-defined functions\n" \
+                        " *********************************************\n\n"
                     sys.stdout.write(msg)
                     sys.stdout.flush()
                 d.compile_and_link()
@@ -1576,12 +1629,6 @@ class case:
 
         os.chdir(self.exec_dir)
 
-        # In case LMOD is present, avoid warnings on macros
-        # for called scripts.
-        for ev in ('BASH_FUNC_module%%', 'BASH_FUNC_ml%%'):
-            if ev in os.environ:
-                del os.environ[ev]
-
         # Indicate status using temporary file for SALOME.
 
         self.update_scripts_tmp('ready', 'running')
@@ -1747,6 +1794,23 @@ class case:
                       'run_solver':True,
                       'save_results':True}
 
+        # If preparation stage is not requested, it must have been done
+        # previously, and the id must be forced.
+
+        if not stages['prepare_data']:
+            force_id = True
+
+        # Run id and associated directories
+
+        self.set_run_id(run_id)
+        self.set_result_dir(force_id)
+
+        # If preparation stage is missing, force it
+        if stages['initialize'] and not stages['prepare_data']:
+            self.define_exec_dir()
+            if not os.path.isdir(self.exec_dir):
+                stages['prepare_data'] = True
+
         # Define scratch directory
         # priority: argument, environment variable, preference setting.
 
@@ -1767,7 +1831,7 @@ class case:
             if config.has_option('run', 'scratchdir'):
                 scratchdir = os.path.expanduser(config.get('run', 'scratchdir'))
                 scratchdir = os.path.realpath(os.path.expandvars(scratchdir))
-                if os.path.realpath(self.case_dir).find(scratchdir) == 0:
+                if os.path.realpath(self.result_dir).find(scratchdir) == 0:
                     scratchdir = None
 
         if scratchdir != None:
@@ -1778,26 +1842,6 @@ class case:
 
         if mpiexec_options == None:
             mpiexec_options = os.getenv('CS_MPIEXEC_OPTIONS')
-
-        # If preparation stage is not requested, it must have been done
-        # previously, and the id must be forced.
-
-        if not stages['prepare_data']:
-            force_id = True
-
-        # Run id and associated directories
-
-        self.set_run_id(run_id)
-
-        # If preparation stage is missing, force it
-        if stages['initialize'] and not stages['prepare_data']:
-            self.define_exec_dir()
-            if not os.path.isdir(self.exec_dir):
-                stages['prepare_data'] = True
-
-        # Set result copy mode
-
-        self.set_result_dir(force_id)
 
         # Set working directory
         # (nonlocal filesystem, reachable by all the processes)
@@ -1915,7 +1959,13 @@ class case:
         now = datetime.datetime.now()
         run_id_base = now.strftime('%Y%m%d-%H%M')
 
-        r = os.path.join(self.case_dir, 'RESU')
+        if self.dest_dir != None:
+            base_dir = os.path.join(self.dest_dir,
+                                    os.path.basename(self.case_dir))
+        else:
+            base_dir = self.case_dir
+
+        r = os.path.join(base_dir, 'RESU')
 
         if len(self.domains) + len(self.syr_domains) \
          + len(self.py_domains) > 1:

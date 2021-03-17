@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -10225,7 +10225,7 @@ cs_gradient_tensor_cell(const cs_mesh_t             *m,
           pfac += bc_coeff_b[f_id][j][k] * var[c_id][j];
 
         for (cs_lnum_t j = 0; j < 3; j++)
-          rhs[i][j] += pfac * n_d_dist[j];
+          rhs[k][j] += pfac * n_d_dist[j];
       }
 
     }

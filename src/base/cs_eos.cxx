@@ -5,7 +5,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -79,12 +79,10 @@ NEPTUNE::EOS *eos;
 /*============================================================================
  * Private function definitions
  *============================================================================*/
-#ifdef __cplusplus
-extern "C"
-#endif
-void
-_eos_error_code(const char *function_name,
-                NEPTUNE::EOS_Error return_code)
+
+static void
+_eos_error_code(const char          *function_name,
+                NEPTUNE::EOS_Error   return_code)
 {
     // Generic error code returned by EOS.
     // For a field, the generic error is the worst
@@ -172,6 +170,7 @@ cs_eos_destroy(void)
 #ifdef __cplusplus
 extern "C"
 #endif
+
 void
 cs_phys_prop_eos(cs_phys_prop_thermo_plane_type_t   thermo_plane,
                  cs_phys_prop_type_t                property,
@@ -206,8 +205,9 @@ cs_phys_prop_eos(cs_phys_prop_thermo_plane_type_t   thermo_plane,
 
   switch (property) {
     case CS_PHYS_PROP_PRESSURE:
-      bft_error(__FILE__, __LINE__, 0,
-                _("bad choice: you can't choose pressure as an output variable"));
+      bft_error
+        (__FILE__, __LINE__, 0,
+         _("bad choice: you can't choose pressure as an output variable"));
       break;
     case CS_PHYS_PROP_TEMPERATURE:
       /* temperature is in K */
@@ -236,10 +236,12 @@ cs_phys_prop_eos(cs_phys_prop_thermo_plane_type_t   thermo_plane,
     case CS_PHYS_PROP_INTERNAL_ENERGY:
       bft_error(__FILE__, __LINE__, 0,
                 _("bad choice: internal energy not available yet"));
+      eos_o = NULL;
       break;
     case CS_PHYS_PROP_QUALITY:
       bft_error(__FILE__, __LINE__, 0,
                 _("bad choice: quality not available yet"));
+      eos_o = NULL;
       break;
     case CS_PHYS_PROP_THERMAL_CONDUCTIVITY:
       eos_o = new NEPTUNE::EOS_Field("lambda", "lambda", n_vals, val);
@@ -250,6 +252,7 @@ cs_phys_prop_eos(cs_phys_prop_thermo_plane_type_t   thermo_plane,
     case CS_PHYS_PROP_SPEED_OF_SOUND:
       bft_error(__FILE__, __LINE__, 0,
                 _("bad choice: speed of sound not available yet"));
+      eos_o = NULL;
       break;
   }
 
@@ -265,7 +268,6 @@ cs_phys_prop_eos(cs_phys_prop_thermo_plane_type_t   thermo_plane,
 
   _eos_error_code("cs_phys_prop_eos", eos_error);
   BFT_FREE(error);
-
 }
 
 /*----------------------------------------------------------------------------*/

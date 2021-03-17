@@ -4,7 +4,7 @@
 
 /* This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -182,6 +182,7 @@ cs_rad_transfer_pun(int              iband,
 
   cs_var_cal_opt_t  vcopt = cs_parameters_var_cal_opt_default();
 
+  vcopt.imvisf = cs_glob_space_disc->imvisf;
   vcopt.imrgra = cs_glob_space_disc->imrgra;
   vcopt.istat  = -1;
   vcopt.ndircl =  1; /* There are Dirichlet BCs  */
@@ -220,7 +221,7 @@ cs_rad_transfer_pun(int              iband,
 
   cs_face_viscosity(cs_glob_mesh,
                     cs_glob_mesh_quantities,
-                    cs_glob_space_disc->imvisf,
+                    vcopt.imvisf,
                     ckmel,
                     viscf,
                     viscb);

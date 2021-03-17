@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -37,24 +37,28 @@ This module contains the following classe:
 
 import sys, unittest, re
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Application modules import
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 from code_saturne.model.Common import *
 from code_saturne.model.XMLinitialize import BaseXmlInit
 from code_saturne.model.LocalizationModel import Zone, LocalizationModel
 from code_saturne.model.OutputControlModel import OutputControlModel
+from code_saturne.model.MainFieldsModel import MainFieldsModel
+from code_saturne.model.InterfacialForcesModel import InterfacialForcesModel
+from code_saturne.model.NeptuneWallTransferModel import NeptuneWallTransferModel
+from code_saturne.model.NucleateBoilingModel import NucleateBoilingModel
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Detection of EOS
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 EOS = 1
 try:
-   import eosAva
+    import eosAva
 except:
-   EOS = 0
+    EOS = 0
 else :
    import eosAva
 
@@ -101,7 +105,8 @@ class XMLinitNeptune(BaseXmlInit):
                 if zone.getLabel() == 'all_cells':
                     iok = 1
             if iok == 0:
-                zone = Zone("VolumicZone", case=self.case, label='all_cells', localization='all[]')
+                zone = Zone("VolumicZone", case=self.case, label='all_cells', localization='all[]',
+                            nature="physical_properties")
                 LocalizationModel("VolumicZone", self.case).addZone(zone)
                 zone = LocalizationModel("VolumicZone", self.case).getCodeNumberOfZoneLabel('all_cells')
 
@@ -165,11 +170,7 @@ class XMLinitNeptune(BaseXmlInit):
         Change XML in order to ensure backward compatibility for old version
         there is nothing to do for 2.1 to 2.2
         """
-        if from_vers <= "-1.0":
-            self.__backwardCompatibilityFrom_2_0()
-            self.__backwardCompatibilityFrom_2_2()
-
-        if from_vers[:3] < "3.0.0":
+        if (from_vers <= "-1.0") or (from_vers[:3] < "3.0.0"):
             self.__backwardCompatibilityFrom_2_0()
             self.__backwardCompatibilityFrom_2_2()
 
@@ -184,6 +185,8 @@ class XMLinitNeptune(BaseXmlInit):
                 self.__backwardCompatibilityFrom_6_0()
             if from_vers[:3] < "6.2.0":
                 self.__backwardCompatibilityFrom_6_1()
+            if from_vers[:3] < "6.4.0":
+                self.__backwardCompatibilityFrom_6_3()
 
 
     def __backwardCompatibilityFrom_2_0(self):
@@ -635,18 +638,95 @@ class XMLinitNeptune(BaseXmlInit):
 
         # Probes update to allow renaming
         XMLAnaControl = self.case.xmlGetNode('analysis_control')
-        XMLOutput     = XMLAnaControl.xmlGetNode('output')
+        XMLOutput = XMLAnaControl.xmlGetNode('output')
 
         if XMLOutput.xmlGetNodeList('probe') != None:
             for node in XMLOutput.xmlGetNodeList('probe'):
                 if node['id'] == None:
                     node['id'] = node['name']
 
+    def __backwardCompatibilityFrom_6_3(self):
+        """
+        Change XML to ensure backward compatibility from v6.2/v6.3 to v7.0
+        """
+
+        main_xml_model = MainFieldsModel(self.case)
+        forces_xml_model = InterfacialForcesModel(self.case)
+
+        # Obtain heat and mass transfer status by checking existence of interfacial enthalpy transfer couple
+        interfacial_enthalpy_node = self.case.xmlGetNode("interfacial_enthalpy")
+        heat_mass_transfer_status = "off"
+        if (interfacial_enthalpy_node != None):
+            if interfacial_enthalpy_node.xmlGetChildNodeList("enthalpy") != []:
+                heat_mass_transfer_status = "on"
+        main_xml_model.setHeatMassTransferStatus(heat_mass_transfer_status)
+
+        flow_node = self.case.xmlGetNode("predefined_flow")
+        if flow_node != None:
+            flow_choice = flow_node.xmlGetAttribute("choice")
+            # Replace (Free surface flow + LIM + bubbles for LIM) by (Multiregime)
+            if flow_choice == "free_surface":
+                force_node = self.case.xmlGetNode('closure_modeling').xmlGetNode('interfacial_forces').xmlGetNode(
+                    'continuous_field_momentum_transfer')
+                if force_node != None:
+                    if (force_node.xmlGetAttribute("model") == "Large_Interface_Model") and (
+                            force_node.xmlGetChildString("BubblesForLIM") == "on"):
+                        flow_choice = "multiregime"
+            main_xml_model.setPredefinedFlow(flow_choice)
+
+        # Continuous interfacial forces
+        force_node = self.case.xmlGetNode('closure_modeling').xmlGetNode('interfacial_forces').xmlGetNode(
+            'continuous_field_momentum_transfer')
+        if force_node != None:
+            force_model = force_node.xmlGetAttribute("model")
+            surface_tension = force_node.xmlGetChildString("ITMSurfaceTension")
+            interface_sharpening = force_node.xmlGetChildString("InterfaceSharpening")
+            unsharpened_cells = force_node.xmlGetChildString("UnsharpenedCells")
+
+            forces_xml_model.setContinuousCouplingModel("1", "2", force_model)
+            model = "none"
+            if surface_tension == "on":
+                model = "Brackbill"
+            forces_xml_model.setSurfaceTensionModel("1", "2", model)
+
+            model = "none"
+            if interface_sharpening == "on":
+                if unsharpened_cells == "on":
+                    model = "Olsson_Partial_Interface_Sharpening"
+                else:
+                    model = "Olsson_Interface_Sharpening"
+            forces_xml_model.setInterfaceSharpeningModel("1", "2", model)
+            force_node.xmlRemoveNode()
+
+        # Set wall transfer model type
+        mass_transfer_node = self.case.xmlGetNode("mass_transfer_model")
+        if mass_transfer_node != None:
+            walltm_node = mass_transfer_node.xmlGetNode("wall_transfer_type")
+            if (walltm_node == None) and (heat_mass_transfer_status == "on"):
+                if flow_choice in ["free_surface", "boiling_flow", "multiregime"]:
+                    walltm = "nucleate_boiling"
+                    NucleateBoilingModel(self.case).resetToDefaultValues()
+                elif flow_choice == "droplet_flow":
+                    walltm = "droplet_evaporation_condensation"
+                else:
+                    walltm = "none"
+                NeptuneWallTransferModel(self.case).wall_transfer_type = walltm
+
     def _backwardCompatibilityCurrentVersion(self):
         """
         Change XML in order to ensure backward compatibility.
         """
 
+        # Check that all zones have the 'physical_properties' flag
+        XMLVolumicNode = self.case.xmlGetNode('volumic_conditions')
+        for node in XMLVolumicNode.xmlGetChildNodeList('zone', 'label', 'id'):
+            if not node['physical_properties']:
+                # The 'all_cells' zone is always used for physical properties
+                # for the v7.0
+                if node['label'] == "all_cells":
+                    node['physical_properties'] = 'on'
+                else:
+                    node['physical_properties'] = 'off'
 
 #-------------------------------------------------------------------------------
 # XMLinit test case

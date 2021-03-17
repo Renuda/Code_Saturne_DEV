@@ -8,7 +8,7 @@
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -76,20 +76,6 @@ cs_walldistance_activate(void);
 
 void
 cs_walldistance_setup(void);
-
-/*----------------------------------------------------------------------------*/
-/*!
- * \brief  Finalize the setup stage for the equation related to the wall
- *         distance. Only useful for Hamilton-Jacobi equation
- *
- * \param[in]      connect    pointer to a cs_cdo_connect_t structure
- * \param[in]      cdoq       pointer to a cs_cdo_quantities_t structure
- */
-/*----------------------------------------------------------------------------*/
-
-void
-cs_walldistance_finalize_setup(const cs_cdo_connect_t       *connect,
-                               const cs_cdo_quantities_t    *cdoq);
 
 /*----------------------------------------------------------------------------*/
 /*!

@@ -1,11 +1,11 @@
 /*============================================================================
- * Syrthes 4 coupling
+ * Syrthes coupling
  *============================================================================*/
 
 /*
   This file is part of Code_Saturne, a general-purpose CFD tool.
 
-  Copyright (C) 1998-2020 EDF S.A.
+  Copyright (C) 1998-2021 EDF S.A.
 
   This program is free software; you can redistribute it and/or modify it under
   the terms of the GNU General Public License as published by the Free Software
@@ -1024,7 +1024,7 @@ _all_comm_times(void)
   cs_log_separator(CS_LOG_PERFORMANCE);
 
   cs_log_printf(CS_LOG_PERFORMANCE,
-                _("\nSYRTHES 4 coupling overheads\n"));
+                _("\nSYRTHES coupling overheads\n"));
 
   for (coupl_id = 0; coupl_id < cs_glob_syr4_n_couplings; coupl_id++) {
 
@@ -1513,7 +1513,7 @@ cs_syr4_coupling_all_destroy(void)
   cs_glob_syr4_n_couplings = 0;
   BFT_FREE(cs_glob_syr4_couplings);
 
-  bft_printf(_("\nStructures associated with SYRTHES 4 coupling freed.\n"));
+  bft_printf(_("\nStructures associated with SYRTHES coupling freed.\n"));
   bft_printf_flush();
 }
 

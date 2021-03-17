@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -93,33 +93,9 @@ class LagrangianModel(Model):
         default['dynamic']                             = "off"
         default['mass']                                = "off"
         default['scheme_order']                        = 1
-        default['turbulent_dispersion']                = "on"
-        default['fluid_particles_turbulent_diffusion'] = "off"
         default['regular_particles']                   = 1
 
         return default
-
-
-    def lagrangianStatus(self):
-        """
-        Return a tuple with the lagrangian status allowed.
-        """
-        from code_saturne.model.TurbulenceModel import TurbulenceModel
-        model = TurbulenceModel(self.case).getTurbulenceModel()
-        del TurbulenceModel
-        if model not in ('off',
-                         'k-epsilon',
-                         'k-epsilon-PL',
-                         'Rij-epsilon',
-                         'Rij-SSG',
-                         'Rij-EBRSM',
-                         'v2f-BL-v2/k',
-                         'k-omega-SST',
-                         'Spalart-Allmaras'):
-            return ('off',)
-        else:
-            return self.__lagrangianStatus
-
 
     def particlesModels(self):
         """
@@ -452,7 +428,7 @@ class LagrangianModel(Model):
         node_model = self.__nodeParticlesModel()
         node_coal = node_model.xmlInitChildNode('coal_fouling', 'status')
         value = node_coal.xmlGetDouble('fouling_coefficient_1', coal=icoal)
-        if not value:
+        if value == None:
             value = self.defaultParticlesValues()['fouling_coefficient_1']
             self.setCoef1OfFouling(icoal, value)
         return value
@@ -478,7 +454,7 @@ class LagrangianModel(Model):
         node_model = self.__nodeParticlesModel()
         node_coal = node_model.xmlInitChildNode('coal_fouling', 'status')
         value = node_coal.xmlGetDouble('fouling_coefficient_2', coal=icoal)
-        if not value:
+        if value == None:
             value = self.defaultParticlesValues()['fouling_coefficient_2']
             self.setCoef2OfFouling(icoal, value)
         return value
@@ -604,52 +580,6 @@ class LagrangianModel(Model):
                 val = self.defaultParticlesValues()['scheme_order']
                 self.setSchemeOrder(val)
         return val
-
-
-    @Variables.undoLocal
-    def setTurbulentDispersion(self, status):
-        """
-        Update the status markup for turbulent dispersion status from the XML document.
-        """
-        self.isOnOff(status)
-        node_turb = self.node_lagr.xmlInitChildNode('turbulent_dispersion', 'status')
-        node_turb['status'] = status
-
-
-    @Variables.noUndo
-    def getTurbulentDispersion(self):
-        """
-        Return status of turbulent dispersion status.
-        """
-        node_turb = self.node_lagr.xmlInitChildNode('turbulent_dispersion', 'status')
-        status = node_turb['status']
-        if not status:
-            status = self.defaultParticlesValues()['turbulent_dispersion']
-            self.setTurbulentDispersion(status)
-        return status
-
-
-    @Variables.undoLocal
-    def setTurbulentDiffusion(self, status):
-        """
-        Update the status markup for turbulent diffusion status from the XML document.
-        """
-        self.isOnOff(status)
-        node_turb = self.node_lagr.xmlInitChildNode('fluid_particles_turbulent_diffusion', 'status')
-        node_turb['status'] = status
-
-
-    @Variables.noUndo
-    def getTurbulentDiffusion(self):
-        """
-        Return status of turbulent diffusion status.
-        """
-        node_turb = self.node_lagr.xmlInitChildNode('fluid_particles_turbulent_diffusion', 'status')
-        status = node_turb['status']
-        if not status:
-            status = self.defaultParticlesValues()['fluid_particles_turbulent_diffusion']
-            self.setTurbulentDiffusion(status)
-        return status
 
 
     @Variables.undoLocal
@@ -992,40 +922,6 @@ class LagrangianTestCase(ModelTest):
         assert mdl.node_lagr == self.xmlNodeFromString(doc), \
              'Could not get default values for scheme order.'
 
-
-    def checkTurbulentDispersion(self):
-        """Check whether the turbulent dispersion could be set and get."""
-        mdl = LagrangianModel(self.case)
-        status = mdl.getTurbulentDispersion()
-
-        assert status == mdl.defaultParticlesValues()['turbulent_dispersion'], \
-            'Could not get default values for turbulent dispersion status.'
-
-        mdl.setTurbulentDispersion('on')
-        doc = """<lagrangian model="off">
-                     <turbulent_dispersion status="on"/>
-                 </lagrangian>"""
-
-        assert mdl.node_lagr == self.xmlNodeFromString(doc), \
-            'Could not set default values for turbulent dispersion status.'
-
-
-    def checkTurbulentDiffusion(self):
-        """Check whether the turbulent diffusion could be set and get."""
-        mdl = LagrangianModel(self.case)
-        status = mdl.getTurbulentDiffusion()
-
-        assert status == mdl.defaultParticlesValues()['fluid_particles_turbulent_diffusion'], \
-            'Could not get default values for turbulent diffusion status.'
-
-        mdl.setTurbulentDiffusion('on')
-        doc = """<lagrangian model="off">
-                     <fluid_particles_turbulent_diffusion status="on"/>
-                 </lagrangian>"""
-
-        assert mdl.node_lagr == self.xmlNodeFromString(doc), \
-            'Could not set default values for turbulent diffusion status.'
-            
 
 def suite():
     testSuite = unittest.makeSuite(LagrangianTestCase, "check")

@@ -4,7 +4,7 @@
 
 # This file is part of Code_Saturne, a general-purpose CFD tool.
 #
-# Copyright (C) 1998-2020 EDF S.A.
+# Copyright (C) 1998-2021 EDF S.A.
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -83,10 +83,17 @@ class SolidView(QWidget, Ui_Solid):
         self.case.undoStopGlobal()
         self.mdl = SolidModel(self.case)
 
+        if self.mdl.getSolidFieldIdList() == []:
+            self.groupBoxField.hide()
+            self.groupBoxInteractions.hide()
+            self.groupBoxGeneral.hide()
+            self.labelNoParticles.show()
+            return
+
         # Combo box models
 
         self.modelField = ComboModel(self.comboBoxField, 1, 1)
-        for fieldId in self.mdl.getSolidFieldIdList() :
+        for fieldId in self.mdl.getSolidFieldIdList():
             label = self.mdl.getLabel(fieldId)
             name = str(fieldId)
             self.modelField.addItem(self.tr(label), name)
@@ -109,8 +116,8 @@ class SolidView(QWidget, Ui_Solid):
 
         self.modelKinetic = ComboModel(self.comboBoxKinetic, 3, 1)
         self.modelKinetic.addItem(self.tr("none"), "none")
-        self.modelKinetic.addItem(self.tr("uncorrelate collision"), "uncorrelate_collision")
-        self.modelKinetic.addItem(self.tr("correlate collision"), "correlate_collision")
+        self.modelKinetic.addItem(self.tr("uncorrelated collision"), "uncorrelate_collision")
+        self.modelKinetic.addItem(self.tr("correlated collision"), "correlate_collision")
 
         # Validators
 
@@ -181,14 +188,16 @@ class SolidView(QWidget, Ui_Solid):
         """
         Initialize variables when a new fieldId is choosen
         """
+        self.labelNoParticles.hide()
+
         value = self.mdl.getCompaction()
         self.lineEditCompaction.setText(str(value))
 
         model = self.mdl.getFrictionModel(fieldId)
-        self.modelFriction.setItem(str_model = model)
+        self.modelFriction.setItem(str_model=model)
 
         model = self.mdl.getGranularModel(fieldId)
-        self.modelGranular.setItem(str_model = model)
+        self.modelGranular.setItem(str_model=model)
 
         model = self.mdl.getKineticModel(fieldId)
         self.modelKinetic.setItem(str_model = model)
