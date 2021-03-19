@@ -328,7 +328,8 @@ class InitializationView(QWidget, Ui_InitializationForm):
         """
         self.scalar_combustion = self.modelCombustion.dicoV2M[str(text)]
         self.initializeVariables()
-        exp = self.init.getCombustionFormula(self.zone_id, self.scalar_combustion)
+        zone_id = str(self.zone.getCodeNumber())
+        exp = self.init.getCombustionFormula(zone_id, self.scalar_combustion)
         if exp:
             self.pushButtonCombustion.setStyleSheet("background-color: green")
             self.pushButtonCombustion.setToolTip(exp)
@@ -343,7 +344,8 @@ class InitializationView(QWidget, Ui_InitializationForm):
         """
         self.scalar_combustion = self.modelCombustion.dicoV2M[str(text)]
         self.initializeVariables()
-        exp = self.init.getCombustionFormula(self.zone_id, self.scalar_combustion)
+        zone_id = str(self.zone.getCodeNumber())
+        exp = self.init.getCombustionFormula(zone_id, self.scalar_combustion)
         if exp:
             self.pushButtonCombustion.setStyleSheet("background-color: green")
             self.pushButtonCombustion.setToolTip(exp)
@@ -518,11 +520,12 @@ class InitializationView(QWidget, Ui_InitializationForm):
         name = self.scalar_combustion
         exa = """#example: \n""" + str(name) + """ = 0;\n"""
 
-        exp, req, sym = self.init.getCombustionFormulaComponents(self.zone_id, self.scalar_combustion)
+        zone_id = str(self.zone.getCodeNumber())
+        exp, req, sym = self.init.getCombustionFormulaComponents(zone_id, self.scalar_combustion)
 
         dialog = QMegEditorView(parent=self,
                                 function_type="ini",
-                                zone_name=self.zone_name,
+                                zone_name=self.zone.getLabel(),
                                 variable_name=name,
                                 expression=exp,
                                 required=req,
@@ -532,7 +535,7 @@ class InitializationView(QWidget, Ui_InitializationForm):
         if dialog.exec_():
             result = dialog.get_result()
             log.debug("slotFormulaCombustion -> %s" % str(result))
-            self.init.setCombustionFormula(self.zone_id, self.scalar_combustion, str(result))
+            self.init.setCombustionFormula(zone_id, self.scalar_combustion, str(result))
             self.pushButtonCombustion.setStyleSheet("background-color: green")
             self.pushButtonCombustion.setToolTip(result)
 
