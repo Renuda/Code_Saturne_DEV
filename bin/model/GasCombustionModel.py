@@ -576,6 +576,7 @@ class ThermochemistryData(Model):
         self.NumberOfKnownGlobalSpecies = 3
         # Always 1 reaction (see colecd.f90)
         self.NbReaction = 1
+        self.Error_GUI = False
 
 
     def defaultParamforTabu(self):
@@ -1118,6 +1119,14 @@ class ThermochemistryData(Model):
         InfoLine['ProdComposition'] = "Numero espece reactive / Composition Produits en especes elementaires"
         InfoLine['NbReaction'] = "Nb de reactions mises en jeu pour les especes globales"
         InfoLine['Stoeg'] = "Stoechiometrie en nb de mole especes globales"
+        #----------------------------------------
+        ErrorLine = {}
+        ErrorLine['Error'] = "Error in the GUI\n"
+        ErrorLine['No_species'] = "There are no species defined\n"
+        ErrorLine['FLAG_No_Oxi'] = "There is no Oxidiser specified\n"
+        ErrorLine['FLAG_No_Fuel'] = "There is no Fuel specified\n"
+        ErrorLine['FLAG_No_Prod'] = "There is no Product specified\n"
+        ErrorLine['FLAG_No_compo'] = " has no Nb of moles specified\n"
 
         #Prepare the data depending from the user mode (automatic or defined by user)
         ListOfSpecies       = []
@@ -1204,7 +1213,44 @@ class ThermochemistryData(Model):
 
         #Open the Thermochemistry Data File
         f = open(file_path, "w")
-        
+
+        #Check if all the species have a given composition with the "user" mode
+        self.Error_GUI = False
+        if Option_UserMode == 'user':
+            CheckComp = {}
+            FLAG_No_Oxi = False 
+            FLAG_No_Fuel = False 
+            FLAG_No_Prod = False 
+            FLAG_No_compo = False
+
+            if not ListOfSpecies :
+                f.write(ErrorLine['Error'])
+                f.write(ErrorLine['No_species'])
+                f.close()
+                self.Error_GUI = True
+                return
+
+            for label in ListOfSpecies:
+                CheckComp[label] = CompFuelDict[label]+CompOxiDict[label]+CompProdDict[label]
+
+            if max(CompOxiDict.values()) == 0 : FLAG_No_Oxi = True
+            if max(CompFuelDict.values()) == 0 : FLAG_No_Fuel = True
+            if max(CompProdDict.values()) == 0 : FLAG_No_Prod = True
+            if 0 in CheckComp.values(): FLAG_No_compo = True
+
+            if FLAG_No_Oxi | FLAG_No_Fuel | FLAG_No_Prod | FLAG_No_compo :
+                f.write(ErrorLine['Error'])
+                if FLAG_No_Oxi : f.write(ErrorLine['FLAG_No_Oxi'])
+                if FLAG_No_Fuel : f.write(ErrorLine['FLAG_No_Fuel'])
+                if FLAG_No_Prod : f.write(ErrorLine['FLAG_No_Prod'])
+                if FLAG_No_compo :
+                    for label in ListOfSpecies:
+                        if CheckComp.get(label) == 0 :
+                            f.write("The " + label + " " + ChemicalFormulaDict[label]+ ErrorLine['FLAG_No_compo'])
+                f.close()
+                self.Error_GUI = True
+                return
+
         # Write the number of species, and parameters for the tabulation ENTH TEMP
         NumberOfSpecies = len(ListOfSpecies)
         NbPointsTabu = self.getNbPointsTabu()
@@ -1284,17 +1330,6 @@ class ThermochemistryData(Model):
                 if Elem == self.ChemicalElem[0]:
                     f.write(" "*5+InfoLine['LineInfo-ChemElem'])
                 f.write('\n')
-
-#The following part can be intersting to keep in order to switch from ngazg = 2 and 3 automatically for the mode "user"
-#without that part ngazg is always = 2 for "auto" and 3 for "user"
-        #Check if all the species have a given composition
-        CheckComp = {}
-        for label in getSpeciesNamesList_Sorted:
-            CheckComp[label] = CompFuelDict[label]+CompOxiDict[label]+CompProdDict[label]
-        if 0 in CheckComp.values():
-            self.NumberOfKnownGlobalSpecies = 2
-        else:
-            self.NumberOfKnownGlobalSpecies = 3
 
         # Write the number of known global species (always 2 (Fuel and Oxy) for the moment)
         f.write('{:<15}'.format(str(self.NumberOfKnownGlobalSpecies))+" "*15*NumberOfSpecies+InfoLine['NumberOfKnownGlobalSpecies']+"\n")

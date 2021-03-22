@@ -736,9 +736,16 @@ class GasCombustionView(QWidget, Ui_GasCombustionForm):
 
         self.thermodata.WriteThermochemistryDataFile(file_path)
 
-        self.labelThermochemistryFile.setText(str(filename))
         self.mdl.setThermoChemistryDataFileName(filename)
-        self.pushButtonThermochemistryData.setStyleSheet("background-color: green")
+
+        if self.thermodata.Error_GUI :
+            self.labelThermochemistryFile.setText(str("Error in : "+filename))
+            self.pushButtonGenerateJanafFile.setStyleSheet("background-color: red")
+            self.pushButtonThermochemistryData.setStyleSheet("background-color: orange")
+        else :
+            self.labelThermochemistryFile.setText(str(filename))
+            self.pushButtonGenerateJanafFile.setStyleSheet("")
+            self.pushButtonThermochemistryData.setStyleSheet("background-color: green")
 
 
     @pyqtSlot("QModelIndex, QModelIndex")
